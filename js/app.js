@@ -374,23 +374,32 @@ function renderSearchResults(products) {
 
 function addExternalToCart(index) {
     const p = currentSearchResults[index];
-    if (p) addToCartLogic(p);
-    // ... need full logic or reuse. 
-    // For now, assume state.products push.
-    if (!state.products.find(x => x.name === p.name)) state.products.push(p);
-    addToCart(p.id);
-    document.getElementById('search-results').classList.add('hidden');
+    if (p) {
+        addToCartLogic(p);
+        document.getElementById('search-results').classList.add('hidden');
+    }
 }
 
 // --- Cart ---
 function addToCartLog(productId) { addToCart(productId); } // Alias
 
-function addToCart(productId) {
+function addToCartLogic(product) {
+    if (!product) return;
+    // Check if product is in global catalog, if not add it
+    const existing = state.products.find(p => String(p.id) === String(product.id));
+    if (!existing) {
+        state.products.push(product);
+    }
+    // Add to cart with specific quantity if provided (e.g. from restored order)
+    addToCart(product.id, product.quantity || 1);
+}
+
+function addToCart(productId, qty = 1) {
     const product = state.products.find(p => String(p.id) === String(productId));
     if (!product) return;
     const existing = state.cart.find(i => String(i.id) === String(productId));
-    if (existing) existing.quantity = (existing.quantity || 1) + 1;
-    else state.cart.push({ ...product, quantity: 1 });
+    if (existing) existing.quantity = (existing.quantity || 1) + qty;
+    else state.cart.push({ ...product, quantity: qty });
     updateCartCount();
     showModal('Hinzugefügt', product.name);
 }
