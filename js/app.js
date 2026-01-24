@@ -11,18 +11,26 @@ const state = {
 };
 
 // --- DOM Elements ---
-const views = {
-    login: document.getElementById('login-view'),
-    catalog: document.getElementById('catalog-view'),
-    cart: document.getElementById('cart-view'),
-    admin: document.getElementById('admin-dashboard-view')
-};
-
-const navContainer = document.getElementById('main-nav');
-const menuToggle = document.getElementById('menu-toggle');
+// --- DOM Elements ---
+let views = {};
+let navContainer;
+let menuToggle;
 
 // --- Initialization ---
 function init() {
+    // Initialize DOM elements safely after load
+    views = {
+        login: document.getElementById('login-view'),
+        catalog: document.getElementById('catalog-view'),
+        cart: document.getElementById('cart-view'),
+        admin: document.getElementById('admin-dashboard-view')
+    };
+    navContainer = document.getElementById('main-nav');
+    menuToggle = document.getElementById('menu-toggle');
+
+    // Debugging
+    console.log('App Initialized', views);
+
     initAuth();
     setupEventListeners();
     checkSession();
