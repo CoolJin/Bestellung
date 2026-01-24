@@ -120,12 +120,122 @@ export const UI = {
     renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard) {
         const list = elements.ordersList;
         if (!list) return;
-        list.innerHTML = '';
-        const orders = DB.getOrders().sort((a, b) => b.id.localeCompare(a.id));
-        if (orders.length === 0) {
-            list.innerHTML = '<p>Keine Bestellungen.</p>';
+
+        // --- Tab Navigation ---
+        let activeTab = list.dataset.activeTab || 'orders';
+        let selectedUserFilter = list.dataset.selectedUser || null;
+
+        list.innerHTML = `
+            <div class="admin-tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--glass-border); padding-bottom:10px;">
+                <button class="btn btn-sm ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'} tab-btn" data-tab="orders">Bestellungen</button>
+                <button class="btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'} tab-btn" data-tab="users">Benutzer</button>
+            </div>
+            <div id="admin-content-area"></div>
+        `;
+
+        const content = list.querySelector('#admin-content-area');
+
+        // Event Listeners for Tabs
+        list.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                list.dataset.activeTab = btn.dataset.tab;
+                if (btn.dataset.tab === 'orders') list.dataset.selectedUser = '';
+                renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+            };
+        });
+
+        // --- USERS TAB ---
+        if (activeTab === 'users') {
+            content.innerHTML = `
+                <div class="user-management-panel">
+                    <h3>Benutzer verwalten</h3>
+                    
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px;">
+                        <h4>Neuen Benutzer anlegen</h4>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <input type="text" id="new-user-name" placeholder="Benutzername" style="flex:1; min-width:150px;">
+                            <input type="text" id="new-user-pass" placeholder="Passwort" style="flex:1; min-width:150px;">
+                            <button id="create-user-btn" class="btn btn-primary">Erstellen</button>
+                        </div>
+                    </div>
+
+                    <div class="user-list" style="display:grid; gap:10px;">
+                        ${DB.getUsers().map(u => `
+                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
+                                    <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>
+                                    ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Handlers
+            content.querySelector('#create-user-btn').onclick = () => {
+                const nameIn = content.querySelector('#new-user-name');
+                const passIn = content.querySelector('#new-user-pass');
+                const username = nameIn.value.trim();
+                const password = passIn.value.trim();
+                if (!username || !password) return UI.showModal('Fehler', 'Bitte Name und Passwort eingeben');
+                try {
+                    DB.createUser(username, password);
+                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                } catch (e) {
+                    UI.showModal('Fehler', e.message);
+                }
+            };
+            content.querySelectorAll('.delete-user').forEach(btn => {
+                btn.onclick = () => {
+                    const u = btn.dataset.user;
+                    UI.showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, () => {
+                        DB.deleteUser(u);
+                        renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                    });
+                };
+            });
+            content.querySelectorAll('.view-user-orders').forEach(btn => {
+                btn.onclick = () => {
+                    list.dataset.activeTab = 'orders';
+                    list.dataset.selectedUser = btn.dataset.user;
+                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                };
+            });
             return;
         }
+
+        // --- ORDERS TAB ---
+        let orders = DB.getOrders().sort((a, b) => b.id.localeCompare(a.id));
+
+        if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
+            orders = orders.filter(o => o.user === selectedUserFilter);
+            content.innerHTML += `
+                <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
+                    <span>Filter: <strong>${selectedUserFilter}</strong> (${orders.length} Bestellungen)</span>
+                    <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
+                </div>
+            `;
+            setTimeout(() => {
+                const cfBtn = content.querySelector('#clear-filter-btn');
+                if (cfBtn) cfBtn.onclick = () => {
+                    list.dataset.selectedUser = '';
+                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                };
+            }, 0);
+        }
+
+        if (orders.length === 0) {
+            const msg = document.createElement('p');
+            msg.textContent = 'Keine Bestellungen gefunden.';
+            content.appendChild(msg);
+            return;
+        }
+
         orders.forEach(o => {
             // Calc Total
             let displayTotal = o.total;
@@ -209,7 +319,7 @@ export const UI = {
                     : ''}
                 </div>
              `;
-            list.appendChild(div);
+            content.appendChild(div);
         });
     },
 

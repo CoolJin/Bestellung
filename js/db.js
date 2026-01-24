@@ -1,38 +1,80 @@
 /**
  * Database Module (db.js)
- * Handles localStorage persistence for Users and Orders.
- * Acts as the "Backend" for this prototype.
+ * Handles data persistence using localStorage, initialized from data.json.
+ * Simulates a file-based database.
  */
 
 const DB = {
     // Keys
     KEYS: {
+        DATA: 'app_data_v1', // Unified store or keep separate? Let's keep keys separate for cleaner LS, but init from JSON.
         USERS: 'users',
         ORDERS: 'orders',
         SESSION: 'session'
     },
 
+    state: {
+        users: [],
+        orders: []
+    },
+
+    async init() {
+        // Try to load from LocalStorage first
+        const localUsers = localStorage.getItem(this.KEYS.USERS);
+        const localOrders = localStorage.getItem(this.KEYS.ORDERS);
+
+        if (localUsers && localOrders) {
+            this.state.users = JSON.parse(localUsers);
+            this.state.orders = JSON.parse(localOrders);
+            console.log('DB: Loaded from LocalStorage');
+        } else {
+            // First time load or clear: Fetch from data.json
+            try {
+                const res = await fetch('data/data.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.state.users = data.users || [];
+                    this.state.orders = data.orders || [];
+                    this.saveData(); // Persist to LS immediately
+                    console.log('DB: Initialized from data.json');
+                } else {
+                    console.error('DB: data.json not found, using defaults.');
+                    this.state.users = [{ username: 'admin', password: '123', role: 'admin' }];
+                    this.saveData();
+                }
+            } catch (e) {
+                console.error('DB: Failed to load data.json', e);
+                this.state.users = [{ username: 'admin', password: '123', role: 'admin' }];
+                this.saveData();
+            }
+        }
+    },
+
+    saveData() {
+        localStorage.setItem(this.KEYS.USERS, JSON.stringify(this.state.users));
+        localStorage.setItem(this.KEYS.ORDERS, JSON.stringify(this.state.orders));
+    },
+
     // --- Users ---
     getUsers() {
-        return JSON.parse(localStorage.getItem(this.KEYS.USERS) || '[]');
+        return this.state.users;
     },
 
     createUser(username, password) {
-        const users = this.getUsers();
-        if (users.find(u => u.username === username)) {
+        if (this.state.users.find(u => u.username === username)) {
             throw new Error('Benutzer existiert bereits');
         }
-        users.push({ username, password, role: 'user' });
-        localStorage.setItem(this.KEYS.USERS, JSON.stringify(users));
+        this.state.users.push({ username, password, role: 'user' });
+        this.saveData();
+    },
+
+    deleteUser(username) {
+        this.state.users = this.state.users.filter(u => u.username !== username);
+        this.saveData();
     },
 
     authenticate(username, password) {
-        // Hardcoded Admins/Defaults (Fallback)
-        if (username === 'admin' && password === 'admin123') return { username, role: 'admin' };
-        if (username === 'user' && password === 'user123') return { username, role: 'user' };
-
-        const users = this.getUsers();
-        const user = users.find(u => u.username === username && u.password === password);
+        const user = this.state.users.find(u => u.username === username && u.password === password);
         if (user) return { username: user.username, role: user.role };
         return null;
     },
@@ -80,49 +122,47 @@ const DB = {
 
     // --- Orders ---
     getOrders() {
-        return JSON.parse(localStorage.getItem(this.KEYS.ORDERS) || '[]');
+        return this.state.orders;
     },
 
     saveOrder(order) {
-        const orders = this.getOrders();
-        orders.push(order);
-        localStorage.setItem(this.KEYS.ORDERS, JSON.stringify(orders));
+        this.state.orders.push(order);
+        this.saveData();
     },
 
     updateOrder(id, mutator) {
-        const orders = this.getOrders();
-        const orderIndex = orders.findIndex(o => String(o.id) === String(id));
-        if (orderIndex !== -1) {
-            mutator(orders[orderIndex]);
-            localStorage.setItem(this.KEYS.ORDERS, JSON.stringify(orders));
+        const order = this.state.orders.find(o => String(o.id) === String(id));
+        if (order) {
+            mutator(order);
+            this.saveData();
             return true;
         }
         return false;
     },
 
     deleteOrder(id) {
-        let orders = this.getOrders();
-        orders = orders.filter(o => String(o.id) !== String(id));
-        localStorage.setItem(this.KEYS.ORDERS, JSON.stringify(orders));
+        this.state.orders = this.state.orders.filter(o => String(o.id) !== String(id));
+        this.saveData();
     },
 
     // --- ID Generation ---
     generateOrderId(editingId = null) {
         if (editingId) {
-            // Reuse logic: #1234 -> #1234B
-            const base = String(editingId).replace('B', ''); // Safety strip if double edit
+            const base = String(editingId).replace('B', '');
             if (!String(editingId).endsWith('B')) return base + 'B';
-            return String(editingId); // Keep #1234B
+            return String(editingId);
         }
 
-        const orders = this.getOrders();
         let maxId = 0;
-        orders.forEach(o => {
+        this.state.orders.forEach(o => {
             const numPart = parseInt(String(o.id).replace(/\D/g, ''), 10);
             if (!isNaN(numPart) && numPart > maxId && numPart < 90000) {
                 maxId = numPart;
             }
         });
+        // Start explicit numbering if empty, e.g. 1000
+        if (maxId === 0) maxId = 1000;
+
         const newIdNum = maxId + 1;
         return '#' + String(newIdNum).padStart(4, '0');
     }
