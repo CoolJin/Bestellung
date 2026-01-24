@@ -262,13 +262,14 @@ async function searchSnuzone(query, signal) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
 
+    // Limit results to 12
     const links = Array.from(doc.querySelectorAll('a[href*="/products/"]'))
         .map(a => {
             const href = a.getAttribute('href');
             return href.startsWith('http') ? href : `https://snuzone.com${href}`;
         })
         .filter((v, i, a) => a.indexOf(v) === i)
-        .slice(0, 15);
+        .slice(0, 12); // Limited to 12
 
     if (links.length === 0) return [];
 
@@ -412,34 +413,100 @@ function initAuth() {
 }
 
 function login(username, password) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.username === username && u.password === password);
+    elements.loginError.textContent = '';
 
-    if (user) {
-        state.currentUser = { username: user.username, role: user.role };
-        if (elements.loginError) elements.loginError.textContent = '';
-        renderNav();
+    const btn = elements.loginForm.querySelector('button');
+    const originalText = btn.textContent;
+    btn.textContent = 'Lade...';
+    btn.disabled = true;
 
-        if (user.role === 'admin') {
-            navigateTo('admin');
-        } else {
-            navigateTo('catalog'); // OR profile? Catalog is standard.
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+
+        let role = 'user';
+        if (username === 'admin' && password === 'admin123') role = 'admin';
+        else if (username === 'user' && password === 'user123') role = 'user';
+        else {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.username === username && u.password === password);
+            if (user) role = 'user';
+            else {
+                elements.loginError.textContent = 'Ungültige Anmeldedaten';
+                return;
+            }
         }
-    } else {
-        if (elements.loginError) elements.loginError.textContent = 'Ungültige Anmeldedaten.';
-    }
+
+        state.currentUser = { username, role };
+        // Session Start
+        localStorage.setItem('session', JSON.stringify({
+            user: state.currentUser,
+            lastActive: Date.now()
+        }));
+
+        navigateTo(role === 'admin' ? 'admin-dashboard' : 'catalog');
+        updateUI();
+    }, 500);
 }
 
 function logout() {
     state.currentUser = null;
     state.cart = [];
-    renderNav();
+    localStorage.removeItem('session');
     navigateTo('login');
+    updateUI();
 }
 
 function checkSession() {
+    const sessionData = localStorage.getItem('session');
+    if (sessionData) {
+        try {
+            const session = JSON.parse(sessionData);
+            const now = Date.now();
+            // 15 Minutes = 900,000 ms
+            if (now - session.lastActive < 900000) {
+                state.currentUser = session.user;
+                session.lastActive = now; // Refresh on reload
+                localStorage.setItem('session', JSON.stringify(session));
+
+                // Restore View logic could be added here, currently defaulting based on role
+                if (state.currentUser.role === 'admin') {
+                    // If we were on admin, good.
+                    if (currentView === 'login') navigateTo('admin-dashboard');
+                } else {
+                    if (currentView === 'login') navigateTo('catalog');
+                }
+                updateUI();
+                return;
+            } else {
+                localStorage.removeItem('session'); // Expired
+            }
+        } catch (e) {
+            localStorage.removeItem('session');
+        }
+    }
     navigateTo('login');
+    updateUI();
 }
+
+// Activity Tracking
+function updateSessionActivity() {
+    if (state.currentUser) {
+        const sessionData = localStorage.getItem('session');
+        if (sessionData) {
+            const session = JSON.parse(sessionData);
+            session.lastActive = Date.now();
+            localStorage.setItem('session', JSON.stringify(session));
+        }
+    }
+}
+window.addEventListener('click', updateSessionActivity);
+window.addEventListener('keypress', updateSessionActivity);
+window.addEventListener('mousemove', () => {
+    // Throttle mousemove? For simple activity, click/key is usually enough, but let's debounce if adding mouse.
+    // Leaving out mousemove to strict "interaction" (clicks/typing) to save perf, or simple throttle? 
+    // User said "15 mins nothing done".
+});
 
 // --- Navigation & Routing ---
 function navigateTo(viewName) {
@@ -833,10 +900,11 @@ function handleProfileAction(e) {
             const orderIndex = orders.findIndex(o => String(o.id) === String(id));
             if (orderIndex !== -1) {
                 const order = orders[orderIndex];
-                // Restore items to cart (merged or overwrite? User implies Edit = take contents back. Merging is safer.)
-                // Actually user said "Items zurück in Warenkorb kommen oder so".
 
-                // Add items to current cart
+                // Store ID for reuse with suffix
+                state.editingOrderId = order.id;
+
+                // Restore items
                 order.items.forEach(oldItem => {
                     const existing = state.cart.find(ci => String(ci.id) === String(oldItem.id));
                     if (existing) {
@@ -848,17 +916,70 @@ function handleProfileAction(e) {
 
                 if (order.note && elements.orderNote) elements.orderNote.value = order.note;
 
-                // Delete Order
+                // Delete Original
                 orders.splice(orderIndex, 1);
                 localStorage.setItem('orders', JSON.stringify(orders));
 
-                // Navigate
                 updateCartCount();
                 navigateTo('cart');
-                showModal('Bearbeitungsmodus', 'Inhalte wurden in den Warenkorb geladen.');
+                showModal('Bearbeitungsmodus', 'Inhalte geladen. ID wird bei Abschluss beibehalten/aktualisiert.');
             }
         });
     }
+}
+
+function placeOrder() {
+    if (state.cart.length === 0) return showModal('Fehler', 'Warenkorb ist leer.');
+
+    // Check limit
+    if (elements.orderNote.value.length > 100) {
+        return showModal('Fehler', 'Notiz ist zu lang (Max. 100 Zeichen).');
+    }
+
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+
+    // Generate ID
+    let newId;
+    if (state.editingOrderId) {
+        // Reuse logic: Append 'B' if not present
+        let baseId = String(state.editingOrderId);
+        if (!baseId.endsWith('B')) {
+            newId = baseId + 'B';
+        } else {
+            newId = baseId; // Keep existing suffix
+        }
+        state.editingOrderId = null; // Clear
+    } else {
+        // Strict sequence logic (max ID + 1)
+        // Filter out non-numeric/legacy to find max number
+        const maxId = orders.reduce((max, o) => {
+            const num = parseInt(String(o.id).replace(/\D/g, ''), 10) || 0;
+            return num > max ? num : max;
+        }, 0);
+        newId = '#' + String(maxId + 1).padStart(4, '0');
+    }
+
+    const order = {
+        id: newId,
+        user: state.currentUser.username,
+        date: new Date().toLocaleString('de-DE'),
+        items: JSON.parse(JSON.stringify(state.cart)), // Deep copy with quantities
+        total: state.cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0),
+        status: 'open',
+        note: elements.orderNote ? elements.orderNote.value.trim() : '',
+        archivedBy: []
+    };
+
+    orders.push(order);
+    localStorage.setItem('orders', JSON.stringify(orders));
+
+    state.cart = [];
+    if (elements.orderNote) elements.orderNote.value = '';
+    updateCartCount();
+    navigateTo('profile');
+    showModal('Erfolg', `Bestellung ${newId} erfolgreich aufgegeben!`);
+
+    // Refresh admin list if open? Simpler to just notify.
 }
 
 function updateOrder(id, mutator) {
