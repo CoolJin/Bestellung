@@ -12,9 +12,11 @@ const state = {
 
 // --- DOM Elements ---
 // --- DOM Elements ---
+// --- DOM Elements ---
 let views = {};
 let navContainer;
 let menuToggle;
+let elements = {}; // Container for all other elements
 
 // --- Initialization ---
 function init() {
@@ -25,11 +27,32 @@ function init() {
         cart: document.getElementById('cart-view'),
         admin: document.getElementById('admin-dashboard-view')
     };
+
     navContainer = document.getElementById('main-nav');
     menuToggle = document.getElementById('menu-toggle');
 
-    // Debugging
-    console.log('App Initialized', views);
+    // Store other elements safely
+    elements = {
+        loginForm: document.getElementById('login-form'),
+        productGrid: document.getElementById('product-grid'),
+        cartSummaryBtn: document.getElementById('cart-summary-btn'),
+        backToCatalogBtn: document.getElementById('back-to-catalog'),
+        checkoutBtn: document.getElementById('checkout-btn'),
+        createUserForm: document.getElementById('create-user-form'),
+        searchBtn: document.getElementById('search-btn'),
+        snuzoneSearch: document.getElementById('snuzone-search'),
+        snuzoneResultsGrid: document.getElementById('snuzone-results-grid'),
+        cartCount: document.getElementById('cart-count'),
+        cartItems: document.getElementById('cart-items'),
+        cartTotal: document.getElementById('cart-total'),
+        loginError: document.getElementById('login-error'),
+        adminMsg: document.getElementById('admin-msg'),
+        ordersList: document.getElementById('orders-list'),
+        newUsername: document.getElementById('new-username'),
+        newPassword: document.getElementById('new-password')
+    };
+
+    console.log('App Initialized', { views, elements });
 
     initAuth();
     setupEventListeners();
@@ -37,36 +60,43 @@ function init() {
 }
 
 function setupEventListeners() {
+    // Helper to safely add listener
+    const safeAdd = (el, event, handler) => {
+        if (el) el.addEventListener(event, handler);
+    };
+
     // Menu Toggle
-    menuToggle.addEventListener('click', () => {
+    safeAdd(menuToggle, 'click', () => {
         navContainer.classList.toggle('show');
     });
 
     // Login Form
-    document.getElementById('login-form').addEventListener('submit', (e) => {
+    safeAdd(elements.loginForm, 'submit', (e) => {
         e.preventDefault();
         const user = e.target.username.value;
         const pass = e.target.password.value;
         login(user, pass);
     });
 
-    // Navigation Delegation
-    navContainer.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A') {
-            e.preventDefault();
-            const targetView = e.target.dataset.view;
-            if (targetView === 'logout') {
-                logout();
-            } else {
-                navigateTo(targetView);
+    // Navigation Delegation (navContainer is usually always present, but safe check doesn't hurt)
+    if (navContainer) {
+        navContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('nav-link')) {
+                e.preventDefault();
+                const targetView = e.target.dataset.view;
+                if (targetView === 'logout') {
+                    logout();
+                } else {
+                    navigateTo(targetView);
+                }
+                // Close mobile menu on navigate
+                navContainer.classList.remove('show');
             }
-            // Close mobile menu on navigate
-            navContainer.classList.remove('show');
-        }
-    });
+        });
+    }
 
     // Catalog Buttons Delegation
-    document.getElementById('product-grid').addEventListener('click', (e) => {
+    safeAdd(elements.productGrid, 'click', (e) => {
         if (e.target.classList.contains('add-to-cart')) {
             const id = parseInt(e.target.dataset.id);
             addToCart(id);
@@ -74,21 +104,21 @@ function setupEventListeners() {
     });
 
     // Cart Button
-    document.getElementById('cart-summary-btn').addEventListener('click', () => navigateTo('cart'));
-    document.getElementById('back-to-catalog').addEventListener('click', () => navigateTo('catalog'));
-    document.getElementById('checkout-btn').addEventListener('click', placeOrder);
+    safeAdd(elements.cartSummaryBtn, 'click', () => navigateTo('cart'));
+    safeAdd(elements.backToCatalogBtn, 'click', () => navigateTo('catalog'));
+    safeAdd(elements.checkoutBtn, 'click', placeOrder);
 
     // Admin Create User
-    document.getElementById('create-user-form').addEventListener('submit', handleCreateUser);
+    safeAdd(elements.createUserForm, 'submit', handleCreateUser);
 
     // Snuzone Search
-    document.getElementById('search-btn').addEventListener('click', handleSearch);
-    document.getElementById('snuzone-search').addEventListener('keypress', (e) => {
+    safeAdd(elements.searchBtn, 'click', handleSearch);
+    safeAdd(elements.snuzoneSearch, 'keypress', (e) => {
         if (e.key === 'Enter') handleSearch();
     });
 
     // Add external product delegation
-    document.getElementById('snuzone-results-grid').addEventListener('click', (e) => {
+    safeAdd(elements.snuzoneResultsGrid, 'click', (e) => {
         if (e.target.classList.contains('add-external')) {
             const index = e.target.dataset.index;
             addExternalToCart(index);
@@ -100,11 +130,11 @@ function setupEventListeners() {
 let currentSearchResults = [];
 
 async function handleSearch() {
-    const query = document.getElementById('snuzone-search').value.trim();
+    const query = elements.snuzoneSearch.value.trim();
     if (!query) return;
 
     const resultsContainer = document.getElementById('search-results');
-    const grid = document.getElementById('snuzone-results-grid');
+    const grid = elements.snuzoneResultsGrid;
 
     resultsContainer.classList.remove('hidden');
     grid.innerHTML = '<div class="loading-spinner">Suche auf Snuzone...</div>';
@@ -237,7 +267,8 @@ async function searchSnuzone(query) {
 }
 
 function renderSearchResults(products) {
-    const grid = document.getElementById('snuzone-results-grid');
+    const grid = elements.snuzoneResultsGrid;
+    if (!grid) return;
     grid.innerHTML = '';
 
     if (products.length === 0) {
@@ -283,7 +314,7 @@ function addExternalToCart(index) {
 
         // Hide search results
         document.getElementById('search-results').classList.add('hidden');
-        document.getElementById('snuzone-search').value = '';
+        elements.snuzoneSearch.value = '';
     }
 }
 
@@ -381,11 +412,13 @@ function createNavLink(text, view) {
 
 // --- Catalog System ---
 function renderCatalog() {
-    const grid = document.getElementById('product-grid');
+    const grid = elements.productGrid;
+    if (!grid) return;
     grid.innerHTML = ''; // Clear
 
     state.products.forEach(p => {
         const card = document.createElement('article');
+        // ... (content same)
         card.className = 'product-card';
         card.innerHTML = `
             <img src="${p.image}" alt="${p.name}" class="product-image" loading="lazy">
@@ -418,11 +451,12 @@ function addToCart(productId) {
 }
 
 function updateCartCount() {
-    document.getElementById('cart-count').textContent = state.cart.length;
+    if (elements.cartCount) elements.cartCount.textContent = state.cart.length;
 }
 
 function renderCart() {
-    const container = document.getElementById('cart-items');
+    const container = elements.cartItems;
+    if (!container) return;
     container.innerHTML = '';
     let total = 0;
 
@@ -444,7 +478,7 @@ function renderCart() {
         });
     }
 
-    document.getElementById('cart-total').textContent = formatPrice(total);
+    if (elements.cartTotal) elements.cartTotal.textContent = formatPrice(total);
 }
 
 // Make globally available for onclick
@@ -482,7 +516,8 @@ function renderAdminDashboard() {
     // Only verify role again just in case
     if (state.currentUser?.role !== 'admin') return;
 
-    const ordersList = document.getElementById('orders-list');
+    const ordersList = elements.ordersList;
+    if (!ordersList) return;
     const orders = JSON.parse(localStorage.getItem('orders') || '[]');
     ordersList.innerHTML = '';
 
@@ -516,9 +551,9 @@ function renderAdminDashboard() {
 
 function handleCreateUser(e) {
     e.preventDefault();
-    const newUsername = document.getElementById('new-username').value;
-    const newPassword = document.getElementById('new-password').value;
-    const msg = document.getElementById('admin-msg');
+    const newUsername = elements.newUsername?.value;
+    const newPassword = elements.newPassword?.value;
+    const msg = elements.adminMsg;
 
     if (newUsername && newPassword) {
         const users = JSON.parse(localStorage.getItem('users') || '[]');
