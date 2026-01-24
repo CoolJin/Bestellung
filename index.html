@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bestellsystem</title> <!-- Neutral Title -->
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/advanced.css">
     <!-- Removed search.css import as styles are now in style.css or will be merged -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,6 +65,17 @@
             </div>
         </section>
 
+        <!-- Profile -->
+        <section id="profile-view" class="view hidden">
+            <div class="header-actions">
+                <h1>Mein Profil</h1>
+            </div>
+            <h3>Meine aktuellen Bestellungen</h3>
+            <div id="profile-orders-list" class="admin-panel" style="margin-top: 1rem;">
+                <!-- User Orders injected here -->
+            </div>
+        </section>
+
         <!-- Cart -->
         <section id="cart-view" class="view hidden">
             <div class="header-actions">
@@ -71,6 +83,15 @@
                 <button class="btn btn-secondary btn-sm" id="back-to-catalog">Zurück</button>
             </div>
             <div id="cart-items"></div>
+
+            <div style="margin-top: 1rem;">
+                <label for="order-note" style="display:block; margin-bottom: 0.5rem; color: var(--text-muted);">Notiz
+                    zur Bestellung:</label>
+                <textarea id="order-note" rows="3"
+                    style="width: 100%; padding: 10px; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--glass-border); border-radius: 8px;"
+                    placeholder="Optional: Wünsche, Anmerkungen..."></textarea>
+            </div>
+
             <div
                 style="margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1rem; text-align: right;">
                 <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Gesamt: <span
@@ -110,6 +131,18 @@
     </main>
 
     <!-- No Footer text as requested -->
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <h3>Abmelden?</h3>
+            <p>Möchten Sie sich wirklich abmelden?</p>
+            <div class="modal-actions">
+                <button id="logout-cancel" class="btn btn-secondary">Abbrechen</button>
+                <button id="logout-confirm" class="btn btn-primary">Ja, abmelden</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/app.js"></script>
 </body>

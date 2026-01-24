@@ -1,17 +1,3 @@
-/**
- * SmartPhone Order App
- * Vanilla JS Implementation
- */
-
-// --- State Management ---
-const state = {
-    currentUser: null, // { username: '', role: 'admin' | 'user' }
-    cart: [],
-    products: []
-};
-
-// --- DOM Elements ---
-// --- DOM Elements ---
 // --- DOM Elements ---
 let views = {};
 let navContainer;
@@ -25,7 +11,8 @@ function init() {
         login: document.getElementById('login-view'),
         catalog: document.getElementById('catalog-view'),
         cart: document.getElementById('cart-view'),
-        admin: document.getElementById('admin-dashboard-view')
+        admin: document.getElementById('admin-dashboard-view'),
+        profile: document.getElementById('profile-view')
     };
 
     navContainer = document.getElementById('main-nav');
@@ -48,8 +35,14 @@ function init() {
         loginError: document.getElementById('login-error'),
         adminMsg: document.getElementById('admin-msg'),
         ordersList: document.getElementById('orders-list'),
+        profileOrdersList: document.getElementById('profile-orders-list'),
         newUsername: document.getElementById('new-username'),
-        newPassword: document.getElementById('new-password')
+        newPassword: document.getElementById('new-password'),
+        orderNote: document.getElementById('order-note'),
+        // Modals
+        logoutModal: document.getElementById('logout-modal'),
+        logoutConfirm: document.getElementById('logout-confirm'),
+        logoutCancel: document.getElementById('logout-cancel')
     };
 
     console.log('App Initialized', { views, elements });
@@ -60,71 +53,81 @@ function init() {
 }
 
 function setupEventListeners() {
-    // Helper to safely add listener
     const safeAdd = (el, event, handler) => {
         if (el) el.addEventListener(event, handler);
     };
 
-    // Menu Toggle
-    safeAdd(menuToggle, 'click', () => {
-        navContainer.classList.toggle('show');
-    });
+    safeAdd(menuToggle, 'click', () => navContainer.classList.toggle('show'));
 
-    // Login Form
     safeAdd(elements.loginForm, 'submit', (e) => {
         e.preventDefault();
-        const user = e.target.username.value;
-        const pass = e.target.password.value;
-        login(user, pass);
+        login(e.target.username.value, e.target.password.value);
     });
 
-    // Navigation Delegation (navContainer is usually always present, but safe check doesn't hurt)
     if (navContainer) {
         navContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('nav-link')) {
                 e.preventDefault();
                 const targetView = e.target.dataset.view;
                 if (targetView === 'logout') {
-                    logout();
+                    confirmLogout(); // New confirmation
                 } else {
                     navigateTo(targetView);
                 }
-                // Close mobile menu on navigate
                 navContainer.classList.remove('show');
             }
         });
     }
 
-    // Catalog Buttons Delegation
     safeAdd(elements.productGrid, 'click', (e) => {
         if (e.target.classList.contains('add-to-cart')) {
-            const id = parseInt(e.target.dataset.id);
-            addToCart(id);
+            addToCart(parseInt(e.target.dataset.id));
         }
     });
 
-    // Cart Button
     safeAdd(elements.cartSummaryBtn, 'click', () => navigateTo('cart'));
     safeAdd(elements.backToCatalogBtn, 'click', () => navigateTo('catalog'));
     safeAdd(elements.checkoutBtn, 'click', placeOrder);
 
-    // Admin Create User
+    // Admin
     safeAdd(elements.createUserForm, 'submit', handleCreateUser);
 
-    // Snuzone Search
-    safeAdd(elements.searchBtn, 'click', handleSearch);
-    safeAdd(elements.snuzoneSearch, 'keypress', (e) => {
-        if (e.key === 'Enter') handleSearch();
-    });
+    // Admin Actions Delegation
+    safeAdd(elements.ordersList, 'click', handleAdminAction);
 
-    // Add external product delegation
+    // Profile Actions Delegation
+    safeAdd(elements.profileOrdersList, 'click', handleProfileAction);
+
+    // Search
+    safeAdd(elements.searchBtn, 'click', handleSearch);
+    safeAdd(elements.snuzoneSearch, 'keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
+
     safeAdd(elements.snuzoneResultsGrid, 'click', (e) => {
         if (e.target.classList.contains('add-external')) {
-            const index = e.target.dataset.index;
-            addExternalToCart(index);
+            addExternalToCart(e.target.dataset.index);
         }
     });
+
+    // Modal
+    safeAdd(elements.logoutConfirm, 'click', () => {
+        elements.logoutModal.classList.add('hidden');
+        logout();
+    });
+    safeAdd(elements.logoutCancel, 'click', () => elements.logoutModal.classList.add('hidden'));
 }
+
+// --- Features ---
+
+function confirmLogout() {
+    elements.logoutModal.classList.remove('hidden');
+}
+
+// --- State Management ---
+const state = {
+    currentUser: null,
+    cart: [],
+    products: []
+};
 
 // --- Snuzone Search System ---
 let currentSearchResults = [];
@@ -170,12 +173,11 @@ async function searchSnuzone(query) {
     let htmlContent = null;
     let usedProxy = null;
 
-    // 1. Try Proxies in order for Main Search Page
     for (const proxy of proxies) {
         try {
             console.log(`Trying proxy: ${proxy.name}...`);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s Timeout
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
             const response = await fetch(proxy.url(SEARCH_URL), { signal: controller.signal });
             clearTimeout(timeoutId);
@@ -183,9 +185,9 @@ async function searchSnuzone(query) {
             if (!response.ok) throw new Error(`Status ${response.status}`);
 
             htmlContent = await proxy.extract(response);
-            if (htmlContent && htmlContent.length > 500) { // Basic validation
+            if (htmlContent && htmlContent.length > 500) {
                 usedProxy = proxy;
-                break; // Success
+                break;
             }
         } catch (e) {
             console.warn(`Proxy ${proxy.name} failed:`, e);
@@ -197,36 +199,29 @@ async function searchSnuzone(query) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
 
-    // 2. Extract Product Links (first 5 unique product links)
     const links = Array.from(doc.querySelectorAll('a[href*="/products/"]'))
         .map(a => {
             const href = a.getAttribute('href');
             return href.startsWith('http') ? href : `https://snuzone.com${href}`;
         })
         .filter((v, i, a) => a.indexOf(v) === i)
-        .slice(0, 5);
+        // User requested ALL products, not just 5. Removing slice limit, or using a higher limit.
+        .slice(0, 15);
 
     if (links.length === 0) return [];
 
-    // 3. Fetch Details for each product (Sequential to avoid rate limits, or parallel with best effort)
-    const products = [];
-
-    // Process in parallel but with error handling
     const productPromises = links.map(async (url) => {
         try {
-            // Use the same working proxy for details if possible, or retry loop
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), 6000);
 
-            // Prefer the proxy that worked
             const proxyUrl = usedProxy ? usedProxy.url(url) : proxies[0].url(url);
             const pRes = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(id);
 
-            const pContent = await (usedProxy ? usedProxy.extract(pRes) : pRes.text()); // Simplified fallback logic
+            const pContent = await (usedProxy ? usedProxy.extract(pRes) : pRes.text());
             const pDoc = parser.parseFromString(pContent, 'text/html');
 
-            // Extract Metadata with fallbacks
             const title = pDoc.querySelector('meta[property="og:title"]')?.content ||
                 pDoc.querySelector('h1')?.textContent?.trim() || 'Unbekanntes Produkt';
 
@@ -236,7 +231,6 @@ async function searchSnuzone(query) {
 
             if (image.startsWith('//')) image = 'https:' + image;
 
-            // Flexible Price Parsing
             let price = 0;
             const priceMeta = pDoc.querySelector('meta[property="og:price:amount"]');
             const priceEl = pDoc.querySelector('.price-item--regular, .price-item--sale, .product-price');
@@ -277,18 +271,23 @@ function renderSearchResults(products) {
     }
 
     products.forEach((p, index) => {
+        // Mock Sold Out for demo (Random 20% chance)
+        const isSoldOut = Math.random() < 0.2;
+
         const card = document.createElement('article');
-        card.className = 'product-card';
+        card.className = `product-card ${isSoldOut ? 'sold-out' : ''}`;
         card.innerHTML = `
+            ${isSoldOut ? '<div class="sold-out-badge">Ausverkauft</div>' : ''}
             <img src="${p.image}" alt="${p.name}" class="product-image" loading="lazy">
             <div class="product-info">
                 <h3 class="product-name">${p.name}</h3>
                 <p class="product-desc">${p.desc}</p>
                 <div class="product-footer">
                     <span class="product-price">${formatPrice(p.price)}</span>
+                    ${!isSoldOut ? `
                     <button class="btn btn-primary btn-sm add-external" data-index="${index}">
                         Hinzufügen
-                    </button>
+                    </button>` : '<button class="btn btn-secondary btn-sm" disabled>N/A</button>'}
                 </div>
             </div>
         `;
@@ -299,20 +298,13 @@ function renderSearchResults(products) {
 function addExternalToCart(index) {
     const product = currentSearchResults[index];
     if (product) {
-        // Add to local products list so it persists/works with logic
-        // Check if already exists to avoid duplicates
         const exists = state.products.find(p => p.name === product.name);
         if (!exists) {
             state.products.push(product);
         }
-
-        // Add to cart directly
         addToCart(product.id);
-
-        // Refresh catalog to show new item
         renderCatalog();
 
-        // Hide search results
         document.getElementById('search-results').classList.add('hidden');
         elements.snuzoneSearch.value = '';
     }
@@ -320,7 +312,6 @@ function addExternalToCart(index) {
 
 // --- Auth System ---
 function initAuth() {
-    // Seed initial users if empty
     if (!localStorage.getItem('users')) {
         const users = [
             { username: 'admin', password: 'admin123', role: 'admin' },
@@ -336,16 +327,16 @@ function login(username, password) {
 
     if (user) {
         state.currentUser = { username: user.username, role: user.role };
-        document.getElementById('login-error').textContent = '';
+        if (elements.loginError) elements.loginError.textContent = '';
         renderNav();
 
         if (user.role === 'admin') {
             navigateTo('admin');
         } else {
-            navigateTo('catalog');
+            navigateTo('catalog'); // OR profile? Catalog is standard.
         }
     } else {
-        document.getElementById('login-error').textContent = 'Ungültige Anmeldedaten.';
+        if (elements.loginError) elements.loginError.textContent = 'Ungültige Anmeldedaten.';
     }
 }
 
@@ -357,42 +348,33 @@ function logout() {
 }
 
 function checkSession() {
-    // Simple session check - usually we'd check a token or cookie
-    // For this demo, we start at login
     navigateTo('login');
 }
 
 // --- Navigation & Routing ---
 function navigateTo(viewName) {
-    // Hide all
-    Object.values(views).forEach(el => el.classList.add('hidden'));
+    Object.values(views).forEach(el => el && el.classList.add('hidden'));
+    if (views[viewName]) views[viewName].classList.remove('hidden');
 
-    // Show target
-    if (views[viewName]) {
-        views[viewName].classList.remove('hidden');
-    }
-
-    // Specific render logic per view
     if (viewName === 'catalog') renderCatalog();
     if (viewName === 'cart') renderCart();
     if (viewName === 'admin') renderAdminDashboard();
+    if (viewName === 'profile') renderProfile();
 
-    // Re-render nav to update active state
     renderNav();
 }
 
 function renderNav() {
     navContainer.innerHTML = '';
-
     if (!state.currentUser) return;
 
     if (state.currentUser.role === 'user') {
         createNavLink('Katalog', 'catalog');
         createNavLink('Warenkorb', 'cart');
+        createNavLink('Profil', 'profile');
     } else if (state.currentUser.role === 'admin') {
         createNavLink('Dashboard', 'admin');
     }
-
     createNavLink('Abmelden', 'logout');
 }
 
@@ -400,10 +382,9 @@ function createNavLink(text, view) {
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = text;
-    a.className = 'nav-link'; // Updated class
+    a.className = 'nav-link';
     a.dataset.view = view;
 
-    // Highlight active
     const currentView = Object.keys(views).find(key => !views[key].classList.contains('hidden'));
     if (view === currentView) a.classList.add('active');
 
@@ -414,11 +395,10 @@ function createNavLink(text, view) {
 function renderCatalog() {
     const grid = elements.productGrid;
     if (!grid) return;
-    grid.innerHTML = ''; // Clear
+    grid.innerHTML = '';
 
     state.products.forEach(p => {
         const card = document.createElement('article');
-        // ... (content same)
         card.className = 'product-card';
         card.innerHTML = `
             <img src="${p.image}" alt="${p.name}" class="product-image" loading="lazy">
@@ -445,7 +425,6 @@ function addToCart(productId) {
     if (product) {
         state.cart.push(product);
         updateCartCount();
-        // Optional: Toast message
         alert(`${product.name} wurde zum Warenkorb hinzugefügt.`);
     }
 }
@@ -481,7 +460,6 @@ function renderCart() {
     if (elements.cartTotal) elements.cartTotal.textContent = formatPrice(total);
 }
 
-// Make globally available for onclick
 window.removeFromCart = function (index) {
     state.cart.splice(index, 1);
     renderCart();
@@ -491,34 +469,126 @@ window.removeFromCart = function (index) {
 function placeOrder() {
     if (state.cart.length === 0) return alert('Warenkorb ist leer.');
 
+    const note = elements.orderNote ? elements.orderNote.value : '';
+
     const order = {
         id: Date.now(),
         user: state.currentUser.username,
         items: [...state.cart],
         total: state.cart.reduce((sum, item) => sum + item.price, 0),
-        date: new Date().toLocaleString('de-DE')
+        date: new Date().toLocaleString('de-DE'),
+        status: 'open',
+        note: note
     };
 
-    // Save order
     const orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    // Reset cart
     state.cart = [];
+    if (elements.orderNote) elements.orderNote.value = '';
     updateCartCount();
+
     alert('Vielen Dank für Ihre Bestellung!');
     navigateTo('catalog');
 }
 
+// --- Profile & Orders ---
+function renderProfile() {
+    const list = elements.profileOrdersList;
+    if (!list) return;
+    list.innerHTML = '';
+
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]')
+        .filter(o => o.user === state.currentUser.username)
+        .sort((a, b) => b.id - a.id);
+
+    if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
+
+    orders.forEach(order => {
+        const isLocked = order.status && order.status !== 'open';
+
+        const card = document.createElement('div');
+        card.className = 'order-card';
+        card.innerHTML = `
+            <div class="order-header">
+                <span>#${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
+                <span>${order.date}</span>
+                ${isLocked ? '<span style="color:#ef4444">🔒</span>' : ''}
+            </div>
+            <div class="order-body">
+                <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
+                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
+                ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
+                
+                <div style="margin-top:1rem; text-align:right;">
+                    ${!isLocked ? `
+                        <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Stornieren</button>
+                    ` : '<span style="color:var(--text-muted)">In Bearbeitung - Keine Änderungen möglich</span>'}
+                    <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
+                </div>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function handleProfileAction(e) {
+    if (e.target.classList.contains('delete-order')) {
+        const id = parseInt(e.target.dataset.id);
+        if (confirm('Bestellung wirklich stornieren?')) {
+            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            orders = orders.filter(o => o.id !== id);
+            localStorage.setItem('orders', JSON.stringify(orders));
+            renderProfile();
+        }
+    }
+}
+
+
 // --- Admin System ---
+function handleAdminAction(e) {
+    // Determine ID from button or card wrapper if needed
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.id) || parseInt(e.target.closest('.order-card').dataset.id);
+
+    if (!id) return;
+
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const index = orders.findIndex(o => o.id === id);
+    if (index === -1) return;
+
+    if (e.target.classList.contains('claim-order')) {
+        orders[index].status = 'captured';
+        orders[index].processedBy = state.currentUser.username;
+        saveAndRenderAdmin(orders);
+    }
+    else if (e.target.classList.contains('confirm-order')) {
+        orders[index].status = 'done';
+        saveAndRenderAdmin(orders);
+    }
+    else if (e.target.classList.contains('submit-reply')) {
+        const input = e.target.previousElementSibling;
+        if (input) {
+            orders[index].adminReply = input.value;
+            saveAndRenderAdmin(orders);
+        }
+    }
+}
+
+function saveAndRenderAdmin(orders) {
+    localStorage.setItem('orders', JSON.stringify(orders));
+    // Small delay or refresh is instant
+    renderAdminDashboard();
+}
+
 function renderAdminDashboard() {
-    // Only verify role again just in case
     if (state.currentUser?.role !== 'admin') return;
 
     const ordersList = elements.ordersList;
     if (!ordersList) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => b.id - a.id);
     ordersList.innerHTML = '';
 
     if (orders.length === 0) {
@@ -526,26 +596,44 @@ function renderAdminDashboard() {
         return;
     }
 
-    // Sort by newest
-    orders.sort((a, b) => b.id - a.id).forEach(order => {
-        const div = document.createElement('div');
-        div.className = 'order-card';
-        div.innerHTML = `
+    orders.forEach(order => {
+        const status = order.status || 'open';
+        const isDone = status === 'done';
+
+        const card = document.createElement('div');
+        card.className = 'order-card';
+        card.dataset.id = order.id;
+
+        let actionButtons = '';
+        if (status === 'open') {
+            actionButtons = `<button class="btn btn-primary btn-sm claim-order" data-id="${order.id}">Bearbeiten (Claim)</button>`;
+        } else if (status === 'captured') {
+            actionButtons = `
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" placeholder="Antwort..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
+                    <button class="btn btn-secondary btn-sm submit-reply">Antwort senden</button>
+                    <button class="btn btn-primary btn-sm confirm-order" style="background:#22c55e">Bestätigen</button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
             <div class="order-header">
-                <span>Bestellung #${order.id}</span>
-                <span>${order.date}</span>
-                <span>${order.user}</span>
+                <span>#${order.id} - ${order.user}</span>
+                <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
             </div>
             <div class="order-body">
-                <ul>
-                    ${order.items.map(i => `<li>${i.name} - ${formatPrice(i.price)}</li>`).join('')}
-                </ul>
-                <div style="margin-top: 1rem; font-weight: bold; text-align: right;">
-                    Gesamt: ${formatPrice(order.total)}
+                <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
+                ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Kunden-Notiz:</strong> ${order.note}</p>` : ''}
+                ${order.adminReply ? `<div class="admin-reply-box"><strong>Deine Antwort:</strong> ${order.adminReply}</div>` : ''}
+                
+                <div style="margin-top:1rem; text-align:right;">
+                   <div style="margin-bottom:1rem; font-weight:bold;">${formatPrice(order.total)}</div>
+                   ${!isDone ? actionButtons : ''}
                 </div>
             </div>
         `;
-        ordersList.appendChild(div);
+        ordersList.appendChild(card);
     });
 }
 
@@ -572,6 +660,18 @@ function handleCreateUser(e) {
 }
 
 // --- Utils ---
+function getStatusClass(status) {
+    if (status === 'captured') return 'status-claimed';
+    if (status === 'done') return 'status-done';
+    return 'status-open';
+}
+
+function getStatusLabel(status) {
+    if (status === 'captured') return 'In Bearbeitung';
+    if (status === 'done') return 'Bestätigt';
+    return 'Offen';
+}
+
 function formatPrice(price) {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
 }

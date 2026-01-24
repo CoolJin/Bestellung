@@ -1,0 +1,93 @@
+/* Modal & Status Styles */
+
+/* Modal Overlay */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.glass-panel {
+    background: var(--surface-color);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    max-width: 90%;
+    width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Sold Out State */
+.product-card.sold-out {
+    border: 2px solid #ef4444;
+    /* Red border */
+    position: relative;
+    opacity: 0.8;
+}
+
+.sold-out-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ef4444;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Order Status Colors */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-open {
+    background: var(--primary-color);
+    color: black;
+}
+
+.status-claimed {
+    background: #eab308;
+    color: black;
+}
+
+/* Yellow */
+.status-done {
+    background: #22c55e;
+    color: black;
+}
+
+/* Green */
+
+/* Admin Reply */
+.admin-reply-box {
+    margin-top: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
