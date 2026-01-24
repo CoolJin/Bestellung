@@ -71,6 +71,9 @@ export const UI = {
         const el = elements.cartItems;
         if (!el) return;
         el.innerHTML = '';
+
+        let cartTotal = 0;
+
         state.cart.forEach((item, index) => {
             const div = document.createElement('div');
             div.className = 'cart-item';
@@ -81,17 +84,23 @@ export const UI = {
             if (item.price && typeof item.price === 'string') {
                 unitPrice = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
             }
-            const lineTotal = (unitPrice * (item.quantity || 1)).toFixed(2).replace('.', ',');
+            const lineSum = unitPrice * (item.quantity || 1);
+            cartTotal += lineSum;
+
+            const lineTotalStr = lineSum.toFixed(2).replace('.', ',');
             const displayUnit = item.price || '0,00 €';
 
             div.innerHTML = `
                 <div style="flex:1">
-                    <b>${item.name}</b>
-                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 4px;">
-                        ${displayUnit} x ${item.quantity || 1} = <b>${lineTotal} €</b>
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <b>${item.name}</b>
+                        <span style="font-size: 0.85em; color: var(--text-muted); margin-left: 8px;">${displayUnit} / Stück</span>
+                    </div>
+                    <div style="font-weight: 700;">
+                        ${lineTotalStr} €
                     </div>
                 </div>
-                <div>
+                <div style="display: flex; align-items: center;">
                     <button class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, -1)">-</button>
                     <span style="margin:0 10px">${item.quantity || 1}</span>
                     <button class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, 1)">+</button>
@@ -99,8 +108,13 @@ export const UI = {
            `;
             el.appendChild(div);
         });
-        if (state.cart.length === 0) el.innerHTML = '<p>Leer</p>';
-        if (elements.cartTotal) elements.cartTotal.textContent = '...';
+
+        if (state.cart.length === 0) {
+            el.innerHTML = '<p>Leer</p>';
+            if (elements.cartTotal) elements.cartTotal.textContent = '0,00 €';
+        } else {
+            if (elements.cartTotal) elements.cartTotal.textContent = 'Gesamt: ' + cartTotal.toFixed(2).replace('.', ',') + ' €';
+        }
     },
 
     renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard) {
@@ -257,7 +271,7 @@ export const UI = {
             return `<li>
                             <div style="display:flex; justify-content:space-between; width:100%">
                                 <span>${i.quantity}x ${i.name}</span>
-                                <span class="text-muted" style="font-size:0.9em">${p}</span>
+                                <span class="text-muted" style="font-size:0.9em">${p} / Stück</span>
                             </div>
                         </li>`;
         }).join('')}
