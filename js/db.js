@@ -27,6 +27,16 @@ const DB = {
             this.state.users = JSON.parse(localUsers);
             this.state.orders = JSON.parse(localOrders);
             console.log('DB: Loaded from LocalStorage');
+
+            // Safety Check: If LS has no users (e.g. from previous empty load), restore defaults
+            if (this.state.users.length === 0) {
+                console.log('DB: LocalStorage users empty, restoring defaults.');
+                this.state.users = [
+                    { username: 'admin', password: '123', role: 'admin' },
+                    { username: 'user', password: '123', role: 'user' }
+                ];
+                this.saveData();
+            }
         } else {
             // First time load or clear: Fetch from data.json
             try {
