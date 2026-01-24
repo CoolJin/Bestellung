@@ -186,28 +186,46 @@ export const UI = {
             }
         }
 
+        // on-the-fly calc for legacy orders
+        let displayTotal = order.total;
+        if (!displayTotal || displayTotal === '0' || displayTotal === 0) {
+            let sum = 0;
+            if (order.items && order.items.length > 0) {
+                sum = order.items.reduce((acc, i) => {
+                    let price = 0;
+                    if (i.price && typeof i.price === 'string') {
+                        price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                    }
+                    return acc + (price * (i.quantity || 1));
+                }, 0);
+            }
+            displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
+        }
+
         card.innerHTML = `
             <div class="order-header">
                 <span class="order-id-span">${order.id} <span class="status-badge status-${order.status}">${order.status}</span></span>
                 <span>${order.date}</span>
+                <span style="font-weight:700; color:var(--primary-color)">${displayTotal}</span>
             </div>
             <div class="order-body">
                  <ul class="order-items-list">
                     ${order.items.map(i => {
-            // Calculate display line total just for view if missing, though it should be in total. Actually user wants unit price and total.
-            // We rely on order.total for the grand total. item prices are static strings in current db maybe. 
-            // Let's re-parse for safety if needed, or just display.
-            let p = '0,00 €';
-            if (i.price) p = i.price;
+            let p = i.price || '0,00 €';
+            let lineSumStr = '';
+            // active calc for line item total if we want to show it? User asked for total price list.
+            // "Der Gesamtpreis wird trotzdem nicht berechnet" -> usually refers to the order total.
+            // user also said "product name... direct right... unit price".
             return `<li>
-                            <span class="item-qty">${i.quantity}x</span> 
-                            <span class="item-name">${i.name}</span>
-                            <span class="item-price-detail text-muted">(${p} / Stk)</span>
+                            <div style="display:flex; justify-content:space-between; width:100%">
+                                <span>${i.quantity}x ${i.name}</span>
+                                <span class="text-muted" style="font-size:0.9em">${p}</span>
+                            </div>
                         </li>`;
         }).join('')}
                  </ul>
                  <div class="order-footer-total" style="text-align:right; margin-top:10px; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                    Gesamt: ${order.total || '0,00 €'}
+                    Gesamt: ${displayTotal}
                  </div>
                  <div style="text-align:right; margin-top:10px">${btns}</div>
             </div>
