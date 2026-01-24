@@ -39,8 +39,6 @@ function init() {
         newUsername: document.getElementById('new-username'),
         newPassword: document.getElementById('new-password'),
         orderNote: document.getElementById('order-note'),
-        // Admin Search
-        adminSearch: document.getElementById('admin-search-input'),
         // Modals
         logoutModal: document.getElementById('logout-modal'),
         logoutConfirm: document.getElementById('logout-confirm'),
@@ -72,7 +70,7 @@ function setupEventListeners() {
                 e.preventDefault();
                 const targetView = e.target.dataset.view;
                 if (targetView === 'logout') {
-                    confirmLogout();
+                    confirmLogout(); // New confirmation
                 } else {
                     navigateTo(targetView);
                 }
@@ -83,7 +81,7 @@ function setupEventListeners() {
 
     safeAdd(elements.productGrid, 'click', (e) => {
         if (e.target.classList.contains('add-to-cart')) {
-            addToCart(parseInt(e.target.dataset.id));
+            addToCart(e.target.dataset.id);
         }
     });
 
@@ -96,7 +94,6 @@ function setupEventListeners() {
 
     // Admin Actions Delegation
     safeAdd(elements.ordersList, 'click', handleAdminAction);
-    safeAdd(elements.adminSearch, 'input', renderAdminDashboard); // Live search
 
     // Profile Actions Delegation
     safeAdd(elements.profileOrdersList, 'click', handleProfileAction);
@@ -129,7 +126,36 @@ function confirmLogout() {
 const state = {
     currentUser: null,
     cart: [],
-    products: []
+    products: [
+        {
+            id: '1',
+            name: 'Classic White Snus',
+            price: 5.99,
+            image: 'https://placehold.co/400x300?text=White+Snus',
+            desc: 'Premium white portion, refreshing mint flavor.'
+        },
+        {
+            id: '2',
+            name: 'Strong Black Portion',
+            price: 6.49,
+            image: 'https://placehold.co/400x300?text=Black+Portion',
+            desc: 'High nicotine content, tobacco-centric taste.'
+        },
+        {
+            id: '3',
+            name: 'Berry Mix Slim',
+            price: 5.49,
+            image: 'https://placehold.co/400x300?text=Berry+Mix',
+            desc: 'Slim format with a sweet blend of forest berries.'
+        },
+        {
+            id: '4',
+            name: 'Ice Cool Mini',
+            price: 4.99,
+            image: 'https://placehold.co/400x300?text=Ice+Cool',
+            desc: 'Discreet mini portions with an intense cooling effect.'
+        }
+    ]
 };
 
 // --- Snuzone Search System ---
@@ -233,6 +259,7 @@ async function searchSnuzone(query) {
 
             if (image.startsWith('//')) image = 'https:' + image;
 
+            // Flexible Price Parsing
             let price = 0;
             const priceMeta = pDoc.querySelector('meta[property="og:price:amount"]');
             const priceEl = pDoc.querySelector('.price-item--regular, .price-item--sale, .product-price');
@@ -246,14 +273,17 @@ async function searchSnuzone(query) {
 
             // Real Sold Out Detection
             let isSoldOut = false;
+            // 1. Check Button
             const addToCartBtn = pDoc.querySelector('button[name="add"], .product-form__submit');
             if (addToCartBtn && (addToCartBtn.disabled || addToCartBtn.textContent.toLowerCase().includes('ausverkauft') || addToCartBtn.textContent.toLowerCase().includes('sold out'))) {
                 isSoldOut = true;
             }
+            // 2. Check meta availability
             const availability = pDoc.querySelector('meta[property="og:availability"]');
             if (availability && (availability.content.includes('out of stock') || availability.content.includes('OutOfStock'))) {
                 isSoldOut = true;
             }
+            // 3. Fallback text search
             if (!isSoldOut) {
                 const info = pDoc.querySelector('.product-info, .product-meta, .product__info-container');
                 if (info && (info.textContent.toLowerCase().includes('ausverkauft') || info.textContent.toLowerCase().includes('currently unavailable'))) {
@@ -291,6 +321,7 @@ function renderSearchResults(products) {
     }
 
     products.forEach((p, index) => {
+        // Real sold out status from search
         const isSoldOut = p.soldOut;
 
         const card = document.createElement('article');
@@ -347,15 +378,12 @@ function login(username, password) {
     if (user) {
         state.currentUser = { username: user.username, role: user.role };
         if (elements.loginError) elements.loginError.textContent = '';
-
-        loadCart(); // Load persistent cart
-
         renderNav();
 
         if (user.role === 'admin') {
             navigateTo('admin');
         } else {
-            navigateTo('catalog');
+            navigateTo('catalog'); // OR profile? Catalog is standard.
         }
     } else {
         if (elements.loginError) elements.loginError.textContent = 'Ungültige Anmeldedaten.';
@@ -364,7 +392,7 @@ function login(username, password) {
 
 function logout() {
     state.currentUser = null;
-    state.cart = []; // Clear current session cart, but it's saved in local for user
+    state.cart = [];
     renderNav();
     navigateTo('login');
 }
@@ -388,20 +416,9 @@ function navigateTo(viewName) {
 
 function renderNav() {
     navContainer.innerHTML = '';
-
-    // Completely hide nav container if no user OR if specifically in login view (safety)
-    // Actually, checking currentUser is sufficient usually, but let's be explicit
-    // The simplified logic: If no user, show nothing.
-
-    if (!state.currentUser) {
-        navContainer.style.display = 'none'; // Ensure hidden
-        return;
-    }
-
-    navContainer.style.display = 'flex'; // Restore if logged in
+    if (!state.currentUser) return;
 
     if (state.currentUser.role === 'user') {
-        // ... existing logic ...
         createNavLink('Katalog', 'catalog');
         createNavLink('Warenkorb', 'cart');
         createNavLink('Profil', 'profile');
@@ -454,12 +471,15 @@ function renderCatalog() {
 
 // --- Cart System ---
 function addToCart(productId) {
-    const product = state.products.find(p => p.id === productId);
+    // productId comes from dataset (string) or internal logic. 
+    // Ensure we compare strings to support both '1' and 'ext-123'
+    const product = state.products.find(p => String(p.id) === String(productId));
     if (product) {
         state.cart.push(product);
-        saveCart(); // Persist
         updateCartCount();
         alert(`${product.name} wurde zum Warenkorb hinzugefügt.`);
+    } else {
+        console.error('Product not found:', productId);
     }
 }
 
@@ -496,43 +516,21 @@ function renderCart() {
 
 window.removeFromCart = function (index) {
     state.cart.splice(index, 1);
-    saveCart(); // Persist
     renderCart();
     updateCartCount();
 };
 
-function saveCart() {
-    if (state.currentUser) {
-        localStorage.setItem('cart_' + state.currentUser.username, JSON.stringify(state.cart));
-    }
-}
-
-function loadCart() {
-    if (state.currentUser) {
-        const saved = localStorage.getItem('cart_' + state.currentUser.username);
-        state.cart = saved ? JSON.parse(saved) : [];
-        updateCartCount();
-    }
-}
-
 function placeOrder() {
     if (state.cart.length === 0) return alert('Warenkorb ist leer.');
 
-    // Get next Order ID
-    let orderCounter = parseInt(localStorage.getItem('orderCounter') || '1');
     const note = elements.orderNote ? elements.orderNote.value : '';
 
-    // Format Date: HH:MM
-    const date = new Date();
-    const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    const fullDate = date.toLocaleDateString('de-DE') + ' ' + timeString;
-
     const order = {
-        id: '#' + String(orderCounter).padStart(4, '0'), // #0001, #0002...
+        id: Date.now(),
         user: state.currentUser.username,
         items: [...state.cart],
         total: state.cart.reduce((sum, item) => sum + item.price, 0),
-        date: fullDate,
+        date: new Date().toLocaleString('de-DE'),
         status: 'open',
         note: note
     };
@@ -541,17 +539,12 @@ function placeOrder() {
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    // Increment ID
-    localStorage.setItem('orderCounter', (orderCounter + 1).toString());
-
-    // Clear cart (removed from persistence too)
     state.cart = [];
-    saveCart();
     if (elements.orderNote) elements.orderNote.value = '';
     updateCartCount();
 
     alert('Vielen Dank für Ihre Bestellung!');
-    navigateTo('profile'); // Show profile to see open order
+    navigateTo('catalog');
 }
 
 // --- Profile & Orders ---
@@ -562,30 +555,30 @@ function renderProfile() {
 
     const orders = JSON.parse(localStorage.getItem('orders') || '[]')
         .filter(o => o.user === state.currentUser.username)
-        .reverse(); // Newest first
+        .sort((a, b) => b.id - a.id);
 
     if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
 
     orders.forEach(order => {
-        const isOpen = order.status === 'open';
+        const isLocked = order.status && order.status !== 'open';
 
         const card = document.createElement('div');
         card.className = 'order-card';
         card.innerHTML = `
             <div class="order-header">
-                <span>${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
+                <span>#${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
                 <span>${order.date}</span>
+                ${isLocked ? '<span style="color:#ef4444">🔒</span>' : ''}
             </div>
             <div class="order-body">
                 <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
-                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Notiz: ${order.note}</p>` : ''}
+                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
                 ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
                 
                 <div style="margin-top:1rem; text-align:right;">
-                    ${isOpen ? `
-                        <button class="btn btn-secondary btn-sm edit-order" data-id="${order.id}">Bearbeiten</button>
-                        <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}" style="border-color:#ef4444; color:#ef4444">Stornieren</button>
-                    ` : '<span style="color:var(--text-muted)">Keine Änderungen möglich</span>'}
+                    ${!isLocked ? `
+                        <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Stornieren</button>
+                    ` : '<span style="color:var(--text-muted)">In Bearbeitung - Keine Änderungen möglich</span>'}
                     <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
                 </div>
             </div>
@@ -595,32 +588,13 @@ function renderProfile() {
 }
 
 function handleProfileAction(e) {
-    const id = e.target.dataset.id;
-    if (!id) return;
-
     if (e.target.classList.contains('delete-order')) {
+        const id = parseInt(e.target.dataset.id);
         if (confirm('Bestellung wirklich stornieren?')) {
             let orders = JSON.parse(localStorage.getItem('orders') || '[]');
             orders = orders.filter(o => o.id !== id);
             localStorage.setItem('orders', JSON.stringify(orders));
             renderProfile();
-        }
-    } else if (e.target.classList.contains('edit-order')) {
-        let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const order = orders.find(o => o.id === id);
-
-        if (order) {
-            // Restore to cart
-            state.cart = [...state.cart, ...order.items];
-            saveCart();
-            updateCartCount();
-
-            // Delete old order (effectively "moving" it back to cart)
-            orders = orders.filter(o => o.id !== id);
-            localStorage.setItem('orders', JSON.stringify(orders));
-
-            alert('Bestellung wurde in den Warenkorb zurückgelegt.');
-            navigateTo('cart');
         }
     }
 }
@@ -628,9 +602,10 @@ function handleProfileAction(e) {
 
 // --- Admin System ---
 function handleAdminAction(e) {
+    // Determine ID from button or card wrapper if needed
     const btn = e.target.closest('button');
     if (!btn) return;
-    const id = btn.dataset.id || e.target.closest('.order-card').dataset.id;
+    const id = parseInt(btn.dataset.id) || parseInt(e.target.closest('.order-card').dataset.id);
 
     if (!id) return;
 
@@ -638,8 +613,13 @@ function handleAdminAction(e) {
     const index = orders.findIndex(o => o.id === id);
     if (index === -1) return;
 
-    if (e.target.classList.contains('mark-ordered')) {
-        orders[index].status = 'ordered';
+    if (e.target.classList.contains('claim-order')) {
+        orders[index].status = 'captured';
+        orders[index].processedBy = state.currentUser.username;
+        saveAndRenderAdmin(orders);
+    }
+    else if (e.target.classList.contains('confirm-order')) {
+        orders[index].status = 'done';
         saveAndRenderAdmin(orders);
     }
     else if (e.target.classList.contains('submit-reply')) {
@@ -653,37 +633,26 @@ function handleAdminAction(e) {
 
 function saveAndRenderAdmin(orders) {
     localStorage.setItem('orders', JSON.stringify(orders));
+    // Small delay or refresh is instant
     renderAdminDashboard();
 }
 
 function renderAdminDashboard() {
     if (state.currentUser?.role !== 'admin') return;
 
-    const list = elements.ordersList;
-    if (!list) return;
-
-    let orders = JSON.parse(localStorage.getItem('orders') || '[]').reverse();
-    const searchTerm = elements.adminSearch ? elements.adminSearch.value.toLowerCase() : '';
-
-    // Filter
-    if (searchTerm) {
-        orders = orders.filter(o =>
-            o.id.toLowerCase().includes(searchTerm) ||
-            o.user.toLowerCase().includes(searchTerm) ||
-            o.date.includes(searchTerm)
-        );
-    }
-
-    list.innerHTML = '';
+    const ordersList = elements.ordersList;
+    if (!ordersList) return;
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => b.id - a.id);
+    ordersList.innerHTML = '';
 
     if (orders.length === 0) {
-        list.innerHTML = '<p>Keine Bestellungen gefunden.</p>';
+        ordersList.innerHTML = '<p>Keine Bestellungen vorhanden.</p>';
         return;
     }
 
     orders.forEach(order => {
         const status = order.status || 'open';
-        const isOrdered = status === 'ordered';
+        const isDone = status === 'done';
 
         const card = document.createElement('div');
         card.className = 'order-card';
@@ -691,36 +660,34 @@ function renderAdminDashboard() {
 
         let actionButtons = '';
         if (status === 'open') {
-            actionButtons = `<button class="btn btn-primary btn-sm mark-ordered" data-id="${order.id}">Als Bestellt markieren</button>`;
+            actionButtons = `<button class="btn btn-primary btn-sm claim-order" data-id="${order.id}">Bearbeiten (Claim)</button>`;
+        } else if (status === 'captured') {
+            actionButtons = `
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" placeholder="Antwort..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
+                    <button class="btn btn-secondary btn-sm submit-reply">Antwort senden</button>
+                    <button class="btn btn-primary btn-sm confirm-order" style="background:#22c55e">Bestätigen</button>
+                </div>
+            `;
         }
-
-        // Even if ordered, allow replying
-        const replySection = `
-             <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                <input type="text" placeholder="Antwort..." value="${order.adminReply || ''}" style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
-                <button class="btn btn-secondary btn-sm submit-reply" data-id="${order.id}">Senden</button>
-            </div>
-        `;
 
         card.innerHTML = `
             <div class="order-header">
-                <span>${order.id} - ${order.user}</span>
+                <span>#${order.id} - ${order.user}</span>
                 <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
             </div>
             <div class="order-body">
-                <div>${order.date}</div>
                 <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
-                ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Notiz:</strong> ${order.note}</p>` : ''}
-                
-                ${replySection}
+                ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Kunden-Notiz:</strong> ${order.note}</p>` : ''}
+                ${order.adminReply ? `<div class="admin-reply-box"><strong>Deine Antwort:</strong> ${order.adminReply}</div>` : ''}
                 
                 <div style="margin-top:1rem; text-align:right;">
                    <div style="margin-bottom:1rem; font-weight:bold;">${formatPrice(order.total)}</div>
-                   ${actionButtons}
+                   ${!isDone ? actionButtons : ''}
                 </div>
             </div>
         `;
-        list.appendChild(card);
+        ordersList.appendChild(card);
     });
 }
 
@@ -748,12 +715,14 @@ function handleCreateUser(e) {
 
 // --- Utils ---
 function getStatusClass(status) {
-    if (status === 'ordered') return 'status-claimed'; // Recycling yellow class
+    if (status === 'captured') return 'status-claimed';
+    if (status === 'done') return 'status-done';
     return 'status-open';
 }
 
 function getStatusLabel(status) {
-    if (status === 'ordered') return 'Bestellt';
+    if (status === 'captured') return 'In Bearbeitung';
+    if (status === 'done') return 'Bestätigt';
     return 'Offen';
 }
 
