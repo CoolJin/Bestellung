@@ -275,16 +275,21 @@ input:focus {
     border: none;
     color: var(--text-muted);
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    /* Slightly larger touch target */
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1rem;
     opacity: 0;
     pointer-events: none;
     transition: all 0.2s;
+    line-height: 1;
+    /* Fix vertical alignment */
+    padding-bottom: 2px;
+    /* Visual tweak for X */
 }
 
 .search-input:not(:placeholder-shown)+.search-clear {
@@ -295,6 +300,12 @@ input:focus {
 .search-clear:hover {
     background: rgba(255, 255, 255, 0.2);
     color: white;
+}
+
+/* Cart Note */
+#order-note {
+    resize: none;
+    /* Prevent resizing */
 }
 
 /* Loading & Results Feedback */

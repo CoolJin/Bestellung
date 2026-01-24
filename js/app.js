@@ -201,18 +201,18 @@ function handleClearSearch() {
 async function searchSnuzone(query, signal) {
     const proxies = [
         {
+            name: 'CorsProxy',
+            url: (target) => `https://corsproxy.io/?${encodeURIComponent(target)}`,
+            extract: async (res) => await res.text()
+        },
+        // Fallbacks
+        {
             name: 'AllOrigins',
-            // Encode unique timestamp to bust cache if needed
             url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&t=${Date.now()}`,
             extract: async (res) => {
                 const data = await res.json();
                 return data.contents;
             }
-        },
-        {
-            name: 'CodeTabs',
-            url: (target) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`,
-            extract: async (res) => await res.text()
         }
     ];
 
@@ -225,11 +225,9 @@ async function searchSnuzone(query, signal) {
 
         try {
             console.log(`Trying proxy: ${proxy.name}...`);
-            // We combine the abort signal with a timeout signal for individual proxy strictness
             const timeoutController = new AbortController();
-            const timeoutId = setTimeout(() => timeoutController.abort(), 8000);
+            const timeoutId = setTimeout(() => timeoutController.abort(), 5000); // 5s timeout for list
 
-            // Listen to main signal to abort timeoutController if main aborts
             const onAbort = () => timeoutController.abort();
             signal.addEventListener('abort', onAbort);
 
@@ -245,12 +243,12 @@ async function searchSnuzone(query, signal) {
                 signal.removeEventListener('abort', onAbort);
             }
 
-            if (htmlContent && htmlContent.length > 500) {
+            if (htmlContent && htmlContent.length > 500 && !htmlContent.includes('Just a moment...')) { // Cloudflare check
                 usedProxy = proxy;
                 break;
             }
         } catch (e) {
-            if (signal.aborted) throw e; // Propagate main abort
+            if (signal.aborted) throw e;
             console.warn(`Proxy ${proxy.name} failed:`, e);
         }
     }
@@ -276,9 +274,8 @@ async function searchSnuzone(query, signal) {
     const productPromises = links.map(async (url) => {
         if (signal.aborted) return null;
         try {
-            // Individual product fetch timeout
             const timeoutController = new AbortController();
-            const id = setTimeout(() => timeoutController.abort(), 6000);
+            const id = setTimeout(() => timeoutController.abort(), 4000); // 4s per product
 
             const onAbort = () => timeoutController.abort();
             signal.addEventListener('abort', onAbort);
