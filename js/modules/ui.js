@@ -135,7 +135,7 @@ export const UI = {
                 <div class="product-info">
                     <h3>${p.name}</h3>
                     <div class="product-footer">
-                         <div class="product-price">${p.price || 'Kein Preis'}</div>
+                         <div class="product-price">${p.price}</div>
                         ${!p.soldOut ? `<button class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</button>` : '<button disabled class="btn btn-secondary btn-sm">N/A</button>'}
                     </div>
                 </div>

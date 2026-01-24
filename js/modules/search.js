@@ -83,28 +83,52 @@ export const Search = {
                 const text = await res.text();
                 const pDoc = parser.parseFromString(text, 'text/html');
 
-                const title = pDoc.querySelector('h1')?.textContent?.trim() || 'Produkt';
-                let image = pDoc.querySelector('.product__media img')?.src || '';
-                // Fix relative image protocol
-                if (image && image.startsWith('//')) image = 'https:' + image;
+                const title = pDoc.querySelector('h1.product__title')?.textContent?.trim() ||
+                    pDoc.querySelector('h1')?.textContent?.trim() || 'Produkt';
 
-                // Price Parsing (Try multiple selectors)
-                let price = 'N/A';
+                // Robust Image Fetching
+                let imageElement = pDoc.querySelector('.product__media img') ||
+                    pDoc.querySelector('.product-media img') ||
+                    pDoc.querySelector('img[src*="/products/"]');
+                let image = imageElement ? imageElement.src : '';
+                if (image && image.startsWith('//')) image = 'https:' + image;
+                if (!image) {
+                    // Fallback to searching schema data
+                    const script = pDoc.querySelector('script[type="application/ld+json"]');
+                    if (script) {
+                        try {
+                            const data = JSON.parse(script.textContent);
+                            if (data.image) image = Array.isArray(data.image) ? data.image[0] : data.image;
+                        } catch (e) { }
+                    }
+                }
+
+                // Robust Price Fetching
+                let price = null;
                 const priceEl = pDoc.querySelector('.price__regular .price-item--regular') ||
                     pDoc.querySelector('.price-item--regular') ||
                     pDoc.querySelector('.price__current');
                 if (priceEl) price = priceEl.textContent.trim();
 
+                // Fallback Price from Meta
+                if (!price) {
+                    const metaPrice = pDoc.querySelector('meta[property="og:price:amount"]');
+                    if (metaPrice) price = metaPrice.content + ' €';
+                }
+                if (!price) price = 'Preis auf Anfrage';
+
+                // Robust Sold Out Check
                 let isSoldOut = false;
                 const btn = pDoc.querySelector('button[name="add"]');
                 if (btn && (btn.disabled || btn.textContent.toLowerCase().includes('sold') || btn.textContent.toLowerCase().includes('ausverkauft'))) isSoldOut = true;
                 if (text.includes('ausverkauft') && text.includes('product-custom-badge')) isSoldOut = true;
+                if (!btn && text.toLowerCase().includes('sold out')) isSoldOut = true;
 
                 return {
                     id: 'ext-' + Math.random().toString(36),
                     name: title,
                     price: price,
-                    image: image,
+                    image: image || 'https://placehold.co/300x300?text=No+Image', // Safe fallback
                     soldOut: isSoldOut,
                     desc: 'Snuzone Import'
                 };
