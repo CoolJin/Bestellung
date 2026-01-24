@@ -181,9 +181,14 @@ export const UI = {
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:5px; width:100%;">Notiz Speichern</button>
                     </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 100px;">
-                    <button class="btn btn-danger btn-sm reject-order" data-id="${o.id}" ${o.status === 'abgelehnt' ? 'disabled' : ''}>Ablehnen</button>
-                    <button class="btn btn-primary btn-sm confirm-order" data-id="${o.id}" ${o.status === 'bestellt' ? 'disabled' : ''}>Bestellt</button>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 120px;">
+                    <button class="btn btn-danger btn-sm reject-order" data-id="${o.id}" data-status="${o.status}">${o.status === 'abgelehnt' ? 'Zurücksetzen' : 'Ablehnen'}</button>
+                    <button class="btn btn-primary btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}">${o.status === 'bestellt' ? 'Zurücksetzen' : 'Bestellt'}</button>
+                    ${o.status === 'bestellt' ?
+                    `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${o.paid ? '#22c55e' : '#ef4444'}; color: ${o.paid ? '#22c55e' : '#ef4444'}">
+                            ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
+                        </button>`
+                    : ''}
                 </div>
              `;
             list.appendChild(div);
@@ -271,7 +276,11 @@ export const UI = {
 
         card.innerHTML = `
             <div class="order-header">
-                <span class="order-id-span">${order.id} <span class="status-badge status-${order.status}">${order.status}</span></span>
+                <span class="order-id-span">
+                    ${order.id} 
+                    <span class="status-badge status-${order.status}">${order.status}</span>
+                    ${order.status === 'bestellt' ? `<span class="status-badge ${order.paid ? 'status-paid' : 'status-unpaid'}">${order.paid ? 'Bezahlt' : 'Nicht bezahlt'}</span>` : ''}
+                </span>
                 <span>${dateStr}</span>
                 <!-- Header Total removed as per request -->
             </div>

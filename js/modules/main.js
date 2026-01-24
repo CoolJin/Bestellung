@@ -160,13 +160,19 @@ window.app = {
             if (!id) return;
 
             if (e.target.classList.contains('reject-order')) {
-                UI.showConfirm('Bestellung ablehnen?', `Status auf "Abgelehnt" setzen?`, () => {
-                    DB.updateOrder(id, o => o.status = 'abgelehnt');
-                    UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
-                });
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
+                DB.updateOrder(id, o => o.status = newStatus);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
             }
             if (e.target.classList.contains('confirm-order')) {
-                DB.updateOrder(id, o => o.status = 'bestellt');
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
+                DB.updateOrder(id, o => o.status = newStatus);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('toggle-paid')) {
+                DB.updateOrder(id, o => o.paid = !o.paid);
                 UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
             }
             if (e.target.classList.contains('save-note-btn')) {
