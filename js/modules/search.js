@@ -91,7 +91,8 @@ export const Search = {
                             if (img.startsWith('//')) img = 'https:' + img;
                             p.image = img.split('?')[0];
                         }
-                        p.soldOut = (props.stk !== undefined && props.stk <= 0) || !props.available; // Check availability logic
+                        p.soldOut = false;
+                        if (props.stk !== undefined && props.stk === 0) p.soldOut = true;
                     } catch (e) { }
                 }
 
