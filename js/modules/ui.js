@@ -186,6 +186,7 @@ export const UI = {
             }
         }
 
+        card.innerHTML = `
             <div class="order-header">
                 <span class="order-id-span">${order.id} <span class="status-badge status-${order.status}">${order.status}</span></span>
                 <span>${order.date}</span>
@@ -193,17 +194,17 @@ export const UI = {
             <div class="order-body">
                  <ul class="order-items-list">
                     ${order.items.map(i => {
-                        // Calculate display line total just for view if missing, though it should be in total. Actually user wants unit price and total.
-                        // We rely on order.total for the grand total. item prices are static strings in current db maybe. 
-                        // Let's re-parse for safety if needed, or just display.
-                        let p = '0,00 €';
-                        if(i.price) p = i.price;
-                        return `<li>
+            // Calculate display line total just for view if missing, though it should be in total. Actually user wants unit price and total.
+            // We rely on order.total for the grand total. item prices are static strings in current db maybe. 
+            // Let's re-parse for safety if needed, or just display.
+            let p = '0,00 €';
+            if (i.price) p = i.price;
+            return `<li>
                             <span class="item-qty">${i.quantity}x</span> 
                             <span class="item-name">${i.name}</span>
                             <span class="item-price-detail text-muted">(${p} / Stk)</span>
                         </li>`;
-                    }).join('')}
+        }).join('')}
                  </ul>
                  <div class="order-footer-total" style="text-align:right; margin-top:10px; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
                     Gesamt: ${order.total || '0,00 €'}
@@ -219,7 +220,7 @@ export const UI = {
         div.className = 'archive-container';
         if (type) div.dataset.type = type;
 
-        div.innerHTML = `< div class="archive-header" onclick = "this.nextElementSibling.classList.toggle('open')" ><span>${title} (${orders.length})</span><span>▼</span></div > <div class="archive-list ${isOpen ? 'open' : ''}"></div>`;
+        div.innerHTML = `<div class="archive-header" onclick="this.nextElementSibling.classList.toggle('open')"><span>${title} (${orders.length})</span><span>▼</span></div><div class="archive-list ${isOpen ? 'open' : ''}"></div>`;
         const container = div.querySelector('.archive-list');
         orders.forEach(o => container.appendChild(this.createOrderCard(o, isArchive, title === 'Storniert')));
         return div;
