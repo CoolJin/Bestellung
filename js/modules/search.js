@@ -71,70 +71,66 @@ export const Search = {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        const links = Array.from(doc.querySelectorAll('a[href*="/products/"]'))
-            .map(a => a.getAttribute('href').startsWith('http') ? a.getAttribute('href') : 'https://snuzone.com' + a.getAttribute('href'))
-            .filter((v, i, a) => a.indexOf(v) === i)
-            .slice(0, 12);
+        // Parse Search Results Grid directly (No detail fetches needed)
+        const productsItems = Array.from(doc.querySelectorAll('.grid-product'));
 
-        const details = await Promise.all(links.map(async (url) => {
-            if (signal.aborted) return null;
+        const details = productsItems.map(el => {
             try {
-                const res = await fetch(`https://corsproxy.io/?${url}`, { signal: signal });
-                const text = await res.text();
-                const pDoc = parser.parseFromString(text, 'text/html');
+                let p = {};
 
-                const title = pDoc.querySelector('h1.product__title')?.textContent?.trim() ||
-                    pDoc.querySelector('h1')?.textContent?.trim() || 'Produkt';
+                // Strategy 1: Wishlist JSON Data (Most Reliable)
+                const wishlistBtn = el.querySelector('button[data-component="WishlistButton"]');
+                if (wishlistBtn && wishlistBtn.dataset.props) {
+                    try {
+                        const props = JSON.parse(wishlistBtn.dataset.props);
+                        p.name = props.dt;
+                        p.price = props.pr ? props.pr.toFixed(2).replace('.', ',') + ' €' : 'Ausverkauft';
+                        // Fix Image URL (remove params like ?v=...)
+                        let img = props.iu;
+                        if (img) {
+                            if (img.startsWith('//')) img = 'https:' + img;
+                            p.image = img.split('?')[0];
+                        }
+                        p.soldOut = (props.stk !== undefined && props.stk <= 0) || !props.available; // Check availability logic
+                    } catch (e) { }
+                }
 
-                // Robust Image Fetching
-                let imageElement = pDoc.querySelector('.product__media img') ||
-                    pDoc.querySelector('.product-media img') ||
-                    pDoc.querySelector('img[src*="/products/"]');
-                let image = imageElement ? imageElement.src : '';
-                if (image && image.startsWith('//')) image = 'https:' + image;
-                if (!image) {
-                    // Fallback to searching schema data
-                    const script = pDoc.querySelector('script[type="application/ld+json"]');
-                    if (script) {
-                        try {
-                            const data = JSON.parse(script.textContent);
-                            if (data.image) image = Array.isArray(data.image) ? data.image[0] : data.image;
-                        } catch (e) { }
+                // Strategy 2: DOM fallback
+                if (!p.name) {
+                    p.name = el.querySelector('.grid-product__title')?.textContent?.trim() || 'Produkt';
+                }
+                if (!p.price) {
+                    const priceEl = el.querySelector('.product-price');
+                    if (priceEl) p.price = priceEl.textContent.trim().replace(/\n/g, '').replace(/ +/g, ' ');
+                    if (!p.price || p.price === '') p.price = 'Preis auf Anfrage';
+                }
+                if (!p.image) {
+                    const imgDiv = el.querySelector('.grid__image-ratio');
+                    if (imgDiv && imgDiv.dataset.bgset) {
+                        // bgset format: "//url 180w, //url 360w"
+                        const firstUrl = imgDiv.dataset.bgset.split(',')[0].trim().split(' ')[0];
+                        if (firstUrl) p.image = 'https:' + firstUrl;
                     }
                 }
 
-                // Robust Price Fetching
-                let price = null;
-                const priceEl = pDoc.querySelector('.price__regular .price-item--regular') ||
-                    pDoc.querySelector('.price-item--regular') ||
-                    pDoc.querySelector('.price__current');
-                if (priceEl) price = priceEl.textContent.trim();
-
-                // Fallback Price from Meta
-                if (!price) {
-                    const metaPrice = pDoc.querySelector('meta[property="og:price:amount"]');
-                    if (metaPrice) price = metaPrice.content + ' €';
+                // Final Sold Out Check
+                if (p.soldOut === undefined) {
+                    const badge = el.querySelector('.grid-product__tag--sold-out') || el.querySelector('.sold-out-badge');
+                    if (badge) p.soldOut = true;
+                    if (p.price && p.price.toLowerCase().includes('ausverkauft')) p.soldOut = true;
                 }
-                if (!price) price = 'Preis auf Anfrage';
-
-                // Robust Sold Out Check
-                let isSoldOut = false;
-                const btn = pDoc.querySelector('button[name="add"]');
-                if (btn && (btn.disabled || btn.textContent.toLowerCase().includes('sold') || btn.textContent.toLowerCase().includes('ausverkauft'))) isSoldOut = true;
-                if (text.includes('ausverkauft') && text.includes('product-custom-badge')) isSoldOut = true;
-                if (!btn && text.toLowerCase().includes('sold out')) isSoldOut = true;
 
                 return {
                     id: 'ext-' + Math.random().toString(36),
-                    name: title,
-                    price: price,
-                    image: image || 'https://placehold.co/300x300?text=No+Image', // Safe fallback
-                    soldOut: isSoldOut,
+                    name: p.name,
+                    price: p.price,
+                    image: p.image || 'https://placehold.co/300x300?text=No+Image',
+                    soldOut: !!p.soldOut,
                     desc: 'Snuzone Import'
                 };
             } catch (e) { return null; }
-        }));
+        }).filter(item => item && item.name !== 'Produkt').slice(0, 12);
 
-        return details.filter(d => d);
+        return details;
     }
 };
