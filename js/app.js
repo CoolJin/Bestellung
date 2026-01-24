@@ -112,54 +112,102 @@ async function handleSearch() {
 }
 
 async function searchSnuzone(query) {
-    const PROXY_URL = 'https://api.allorigins.win/get?url=';
+    const proxies = [
+        {
+            name: 'AllOrigins',
+            url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`,
+            extract: async (res) => {
+                const data = await res.json();
+                return data.contents;
+            }
+        },
+        {
+            name: 'CodeTabs',
+            url: (target) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`,
+            extract: async (res) => await res.text()
+        }
+    ];
+
     const SEARCH_URL = `https://snuzone.com/search?q=${encodeURIComponent(query)}`;
+    let htmlContent = null;
+    let usedProxy = null;
 
-    // 1. Fetch Search Results Page
-    const response = await fetch(PROXY_URL + encodeURIComponent(SEARCH_URL));
-    const data = await response.json();
+    // 1. Try Proxies in order for Main Search Page
+    for (const proxy of proxies) {
+        try {
+            console.log(`Trying proxy: ${proxy.name}...`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s Timeout
 
-    if (!data.contents) throw new Error('Keine Daten empfangen');
+            const response = await fetch(proxy.url(SEARCH_URL), { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) throw new Error(`Status ${response.status}`);
+
+            htmlContent = await proxy.extract(response);
+            if (htmlContent && htmlContent.length > 500) { // Basic validation
+                usedProxy = proxy;
+                break; // Success
+            }
+        } catch (e) {
+            console.warn(`Proxy ${proxy.name} failed:`, e);
+        }
+    }
+
+    if (!htmlContent) throw new Error('Verbindung zu Snuzone fehlgeschlagen (Alle Proxies blockiert oder Timeout).');
 
     const parser = new DOMParser();
-    const doc = parser.parseFromString(data.contents, 'text/html');
+    const doc = parser.parseFromString(htmlContent, 'text/html');
 
     // 2. Extract Product Links (first 5 unique product links)
     const links = Array.from(doc.querySelectorAll('a[href*="/products/"]'))
         .map(a => {
             const href = a.getAttribute('href');
-            // Ensure absolute URL if relative
             return href.startsWith('http') ? href : `https://snuzone.com${href}`;
         })
-        .filter((v, i, a) => a.indexOf(v) === i) // Unique
-        .slice(0, 5); // Max 5
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .slice(0, 5);
 
     if (links.length === 0) return [];
 
-    // 3. Fetch Details for each product (Parallel)
+    // 3. Fetch Details for each product (Sequential to avoid rate limits, or parallel with best effort)
+    const products = [];
+
+    // Process in parallel but with error handling
     const productPromises = links.map(async (url) => {
         try {
-            const pRes = await fetch(PROXY_URL + encodeURIComponent(url));
-            const pData = await pRes.json();
-            const pDoc = parser.parseFromString(pData.contents, 'text/html');
+            // Use the same working proxy for details if possible, or retry loop
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 6000);
 
-            // Extract Metadata
+            // Prefer the proxy that worked
+            const proxyUrl = usedProxy ? usedProxy.url(url) : proxies[0].url(url);
+            const pRes = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(id);
+
+            const pContent = await (usedProxy ? usedProxy.extract(pRes) : pRes.text()); // Simplified fallback logic
+            const pDoc = parser.parseFromString(pContent, 'text/html');
+
+            // Extract Metadata with fallbacks
             const title = pDoc.querySelector('meta[property="og:title"]')?.content ||
-                pDoc.querySelector('h1')?.textContent || 'Unbekanntes Produkt';
+                pDoc.querySelector('h1')?.textContent?.trim() || 'Unbekanntes Produkt';
 
-            const image = pDoc.querySelector('meta[property="og:image"]')?.content ||
+            let image = pDoc.querySelector('meta[property="og:image"]')?.content ||
+                pDoc.querySelector('.product__media img')?.src ||
                 'https://placehold.co/400x300?text=No+Image';
 
-            // Try updating price selectors based on Shopify standards
+            if (image.startsWith('//')) image = 'https:' + image;
+
+            // Flexible Price Parsing
             let price = 0;
             const priceMeta = pDoc.querySelector('meta[property="og:price:amount"]');
-            const priceElement = pDoc.querySelector('.price-item--regular, .product-price, .price');
+            const priceEl = pDoc.querySelector('.price-item--regular, .price-item--sale, .product-price');
 
             if (priceMeta) {
                 price = parseFloat(priceMeta.content);
-            } else if (priceElement) {
-                const priceText = priceElement.textContent.replace(/[^0-9,.]/g, '').replace(',', '.');
-                price = parseFloat(priceText) || 0;
+            } else if (priceEl) {
+                const txt = priceEl.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
+                price = parseFloat(txt) || 0;
             }
 
             return {
@@ -171,13 +219,13 @@ async function searchSnuzone(query) {
                 externalUrl: url
             };
         } catch (e) {
-            console.error('Failed to fetch product', url, e);
+            console.warn('Failed to fetch product detail:', url, e);
             return null;
         }
     });
 
-    const products = (await Promise.all(productPromises)).filter(p => p !== null);
-    return products;
+    const results = await Promise.all(productPromises);
+    return results.filter(p => p !== null);
 }
 
 function renderSearchResults(products) {
@@ -289,6 +337,9 @@ function navigateTo(viewName) {
     if (viewName === 'catalog') renderCatalog();
     if (viewName === 'cart') renderCart();
     if (viewName === 'admin') renderAdminDashboard();
+
+    // Re-render nav to update active state
+    renderNav();
 }
 
 function renderNav() {
@@ -310,7 +361,13 @@ function createNavLink(text, view) {
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = text;
+    a.className = 'nav-link'; // Updated class
     a.dataset.view = view;
+
+    // Highlight active
+    const currentView = Object.keys(views).find(key => !views[key].classList.contains('hidden'));
+    if (view === currentView) a.classList.add('active');
+
     navContainer.appendChild(a);
 }
 
