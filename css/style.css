@@ -62,8 +62,13 @@ h3 {
     gap: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 1000;
+    width: max-content;
+    /* Ensure it only takes needed space */
     max-width: 90vw;
-    width: auto;
+    /* Prevent overflow on small screens */
+    flex-wrap: wrap;
+    /* Handle many items gracefully */
+    justify-content: center;
 }
 
 .nav-link {
