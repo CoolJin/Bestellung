@@ -126,36 +126,7 @@ function confirmLogout() {
 const state = {
     currentUser: null,
     cart: [],
-    products: [
-        {
-            id: '1',
-            name: 'Classic White Snus',
-            price: 5.99,
-            image: 'https://placehold.co/400x300?text=White+Snus',
-            desc: 'Premium white portion, refreshing mint flavor.'
-        },
-        {
-            id: '2',
-            name: 'Strong Black Portion',
-            price: 6.49,
-            image: 'https://placehold.co/400x300?text=Black+Portion',
-            desc: 'High nicotine content, tobacco-centric taste.'
-        },
-        {
-            id: '3',
-            name: 'Berry Mix Slim',
-            price: 5.49,
-            image: 'https://placehold.co/400x300?text=Berry+Mix',
-            desc: 'Slim format with a sweet blend of forest berries.'
-        },
-        {
-            id: '4',
-            name: 'Ice Cool Mini',
-            price: 4.99,
-            image: 'https://placehold.co/400x300?text=Ice+Cool',
-            desc: 'Discreet mini portions with an intense cooling effect.'
-        }
-    ]
+    products: []
 };
 
 // --- Snuzone Search System ---
@@ -525,8 +496,23 @@ function placeOrder() {
 
     const note = elements.orderNote ? elements.orderNote.value : '';
 
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+
+    // Sort logic requires parsing the ID to ensure we find the true max
+    // IDs are #0001, #0002 etc.
+    let maxId = 0;
+    if (orders.length > 0) {
+        maxId = orders.reduce((max, o) => {
+            const numPart = parseInt(String(o.id).replace('#', ''), 10);
+            return numPart > max ? numPart : max;
+        }, 0);
+    }
+    const newIdNum = maxId + 1;
+    // Format: #0001 (4 digits)
+    const formattedId = '#' + String(newIdNum).padStart(4, '0');
+
     const order = {
-        id: Date.now(),
+        id: formattedId,
         user: state.currentUser.username,
         items: [...state.cart],
         total: state.cart.reduce((sum, item) => sum + item.price, 0),
@@ -535,7 +521,6 @@ function placeOrder() {
         note: note
     };
 
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
 
@@ -555,7 +540,12 @@ function renderProfile() {
 
     const orders = JSON.parse(localStorage.getItem('orders') || '[]')
         .filter(o => o.user === state.currentUser.username)
-        .sort((a, b) => b.id - a.id);
+        .sort((a, b) => {
+            // Extract number from #0001
+            const idA = parseInt(String(a.id).replace('#', ''), 10);
+            const idB = parseInt(String(b.id).replace('#', ''), 10);
+            return idB - idA; // Descending (Newest first)
+        });
 
     if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
 
@@ -589,7 +579,7 @@ function renderProfile() {
 
 function handleProfileAction(e) {
     if (e.target.classList.contains('delete-order')) {
-        const id = parseInt(e.target.dataset.id);
+        const id = e.target.dataset.id;
         if (confirm('Bestellung wirklich stornieren?')) {
             let orders = JSON.parse(localStorage.getItem('orders') || '[]');
             orders = orders.filter(o => o.id !== id);
@@ -605,8 +595,7 @@ function handleAdminAction(e) {
     // Determine ID from button or card wrapper if needed
     const btn = e.target.closest('button');
     if (!btn) return;
-    const id = parseInt(btn.dataset.id) || parseInt(e.target.closest('.order-card').dataset.id);
-
+    const id = btn.dataset.id || e.target.closest('.order-card').dataset.id;
     if (!id) return;
 
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -642,7 +631,11 @@ function renderAdminDashboard() {
 
     const ordersList = elements.ordersList;
     if (!ordersList) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => b.id - a.id);
+    const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => {
+        const idA = parseInt(String(a.id).replace('#', ''), 10);
+        const idB = parseInt(String(b.id).replace('#', ''), 10);
+        return idB - idA;
+    });
     ordersList.innerHTML = '';
 
     if (orders.length === 0) {
