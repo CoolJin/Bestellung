@@ -1149,6 +1149,7 @@ function getStatusClass(status) {
     if (status === 'captured') return 'status-claimed';
     if (status === 'ordered') return 'status-ordered';
     if (status === 'rejected') return 'status-rejected';
+    if (status === 'cancelled') return 'status-cancelled';
     return 'status-open';
 }
 
@@ -1156,6 +1157,7 @@ function getStatusLabel(status) {
     if (status === 'captured') return 'In Bearbeitung';
     if (status === 'ordered') return 'Bestellt';
     if (status === 'rejected') return 'Abgelehnt';
+    if (status === 'cancelled') return 'Storniert';
     return 'Offen';
 }
 

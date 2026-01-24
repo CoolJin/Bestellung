@@ -75,19 +75,22 @@
     color: black;
 }
 
-/* Yellow */
-/* Blue/Green */
 .status-ordered {
     background: #3b82f6;
-    /* Blue for "Bestellt" */
     color: white;
 }
 
 .status-rejected {
     background: #ef4444;
-    /* Red */
     color: white;
 }
+
+.status-cancelled {
+    background: #6b7280;
+    color: white;
+}
+
+/* Grey for cancelled */
 
 /* Green */
 
