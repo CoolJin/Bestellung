@@ -40,11 +40,20 @@ export const Cart = {
         if (state.cart.length === 0) return UI.showModal('Fehler', 'Warenkorb leer');
         const newId = DB.generateOrderId(state.editingOrderId);
 
+        // Calculate Total
+        const totalVal = state.cart.reduce((acc, item) => {
+            let p = 0;
+            if (item.price && typeof item.price === 'string') {
+                p = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
+            }
+            return acc + (p * (item.quantity || 1));
+        }, 0);
+
         const order = {
             id: newId,
             user: state.currentUser.username,
             items: JSON.parse(JSON.stringify(state.cart)),
-            total: 0,
+            total: totalVal.toFixed(2).replace('.', ',') + ' €',
             date: new Date().toLocaleString(),
             status: 'open',
             archivedBy: [],
