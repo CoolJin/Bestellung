@@ -107,12 +107,38 @@ export const UI = {
         const list = elements.ordersList;
         if (!list) return;
         list.innerHTML = '';
-        const orders = DB.getOrders();
+        const orders = DB.getOrders().sort((a, b) => b.id.localeCompare(a.id));
         if (orders.length === 0) {
             list.innerHTML = '<p>Keine Bestellungen.</p>';
             return;
         }
         orders.forEach(o => {
+            // Calc Total
+            let displayTotal = o.total;
+            if (!displayTotal || displayTotal === '0' || displayTotal === 0 || displayTotal === '0,00 €') {
+                let sum = 0;
+                if (o.items && o.items.length > 0) {
+                    sum = o.items.reduce((acc, i) => {
+                        let price = 0;
+                        if (i.price && typeof i.price === 'string') {
+                            price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                        }
+                        return acc + (price * (i.quantity || 1));
+                    }, 0);
+                }
+                displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
+            }
+
+            // Date Format: Remove Seconds if present (DD.MM.YYYY, HH:MM:SS -> HH:MM)
+            let dateStr = o.date;
+            try {
+                const parts = dateStr.split(', ');
+                if (parts.length > 1) {
+                    const timeParts = parts[1].split(':');
+                    if (timeParts.length === 3) dateStr = `${parts[0]}, ${timeParts[0]}:${timeParts[1]}`;
+                }
+            } catch (e) { }
+
             const div = document.createElement('div');
             div.className = 'order-card';
             div.innerHTML = `
@@ -122,16 +148,28 @@ export const UI = {
                             <b>${o.id}</b> <span class="text-muted">(${o.user})</span>
                             <span class="status-badge status-${o.status}" style="margin-left:8px">${o.status}</span>
                         </div>
-                        <div style="font-weight:600;">${o.total || ''}</div>
+                        <div style="font-weight:600;">${displayTotal}</div>
                     </div>
+                    <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${dateStr}</div>
+                    
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
                        ${o.items.map(i => `
-                           <div>${i.quantity}x ${i.name} <span style="opacity:0.7">(${i.price || '?'})</span></div>
+                           <div style="display:flex; justify-content:space-between;">
+                                <span>${i.quantity}x ${i.name}</span>
+                                <span>${i.price || ''}</span>
+                           </div>
                        `).join('')}
                     </div>
+
+                    <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
+                        <label style="font-size:0.8em; color:var(--text-muted);">Admin Notiz:</label>
+                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden...">${o.adminNote || ''}</textarea>
+                        <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:5px; width:100%;">Notiz Speichern</button>
+                    </div>
                 </div>
-                <div style="display:flex; gap:5px">
-                    <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</button>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 100px;">
+                    <button class="btn btn-danger btn-sm reject-order" data-id="${o.id}" ${o.status === 'abgelehnt' ? 'disabled' : ''}>Ablehnen</button>
+                    <button class="btn btn-primary btn-sm confirm-order" data-id="${o.id}" ${o.status === 'bestellt' ? 'disabled' : ''}>Bestellt</button>
                 </div>
              `;
             list.appendChild(div);
@@ -227,6 +265,7 @@ export const UI = {
                  <div class="order-footer-total" style="text-align:right; margin-top:10px; font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
                     Gesamt: ${displayTotal}
                  </div>
+                 ${order.adminNote ? `<div style="margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; font-size:0.9em;"><strong style="display:block; font-size:0.8em; color:var(--primary-color);">Nachricht vom Admin:</strong>${order.adminNote}</div>` : ''}
                  <div style="text-align:right; margin-top:10px">${btns}</div>
             </div>
         `;

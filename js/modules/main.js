@@ -154,13 +154,32 @@ window.app = {
         safeAdd(this.elements.profileOrdersList, 'click', (e) => this.handleProfileAction(e));
 
         // Admin Actions
+        // Admin Actions
         safeAdd(this.elements.ordersList, 'click', (e) => {
-            if (e.target.classList.contains('delete-order')) {
-                const id = e.target.dataset.id;
-                UI.showConfirm('Bestellung löschen?', `Möchten Sie Bestellung ${id} wirklich löschen?`, () => {
-                    DB.deleteOrder(id);
-                    UI.renderAdminDashboard(this.elements, DB, UI.showConfirm);
+            const id = e.target.dataset.id;
+            if (!id) return;
+
+            if (e.target.classList.contains('reject-order')) {
+                UI.showConfirm('Bestellung ablehnen?', `Status auf "Abgelehnt" setzen?`, () => {
+                    DB.updateOrder(id, o => o.status = 'abgelehnt');
+                    UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
                 });
+            }
+            if (e.target.classList.contains('confirm-order')) {
+                DB.updateOrder(id, o => o.status = 'bestellt');
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('save-note-btn')) {
+                const noteInput = this.elements.ordersList.querySelector(`.admin-note-input[data-id="${id}"]`);
+                if (noteInput) {
+                    DB.updateOrder(id, o => o.adminNote = noteInput.value);
+                    UI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
+                }
+            }
+            // Old delete kept just in case or removed as per request "Replace delete with..."
+            // user said "delete button is one button... reject and confirm". Implicitly replace.
+            if (e.target.classList.contains('delete-order')) {
+                // Fallback if needed, but UI doesn't render it anymore
             }
         });
 
