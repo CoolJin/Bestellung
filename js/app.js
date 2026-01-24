@@ -388,9 +388,20 @@ function navigateTo(viewName) {
 
 function renderNav() {
     navContainer.innerHTML = '';
-    if (!state.currentUser) return;
+
+    // Completely hide nav container if no user OR if specifically in login view (safety)
+    // Actually, checking currentUser is sufficient usually, but let's be explicit
+    // The simplified logic: If no user, show nothing.
+
+    if (!state.currentUser) {
+        navContainer.style.display = 'none'; // Ensure hidden
+        return;
+    }
+
+    navContainer.style.display = 'flex'; // Restore if logged in
 
     if (state.currentUser.role === 'user') {
+        // ... existing logic ...
         createNavLink('Katalog', 'catalog');
         createNavLink('Warenkorb', 'cart');
         createNavLink('Profil', 'profile');

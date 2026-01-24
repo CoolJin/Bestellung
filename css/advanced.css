@@ -121,7 +121,22 @@
     transform: translateX(-50%);
     z-index: 1000;
     width: auto;
+    /* Critical: Auto width */
+    height: auto;
+    /* Critical: Auto height */
     max-width: 90%;
+    background: rgba(15, 23, 42, 0.8) !important;
+    /* Ensure background is visible/glassy */
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 9999px;
+    /* Pill shape */
+    padding: 10px 20px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 /* Ensure content doesn't get hidden behind nav on mobile */
@@ -134,4 +149,32 @@ body {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Version Footer */
+#version-footer {
+    position: fixed;
+    bottom: 5px;
+    right: 10px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    z-index: 500;
+    pointer-events: none;
+}
+
+/* Product Grid Stability */
+.product-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+    /* Prevent jumping */
+}
+
+/* Ensure search grid behaves */
+#snuzone-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
 }
