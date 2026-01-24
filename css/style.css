@@ -59,6 +59,10 @@ h3 {
     padding: 12px 24px;
     border-radius: 50px;
     display: flex;
+    flex-direction: row;
+    /* Force horizontal */
+    align-items: center;
+    /* Prevent vertical stretch */
     gap: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 1000;
@@ -66,6 +70,8 @@ h3 {
     /* Ensure it only takes needed space */
     max-width: 90vw;
     /* Prevent overflow on small screens */
+    height: auto;
+    /* Prevent full height */
     flex-wrap: wrap;
     /* Handle many items gracefully */
     justify-content: center;
