@@ -76,9 +76,17 @@
 }
 
 /* Yellow */
-.status-done {
-    background: #22c55e;
-    color: black;
+/* Blue/Green */
+.status-ordered {
+    background: #3b82f6;
+    /* Blue for "Bestellt" */
+    color: white;
+}
+
+.status-rejected {
+    background: #ef4444;
+    /* Red */
+    color: white;
 }
 
 /* Green */
@@ -107,6 +115,40 @@
     background: #dc2626 !important;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
     transform: translateY(-1px);
+}
+
+/* Archive Section */
+.archive-container {
+    margin-top: 3rem;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 1rem;
+}
+
+.archive-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    user-select: none;
+}
+
+.archive-header:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.archive-list {
+    margin-top: 1rem;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.archive-list.open {
+    display: block;
+    animation: fadeIn 0.3s forwards;
 }
 
 /* Notification Modal */

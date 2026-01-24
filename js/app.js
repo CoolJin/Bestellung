@@ -622,7 +622,7 @@ function renderProfile() {
     if (!list) return;
     list.innerHTML = '';
 
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]')
+    const allOrders = JSON.parse(localStorage.getItem('orders') || '[]')
         .filter(o => o.user === state.currentUser.username)
         // Sort: Newest First (Descending ID)
         .sort((a, b) => {
@@ -631,32 +631,60 @@ function renderProfile() {
             return idB - idA;
         });
 
-    if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
+    // Split Active vs Archived
+    const activeOrders = allOrders.filter(o => !o.archivedBy?.includes(state.currentUser.username));
+    const archivedOrders = allOrders.filter(o => o.archivedBy?.includes(state.currentUser.username));
 
-    orders.forEach(order => {
-        const isLocked = false; // ALLOW DELETE FOR ALL (User request)
+    // Render Active
+    if (activeOrders.length === 0) list.innerHTML = '<p>Keine aktiven Bestellungen.</p>';
+    activeOrders.forEach(order => list.appendChild(createOrderCard(order, false)));
 
-        const card = document.createElement('div');
-        card.className = 'order-card';
-        card.innerHTML = `
-            <div class="order-header">
-                <span>${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
-                <span>${order.date}</span>
+    // Render Archived Section
+    if (archivedOrders.length > 0) {
+        const archiveContainer = document.createElement('div');
+        archiveContainer.className = 'archive-container';
+        archiveContainer.innerHTML = `
+            <div class="archive-header" onclick="toggleArchive(this)">
+                <span>Archiv (${archivedOrders.length})</span>
+                <span>▼</span>
             </div>
-            <div class="order-body">
-                <ul>${(order.items || []).map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')}</ul>
-                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
-                ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
-                
-                <div style="margin-top:1rem; text-align:right;">
-                    <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Bestellung löschen</button>
-                    <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
-                </div>
-            </div>
+            <div class="archive-list"></div>
         `;
-        list.appendChild(card);
-    });
+        const archiveList = archiveContainer.querySelector('.archive-list');
+        archivedOrders.forEach(order => archiveList.appendChild(createOrderCard(order, true)));
+        list.appendChild(archiveContainer);
+    }
 }
+
+function createOrderCard(order, isArchived) {
+    const card = document.createElement('div');
+    card.className = 'order-card';
+    // If rejected, maybe dim or style differently? For now standard.
+
+    card.innerHTML = `
+        <div class="order-header">
+            <span>${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
+            <span>${order.date}</span>
+        </div>
+        <div class="order-body">
+            <ul>${(order.items || []).map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')}</ul>
+            ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
+            ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
+            
+            <div style="margin-top:1rem; text-align:right;">
+                ${!isArchived ? `<button class="btn btn-secondary btn-sm archive-order" data-id="${order.id}">Archivieren</button>` : '<span style="color:var(--text-muted)">Archiviert</span>'}
+                <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+window.toggleArchive = function (header) {
+    const list = header.nextElementSibling;
+    list.classList.toggle('open');
+    header.querySelector('span:last-child').textContent = list.classList.contains('open') ? '▲' : '▼';
+};
 
 function handleProfileAction(e) {
     if (e.target.classList.contains('delete-order')) {
@@ -667,6 +695,18 @@ function handleProfileAction(e) {
             orders = orders.filter(o => String(o.id) !== String(id));
             localStorage.setItem('orders', JSON.stringify(orders));
             renderProfile();
+        }
+    } else if (e.target.classList.contains('archive-order')) {
+        const id = e.target.dataset.id;
+        if (confirm('Bestellung ins Archiv verschieben?')) {
+            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const order = orders.find(o => String(o.id) === String(id));
+            if (order) {
+                if (!order.archivedBy) order.archivedBy = [];
+                order.archivedBy.push(state.currentUser.username);
+                localStorage.setItem('orders', JSON.stringify(orders));
+                renderProfile();
+            }
         }
     }
 }
@@ -689,9 +729,17 @@ function handleAdminAction(e) {
         orders[index].processedBy = state.currentUser.username;
         saveAndRenderAdmin(orders);
     }
-    else if (e.target.classList.contains('confirm-order')) {
-        orders[index].status = 'done';
+    else if (e.target.classList.contains('set-ordered')) {
+        orders[index].status = 'ordered';
         saveAndRenderAdmin(orders);
+    }
+    else if (e.target.classList.contains('set-rejected')) {
+        const reason = prompt("Grund für Ablehnung:", "Leider nicht lieferbar");
+        if (reason) {
+            orders[index].status = 'rejected';
+            orders[index].adminReply = reason;
+            saveAndRenderAdmin(orders);
+        }
     }
     else if (e.target.classList.contains('submit-reply')) {
         const input = e.target.previousElementSibling;
@@ -713,11 +761,14 @@ function renderAdminDashboard() {
 
     const ordersList = elements.ordersList;
     if (!ordersList) return;
+
+    // Sort Newest First
     const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => {
         const idA = parseInt(String(a.id).replace(/\D/g, ''), 10) || 0;
         const idB = parseInt(String(b.id).replace(/\D/g, ''), 10) || 0;
         return idB - idA;
     });
+
     ordersList.innerHTML = '';
 
     if (orders.length === 0) {
@@ -727,7 +778,7 @@ function renderAdminDashboard() {
 
     orders.forEach(order => {
         const status = order.status || 'open';
-        const isDone = status === 'done';
+        const isFinal = status === 'ordered' || status === 'rejected';
 
         const card = document.createElement('div');
         card.className = 'order-card';
@@ -741,7 +792,10 @@ function renderAdminDashboard() {
                 <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
                     <input type="text" placeholder="Antwort..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
                     <button class="btn btn-secondary btn-sm submit-reply">Antwort senden</button>
-                    <button class="btn btn-primary btn-sm confirm-order" style="background:#22c55e">Bestätigen</button>
+                    <div style="width:100%; display:flex; gap:10px; margin-top:5px;">
+                        <button class="btn btn-primary btn-sm set-ordered" style="background:#3b82f6; flex:1;">Bestellt</button>
+                        <button class="btn btn-danger btn-sm set-rejected" style="flex:1;">Abgelehnt</button>
+                    </div>
                 </div>
             `;
         }
@@ -758,7 +812,7 @@ function renderAdminDashboard() {
                 
                 <div style="margin-top:1rem; text-align:right;">
                    <div style="margin-bottom:1rem; font-weight:bold;">${formatPrice(order.total)}</div>
-                   ${!isDone ? actionButtons : ''}
+                   ${!isFinal ? actionButtons : ''}
                 </div>
             </div>
         `;
@@ -791,13 +845,15 @@ function handleCreateUser(e) {
 // --- Utils ---
 function getStatusClass(status) {
     if (status === 'captured') return 'status-claimed';
-    if (status === 'done') return 'status-done';
+    if (status === 'ordered') return 'status-ordered';
+    if (status === 'rejected') return 'status-rejected';
     return 'status-open';
 }
 
 function getStatusLabel(status) {
     if (status === 'captured') return 'In Bearbeitung';
-    if (status === 'done') return 'Bestätigt';
+    if (status === 'ordered') return 'Bestellt';
+    if (status === 'rejected') return 'Abgelehnt';
     return 'Offen';
 }
 
