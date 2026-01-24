@@ -167,7 +167,7 @@ export const UI = {
                                     <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
                                 </div>
                                 <div style="display:flex; gap:5px;">
-                                    <button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>
+                                    ${u.role !== 'admin' ? `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : ''}
                                     ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
                                 </div>
                             </div>
