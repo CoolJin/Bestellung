@@ -174,6 +174,7 @@ async function handleSearch() {
         currentSearchResults = products;
 
         feedback.classList.add('hidden');
+        feedback.innerHTML = ''; // Clear text explicitly
         renderSearchResults(products);
     } catch (error) {
         if (error.name === 'AbortError') {

@@ -161,6 +161,29 @@ label {
     font-size: 0.9rem;
 }
 
+/* Admin/Profile Panel Grid */
+/* Default is flex row wrap for Admin dashboard maybe? */
+/* We enforce column for Profile specific list */
+#profile-orders-list {
+    display: flex;
+    flex-direction: column !important;
+    gap: 15px;
+    width: 100%;
+}
+
+.order-card {
+    width: 100%;
+    /* Ensure full width cards */
+    max-width: 100%;
+}
+
+.archive-container {
+    width: 100%;
+    margin-top: 2rem;
+    order: 999;
+    /* Flex order to ensure bottom if mixed */
+}
+
 input {
     width: 100%;
     padding: 12px 16px;
