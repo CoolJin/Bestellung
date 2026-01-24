@@ -167,12 +167,24 @@ export const UI = {
                     <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${dateStr}</div>
                     
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
-                       ${o.items.map(i => `
-                           <div style="display:flex; justify-content:space-between;">
-                                <span>${i.quantity}x ${i.name}</span>
-                                <span>${i.price || ''}</span>
-                           </div>
-                       `).join('')}
+                       ${o.items.map(i => {
+                let unitPrice = 0;
+                if (i.price && typeof i.price === 'string') {
+                    unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                }
+                const lineSum = unitPrice * (i.quantity || 1);
+                const lineTotalStr = lineSum.toFixed(2).replace('.', ',') + ' €';
+                const displayUnit = i.price || '0,00 €';
+
+                return `
+                           <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
+                                <div style="display:flex; gap: 15px;">
+                                    <span>${i.quantity}x ${i.name}</span>
+                                    <span class="text-muted">${displayUnit} / Stk.</span>
+                                </div>
+                                <span>${lineTotalStr}</span>
+                           </div>`;
+            }).join('')}
                     </div>
 
                     <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
