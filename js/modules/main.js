@@ -151,129 +151,120 @@ window.app = {
                 }
             });
         }
-    }
-});
-        }
 
-safeAdd(this.elements.productGrid, 'click', (e) => {
-    if (e.target.classList.contains('add-to-cart')) {
-        Cart.addToCart(e.target.dataset.id, 1, this.state, () => Cart.updateCartCount(this.state, this.elements));
-    }
-});
+        // Search
+        safeAdd(this.elements.snuzoneSearch, 'keypress', (e) => { if (e.key === 'Enter') Search.handleSearch(this.elements.snuzoneSearch.value.trim(), this.elements, (p) => UI.renderSearchResults(p, this.elements), (els) => Search.clearSearch(els)); });
+        safeAdd(this.elements.searchClear, 'click', () => Search.clearSearch(this.elements));
 
-// Search
-safeAdd(this.elements.snuzoneSearch, 'keypress', (e) => { if (e.key === 'Enter') Search.handleSearch(this.elements.snuzoneSearch.value.trim(), this.elements, (p) => UI.renderSearchResults(p, this.elements), (els) => Search.clearSearch(els)); });
-safeAdd(this.elements.searchClear, 'click', () => Search.clearSearch(this.elements));
+        safeAdd(this.elements.snuzoneResultsGrid, 'click', (e) => {
+            if (e.target.classList.contains('add-external')) {
+                const idx = e.target.dataset.index;
+                Cart.addToCartLogic(Search.results[idx], this.state, () => Cart.updateCartCount(this.state, this.elements));
+                document.getElementById('search-results').classList.add('hidden');
+            }
+        });
 
-safeAdd(this.elements.snuzoneResultsGrid, 'click', (e) => {
-    if (e.target.classList.contains('add-external')) {
-        const idx = e.target.dataset.index;
-        Cart.addToCartLogic(Search.results[idx], this.state, () => Cart.updateCartCount(this.state, this.elements));
-        document.getElementById('search-results').classList.add('hidden');
-    }
-});
+        safeAdd(this.elements.checkoutBtn, 'click', () => Cart.placeOrder(this.state, DB, this.elements, () => Cart.updateCartCount(this.state, this.elements), (v) => this.navigateTo(v)));
 
-safeAdd(this.elements.checkoutBtn, 'click', () => Cart.placeOrder(this.state, DB, this.elements, () => Cart.updateCartCount(this.state, this.elements), (v) => this.navigateTo(v)));
+        // Profile Actions
+        safeAdd(this.elements.profileOrdersList, 'click', (e) => this.handleProfileAction(e));
 
-// Profile Actions
-safeAdd(this.elements.profileOrdersList, 'click', (e) => this.handleProfileAction(e));
+        // Admin Actions
+        // Admin Actions
+        safeAdd(this.elements.ordersList, 'click', (e) => {
+            const id = e.target.dataset.id;
+            if (!id) return;
 
-// Admin Actions
-// Admin Actions
-safeAdd(this.elements.ordersList, 'click', (e) => {
-    const id = e.target.dataset.id;
-    if (!id) return;
+            if (e.target.classList.contains('reject-order')) {
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
+                DB.updateOrder(id, o => o.status = newStatus);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('confirm-order')) {
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
+                DB.updateOrder(id, o => o.status = newStatus);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('toggle-paid')) {
+                DB.updateOrder(id, o => o.paid = !o.paid);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('save-note-btn')) {
+                const noteInput = this.elements.ordersList.querySelector(`.admin-note-input[data-id="${id}"]`);
+                if (noteInput) {
+                    DB.updateOrder(id, o => o.adminNote = noteInput.value);
+                    UI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
+                }
+            }
+            // Old delete kept just in case or removed as per request "Replace delete with..."
+            // user said "delete button is one button... reject and confirm". Implicitly replace.
+            if (e.target.classList.contains('delete-order')) {
+                // Fallback if needed, but UI doesn't render it anymore
+            }
+        });
 
-    if (e.target.classList.contains('reject-order')) {
-        const currentStatus = e.target.dataset.status;
-        const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
-        DB.updateOrder(id, o => o.status = newStatus);
-        UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
-    }
-    if (e.target.classList.contains('confirm-order')) {
-        const currentStatus = e.target.dataset.status;
-        const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
-        DB.updateOrder(id, o => o.status = newStatus);
-        UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
-    }
-    if (e.target.classList.contains('toggle-paid')) {
-        DB.updateOrder(id, o => o.paid = !o.paid);
-        UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
-    }
-    if (e.target.classList.contains('save-note-btn')) {
-        const noteInput = this.elements.ordersList.querySelector(`.admin-note-input[data-id="${id}"]`);
-        if (noteInput) {
-            DB.updateOrder(id, o => o.adminNote = noteInput.value);
-            UI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
-        }
-    }
-    // Old delete kept just in case or removed as per request "Replace delete with..."
-    // user said "delete button is one button... reject and confirm". Implicitly replace.
-    if (e.target.classList.contains('delete-order')) {
-        // Fallback if needed, but UI doesn't render it anymore
-    }
-});
+        // Logout Modal
+        safeAdd(this.elements.logoutConfirm, 'click', () => {
+            this.elements.logoutModal.classList.add('hidden');
+            Auth.logout(DB, this.state, (v) => this.navigateTo(v), () => this.updateUI());
+        });
+        safeAdd(this.elements.logoutCancel, 'click', () => this.elements.logoutModal.classList.add('hidden'));
 
-// Logout Modal
-safeAdd(this.elements.logoutConfirm, 'click', () => {
-    this.elements.logoutModal.classList.add('hidden');
-    Auth.logout(DB, this.state, (v) => this.navigateTo(v), () => this.updateUI());
-});
-safeAdd(this.elements.logoutCancel, 'click', () => this.elements.logoutModal.classList.add('hidden'));
-
-window.addEventListener('click', () => DB.updateSessionActivity());
-window.addEventListener('keypress', () => DB.updateSessionActivity());
+        window.addEventListener('click', () => DB.updateSessionActivity());
+        window.addEventListener('keypress', () => DB.updateSessionActivity());
     },
 
-changeCartQty(index, delta) {
-    Cart.changeCartQty(index, delta, this.state, () => UI.renderCart(this.elements, this.state, this.changeCartQty.bind(this)), () => Cart.updateCartCount(this.state, this.elements));
-},
+    changeCartQty(index, delta) {
+        Cart.changeCartQty(index, delta, this.state, () => UI.renderCart(this.elements, this.state, this.changeCartQty.bind(this)), () => Cart.updateCartCount(this.state, this.elements));
+    },
 
-handleProfileAction(e) {
-    const id = e.target.dataset.id;
-    if (!id) return;
-    const cls = e.target.classList;
+    handleProfileAction(e) {
+        const id = e.target.dataset.id;
+        if (!id) return;
+        const cls = e.target.classList;
 
-    if (cls.contains('cancel-order')) {
-        UI.showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
-            DB.updateOrder(id, o => o.status = 'cancelled');
+        if (cls.contains('cancel-order')) {
+            UI.showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
+                DB.updateOrder(id, o => o.status = 'cancelled');
+                UI.renderProfile(this.elements, DB, this.state);
+            });
+        }
+        if (cls.contains('archive-order')) {
+            DB.updateOrder(id, o => { if (!o.archivedBy) o.archivedBy = []; o.archivedBy.push(this.state.currentUser.username); });
             UI.renderProfile(this.elements, DB, this.state);
-        });
-    }
-    if (cls.contains('archive-order')) {
-        DB.updateOrder(id, o => { if (!o.archivedBy) o.archivedBy = []; o.archivedBy.push(this.state.currentUser.username); });
-        UI.renderProfile(this.elements, DB, this.state);
-    }
-    if (cls.contains('restore-order')) {
-        DB.updateOrder(id, o => { if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username); });
-        UI.renderProfile(this.elements, DB, this.state);
-    }
-    if (cls.contains('revive-order')) {
-        DB.updateOrder(id, o => {
-            o.status = 'open';
-            // Also unarchive if implicit
-            if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
-        });
-        UI.renderProfile(this.elements, DB, this.state);
-    }
-    if (cls.contains('delete-order')) {
-        UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
-            DB.deleteOrder(id);
+        }
+        if (cls.contains('restore-order')) {
+            DB.updateOrder(id, o => { if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username); });
             UI.renderProfile(this.elements, DB, this.state);
-        });
-    }
-    if (cls.contains('edit-order')) {
-        const orders = DB.getOrders();
-        const o = orders.find(x => x.id === id);
-        if (o) {
-            this.state.editingOrderId = o.id;
-            o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
-            DB.deleteOrder(id);
-            this.navigateTo('cart');
-            UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
+        }
+        if (cls.contains('revive-order')) {
+            DB.updateOrder(id, o => {
+                o.status = 'open';
+                // Also unarchive if implicit
+                if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
+            });
+            UI.renderProfile(this.elements, DB, this.state);
+        }
+        if (cls.contains('delete-order')) {
+            UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
+                DB.deleteOrder(id);
+                UI.renderProfile(this.elements, DB, this.state);
+            });
+        }
+        if (cls.contains('edit-order')) {
+            const orders = DB.getOrders();
+            const o = orders.find(x => x.id === id);
+            if (o) {
+                this.state.editingOrderId = o.id;
+                o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
+                DB.deleteOrder(id);
+                this.navigateTo('cart');
+                UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
+            }
         }
     }
-}
 };
 
 window.onload = () => window.app.init();
