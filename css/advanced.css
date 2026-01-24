@@ -91,3 +91,24 @@
     border-radius: 8px;
     border-left: 3px solid var(--primary-color);
 }
+
+/* Red Nav Link */
+.nav-link.btn-danger {
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.nav-link.btn-danger:hover {
+    background: #ef4444 !important;
+    color: white !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+#logout-confirm {
+    background: #ef4444;
+    color: white;
+}
+
+#logout-confirm:hover {
+    background: #dc2626;
+}

@@ -271,8 +271,8 @@ function renderSearchResults(products) {
     }
 
     products.forEach((p, index) => {
-        // Mock Sold Out for demo (Random 20% chance)
-        const isSoldOut = Math.random() < 0.2;
+        // Real sold out status from search
+        const isSoldOut = p.soldOut;
 
         const card = document.createElement('article');
         card.className = `product-card ${isSoldOut ? 'sold-out' : ''}`;
@@ -378,15 +378,15 @@ function renderNav() {
     createNavLink('Abmelden', 'logout');
 }
 
-function createNavLink(text, view) {
+function createNavLink(text, view, extraClass = '') {
     const a = document.createElement('a');
     a.href = '#';
     a.textContent = text;
-    a.className = 'nav-link';
+    a.className = 'nav-link ' + extraClass;
     a.dataset.view = view;
 
     const currentView = Object.keys(views).find(key => !views[key].classList.contains('hidden'));
-    if (view === currentView) a.classList.add('active');
+    if (view === currentView && view !== 'logout') a.classList.add('active');
 
     navContainer.appendChild(a);
 }

@@ -183,6 +183,16 @@ input:focus {
     box-shadow: 0 0 15px var(--accent-glow);
 }
 
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
 .btn-secondary {
     background: transparent;
     border: 1px solid var(--glass-border);
