@@ -35,16 +35,26 @@ const DB = {
                     const data = await res.json();
                     this.state.users = data.users || [];
                     this.state.orders = data.orders || [];
+
+                    // Fallback: If no users loaded, restore defaults
+                    if (this.state.users.length === 0) {
+                        this.state.users = [
+                            { username: 'admin', password: '123', role: 'admin' },
+                            { username: 'user', password: '123', role: 'user' }
+                        ];
+                    }
+
                     this.saveData(); // Persist to LS immediately
                     console.log('DB: Initialized from data.json');
                 } else {
-                    console.error('DB: data.json not found, using defaults.');
-                    this.state.users = [{ username: 'admin', password: '123', role: 'admin' }];
-                    this.saveData();
+                    throw new Error('Fetch failed');
                 }
             } catch (e) {
-                console.error('DB: Failed to load data.json', e);
-                this.state.users = [{ username: 'admin', password: '123', role: 'admin' }];
+                console.error('DB: Failed to load data.json, using defaults.', e);
+                this.state.users = [
+                    { username: 'admin', password: '123', role: 'admin' },
+                    { username: 'user', password: '123', role: 'user' }
+                ];
                 this.saveData();
             }
         }
