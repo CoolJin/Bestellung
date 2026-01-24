@@ -112,3 +112,26 @@
 #logout-confirm:hover {
     background: #dc2626;
 }
+
+/* Fix Floating Nav */
+.floating-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    max-width: 90%;
+}
+
+/* Ensure content doesn't get hidden behind nav on mobile */
+body {
+    padding-bottom: 100px;
+}
+
+/* Admin Search Input Focus */
+#admin-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px var(--accent-glow);
+}

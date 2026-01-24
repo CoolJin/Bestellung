@@ -39,6 +39,8 @@ function init() {
         newUsername: document.getElementById('new-username'),
         newPassword: document.getElementById('new-password'),
         orderNote: document.getElementById('order-note'),
+        // Admin Search
+        adminSearch: document.getElementById('admin-search-input'),
         // Modals
         logoutModal: document.getElementById('logout-modal'),
         logoutConfirm: document.getElementById('logout-confirm'),
@@ -70,7 +72,7 @@ function setupEventListeners() {
                 e.preventDefault();
                 const targetView = e.target.dataset.view;
                 if (targetView === 'logout') {
-                    confirmLogout(); // New confirmation
+                    confirmLogout();
                 } else {
                     navigateTo(targetView);
                 }
@@ -94,6 +96,7 @@ function setupEventListeners() {
 
     // Admin Actions Delegation
     safeAdd(elements.ordersList, 'click', handleAdminAction);
+    safeAdd(elements.adminSearch, 'input', renderAdminDashboard); // Live search
 
     // Profile Actions Delegation
     safeAdd(elements.profileOrdersList, 'click', handleProfileAction);
@@ -205,7 +208,6 @@ async function searchSnuzone(query) {
             return href.startsWith('http') ? href : `https://snuzone.com${href}`;
         })
         .filter((v, i, a) => a.indexOf(v) === i)
-        // User requested ALL products, not just 5. Removing slice limit, or using a higher limit.
         .slice(0, 15);
 
     if (links.length === 0) return [];
@@ -242,13 +244,31 @@ async function searchSnuzone(query) {
                 price = parseFloat(txt) || 0;
             }
 
+            // Real Sold Out Detection
+            let isSoldOut = false;
+            const addToCartBtn = pDoc.querySelector('button[name="add"], .product-form__submit');
+            if (addToCartBtn && (addToCartBtn.disabled || addToCartBtn.textContent.toLowerCase().includes('ausverkauft') || addToCartBtn.textContent.toLowerCase().includes('sold out'))) {
+                isSoldOut = true;
+            }
+            const availability = pDoc.querySelector('meta[property="og:availability"]');
+            if (availability && (availability.content.includes('out of stock') || availability.content.includes('OutOfStock'))) {
+                isSoldOut = true;
+            }
+            if (!isSoldOut) {
+                const info = pDoc.querySelector('.product-info, .product-meta, .product__info-container');
+                if (info && (info.textContent.toLowerCase().includes('ausverkauft') || info.textContent.toLowerCase().includes('currently unavailable'))) {
+                    isSoldOut = true;
+                }
+            }
+
             return {
                 id: 'ext-' + Date.now() + Math.random().toString(36).substr(2, 9),
                 name: title,
                 price: price,
                 image: image,
                 desc: 'Importiert von Snuzone',
-                externalUrl: url
+                externalUrl: url,
+                soldOut: isSoldOut
             };
         } catch (e) {
             console.warn('Failed to fetch product detail:', url, e);
@@ -271,7 +291,6 @@ function renderSearchResults(products) {
     }
 
     products.forEach((p, index) => {
-        // Real sold out status from search
         const isSoldOut = p.soldOut;
 
         const card = document.createElement('article');
@@ -328,12 +347,15 @@ function login(username, password) {
     if (user) {
         state.currentUser = { username: user.username, role: user.role };
         if (elements.loginError) elements.loginError.textContent = '';
+
+        loadCart(); // Load persistent cart
+
         renderNav();
 
         if (user.role === 'admin') {
             navigateTo('admin');
         } else {
-            navigateTo('catalog'); // OR profile? Catalog is standard.
+            navigateTo('catalog');
         }
     } else {
         if (elements.loginError) elements.loginError.textContent = 'Ungültige Anmeldedaten.';
@@ -342,7 +364,7 @@ function login(username, password) {
 
 function logout() {
     state.currentUser = null;
-    state.cart = [];
+    state.cart = []; // Clear current session cart, but it's saved in local for user
     renderNav();
     navigateTo('login');
 }
@@ -375,7 +397,7 @@ function renderNav() {
     } else if (state.currentUser.role === 'admin') {
         createNavLink('Dashboard', 'admin');
     }
-    createNavLink('Abmelden', 'logout');
+    createNavLink('Abmelden', 'logout', 'btn-danger');
 }
 
 function createNavLink(text, view, extraClass = '') {
@@ -424,6 +446,7 @@ function addToCart(productId) {
     const product = state.products.find(p => p.id === productId);
     if (product) {
         state.cart.push(product);
+        saveCart(); // Persist
         updateCartCount();
         alert(`${product.name} wurde zum Warenkorb hinzugefügt.`);
     }
@@ -462,21 +485,43 @@ function renderCart() {
 
 window.removeFromCart = function (index) {
     state.cart.splice(index, 1);
+    saveCart(); // Persist
     renderCart();
     updateCartCount();
 };
 
+function saveCart() {
+    if (state.currentUser) {
+        localStorage.setItem('cart_' + state.currentUser.username, JSON.stringify(state.cart));
+    }
+}
+
+function loadCart() {
+    if (state.currentUser) {
+        const saved = localStorage.getItem('cart_' + state.currentUser.username);
+        state.cart = saved ? JSON.parse(saved) : [];
+        updateCartCount();
+    }
+}
+
 function placeOrder() {
     if (state.cart.length === 0) return alert('Warenkorb ist leer.');
 
+    // Get next Order ID
+    let orderCounter = parseInt(localStorage.getItem('orderCounter') || '1');
     const note = elements.orderNote ? elements.orderNote.value : '';
 
+    // Format Date: HH:MM
+    const date = new Date();
+    const timeString = date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    const fullDate = date.toLocaleDateString('de-DE') + ' ' + timeString;
+
     const order = {
-        id: Date.now(),
+        id: '#' + String(orderCounter).padStart(4, '0'), // #0001, #0002...
         user: state.currentUser.username,
         items: [...state.cart],
         total: state.cart.reduce((sum, item) => sum + item.price, 0),
-        date: new Date().toLocaleString('de-DE'),
+        date: fullDate,
         status: 'open',
         note: note
     };
@@ -485,12 +530,17 @@ function placeOrder() {
     orders.push(order);
     localStorage.setItem('orders', JSON.stringify(orders));
 
+    // Increment ID
+    localStorage.setItem('orderCounter', (orderCounter + 1).toString());
+
+    // Clear cart (removed from persistence too)
     state.cart = [];
+    saveCart();
     if (elements.orderNote) elements.orderNote.value = '';
     updateCartCount();
 
     alert('Vielen Dank für Ihre Bestellung!');
-    navigateTo('catalog');
+    navigateTo('profile'); // Show profile to see open order
 }
 
 // --- Profile & Orders ---
@@ -501,30 +551,30 @@ function renderProfile() {
 
     const orders = JSON.parse(localStorage.getItem('orders') || '[]')
         .filter(o => o.user === state.currentUser.username)
-        .sort((a, b) => b.id - a.id);
+        .reverse(); // Newest first
 
     if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
 
     orders.forEach(order => {
-        const isLocked = order.status && order.status !== 'open';
+        const isOpen = order.status === 'open';
 
         const card = document.createElement('div');
         card.className = 'order-card';
         card.innerHTML = `
             <div class="order-header">
-                <span>#${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
+                <span>${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
                 <span>${order.date}</span>
-                ${isLocked ? '<span style="color:#ef4444">🔒</span>' : ''}
             </div>
             <div class="order-body">
                 <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
-                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
+                ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Notiz: ${order.note}</p>` : ''}
                 ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
                 
                 <div style="margin-top:1rem; text-align:right;">
-                    ${!isLocked ? `
-                        <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Stornieren</button>
-                    ` : '<span style="color:var(--text-muted)">In Bearbeitung - Keine Änderungen möglich</span>'}
+                    ${isOpen ? `
+                        <button class="btn btn-secondary btn-sm edit-order" data-id="${order.id}">Bearbeiten</button>
+                        <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}" style="border-color:#ef4444; color:#ef4444">Stornieren</button>
+                    ` : '<span style="color:var(--text-muted)">Keine Änderungen möglich</span>'}
                     <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
                 </div>
             </div>
@@ -534,13 +584,32 @@ function renderProfile() {
 }
 
 function handleProfileAction(e) {
+    const id = e.target.dataset.id;
+    if (!id) return;
+
     if (e.target.classList.contains('delete-order')) {
-        const id = parseInt(e.target.dataset.id);
         if (confirm('Bestellung wirklich stornieren?')) {
             let orders = JSON.parse(localStorage.getItem('orders') || '[]');
             orders = orders.filter(o => o.id !== id);
             localStorage.setItem('orders', JSON.stringify(orders));
             renderProfile();
+        }
+    } else if (e.target.classList.contains('edit-order')) {
+        let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const order = orders.find(o => o.id === id);
+
+        if (order) {
+            // Restore to cart
+            state.cart = [...state.cart, ...order.items];
+            saveCart();
+            updateCartCount();
+
+            // Delete old order (effectively "moving" it back to cart)
+            orders = orders.filter(o => o.id !== id);
+            localStorage.setItem('orders', JSON.stringify(orders));
+
+            alert('Bestellung wurde in den Warenkorb zurückgelegt.');
+            navigateTo('cart');
         }
     }
 }
@@ -548,10 +617,9 @@ function handleProfileAction(e) {
 
 // --- Admin System ---
 function handleAdminAction(e) {
-    // Determine ID from button or card wrapper if needed
     const btn = e.target.closest('button');
     if (!btn) return;
-    const id = parseInt(btn.dataset.id) || parseInt(e.target.closest('.order-card').dataset.id);
+    const id = btn.dataset.id || e.target.closest('.order-card').dataset.id;
 
     if (!id) return;
 
@@ -559,13 +627,8 @@ function handleAdminAction(e) {
     const index = orders.findIndex(o => o.id === id);
     if (index === -1) return;
 
-    if (e.target.classList.contains('claim-order')) {
-        orders[index].status = 'captured';
-        orders[index].processedBy = state.currentUser.username;
-        saveAndRenderAdmin(orders);
-    }
-    else if (e.target.classList.contains('confirm-order')) {
-        orders[index].status = 'done';
+    if (e.target.classList.contains('mark-ordered')) {
+        orders[index].status = 'ordered';
         saveAndRenderAdmin(orders);
     }
     else if (e.target.classList.contains('submit-reply')) {
@@ -579,26 +642,37 @@ function handleAdminAction(e) {
 
 function saveAndRenderAdmin(orders) {
     localStorage.setItem('orders', JSON.stringify(orders));
-    // Small delay or refresh is instant
     renderAdminDashboard();
 }
 
 function renderAdminDashboard() {
     if (state.currentUser?.role !== 'admin') return;
 
-    const ordersList = elements.ordersList;
-    if (!ordersList) return;
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => b.id - a.id);
-    ordersList.innerHTML = '';
+    const list = elements.ordersList;
+    if (!list) return;
+
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]').reverse();
+    const searchTerm = elements.adminSearch ? elements.adminSearch.value.toLowerCase() : '';
+
+    // Filter
+    if (searchTerm) {
+        orders = orders.filter(o =>
+            o.id.toLowerCase().includes(searchTerm) ||
+            o.user.toLowerCase().includes(searchTerm) ||
+            o.date.includes(searchTerm)
+        );
+    }
+
+    list.innerHTML = '';
 
     if (orders.length === 0) {
-        ordersList.innerHTML = '<p>Keine Bestellungen vorhanden.</p>';
+        list.innerHTML = '<p>Keine Bestellungen gefunden.</p>';
         return;
     }
 
     orders.forEach(order => {
         const status = order.status || 'open';
-        const isDone = status === 'done';
+        const isOrdered = status === 'ordered';
 
         const card = document.createElement('div');
         card.className = 'order-card';
@@ -606,34 +680,36 @@ function renderAdminDashboard() {
 
         let actionButtons = '';
         if (status === 'open') {
-            actionButtons = `<button class="btn btn-primary btn-sm claim-order" data-id="${order.id}">Bearbeiten (Claim)</button>`;
-        } else if (status === 'captured') {
-            actionButtons = `
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                    <input type="text" placeholder="Antwort..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
-                    <button class="btn btn-secondary btn-sm submit-reply">Antwort senden</button>
-                    <button class="btn btn-primary btn-sm confirm-order" style="background:#22c55e">Bestätigen</button>
-                </div>
-            `;
+            actionButtons = `<button class="btn btn-primary btn-sm mark-ordered" data-id="${order.id}">Als Bestellt markieren</button>`;
         }
+
+        // Even if ordered, allow replying
+        const replySection = `
+             <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" placeholder="Antwort..." value="${order.adminReply || ''}" style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
+                <button class="btn btn-secondary btn-sm submit-reply" data-id="${order.id}">Senden</button>
+            </div>
+        `;
 
         card.innerHTML = `
             <div class="order-header">
-                <span>#${order.id} - ${order.user}</span>
+                <span>${order.id} - ${order.user}</span>
                 <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
             </div>
             <div class="order-body">
+                <div>${order.date}</div>
                 <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
-                ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Kunden-Notiz:</strong> ${order.note}</p>` : ''}
-                ${order.adminReply ? `<div class="admin-reply-box"><strong>Deine Antwort:</strong> ${order.adminReply}</div>` : ''}
+                ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Notiz:</strong> ${order.note}</p>` : ''}
+                
+                ${replySection}
                 
                 <div style="margin-top:1rem; text-align:right;">
                    <div style="margin-bottom:1rem; font-weight:bold;">${formatPrice(order.total)}</div>
-                   ${!isDone ? actionButtons : ''}
+                   ${actionButtons}
                 </div>
             </div>
         `;
-        ordersList.appendChild(card);
+        list.appendChild(card);
     });
 }
 
@@ -661,14 +737,12 @@ function handleCreateUser(e) {
 
 // --- Utils ---
 function getStatusClass(status) {
-    if (status === 'captured') return 'status-claimed';
-    if (status === 'done') return 'status-done';
+    if (status === 'ordered') return 'status-claimed'; // Recycling yellow class
     return 'status-open';
 }
 
 function getStatusLabel(status) {
-    if (status === 'captured') return 'In Bearbeitung';
-    if (status === 'done') return 'Bestätigt';
+    if (status === 'ordered') return 'Bestellt';
     return 'Offen';
 }
 
