@@ -177,13 +177,19 @@ export const UI = {
 
                     <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
                         <label style="font-size:0.8em; color:var(--text-muted);">Admin Notiz:</label>
-                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden...">${o.adminNote || ''}</textarea>
+                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden..." style="resize: none; background: #fff; color: #333; font-weight: 500;">${o.adminNote || ''}</textarea>
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:5px; width:100%;">Notiz Speichern</button>
                     </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 120px;">
-                    <button class="btn btn-danger btn-sm reject-order" data-id="${o.id}" data-status="${o.status}">${o.status === 'abgelehnt' ? 'Zurücksetzen' : 'Ablehnen'}</button>
-                    <button class="btn btn-primary btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}">${o.status === 'bestellt' ? 'Zurücksetzen' : 'Bestellt'}</button>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 130px;">
+                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
+                        style="${o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444'}">
+                        Ablehnen
+                    </button>
+                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}"
+                        style="${o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)'}">
+                        Bestellt
+                    </button>
                     ${o.status === 'bestellt' ?
                     `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${o.paid ? '#22c55e' : '#ef4444'}; color: ${o.paid ? '#22c55e' : '#ef4444'}">
                             ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
