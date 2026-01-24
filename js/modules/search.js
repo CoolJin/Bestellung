@@ -85,7 +85,15 @@ export const Search = {
 
                 const title = pDoc.querySelector('h1')?.textContent?.trim() || 'Produkt';
                 let image = pDoc.querySelector('.product__media img')?.src || '';
-                if (image.startsWith('//')) image = 'https:' + image;
+                // Fix relative image protocol
+                if (image && image.startsWith('//')) image = 'https:' + image;
+
+                // Price Parsing (Try multiple selectors)
+                let price = 'N/A';
+                const priceEl = pDoc.querySelector('.price__regular .price-item--regular') ||
+                    pDoc.querySelector('.price-item--regular') ||
+                    pDoc.querySelector('.price__current');
+                if (priceEl) price = priceEl.textContent.trim();
 
                 let isSoldOut = false;
                 const btn = pDoc.querySelector('button[name="add"]');
@@ -95,8 +103,8 @@ export const Search = {
                 return {
                     id: 'ext-' + Math.random().toString(36),
                     name: title,
-                    price: 0,
-                    image,
+                    price: price,
+                    image: image,
                     soldOut: isSoldOut,
                     desc: 'Snuzone Import'
                 };
