@@ -447,22 +447,70 @@ function renderCatalog() {
     updateCartCount();
 }
 
-// --- Cart System ---
+// --- Modal Notification System ---
+function showModal(title, message, onConfirm = null) {
+    // Remove existing
+    const existing = document.getElementById('notification-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'notification-modal';
+    modal.className = 'notification-modal';
+
+    modal.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-title">${title}</div>
+            <div class="notification-msg">${message}</div>
+            <button id="modal-ok-btn" class="btn btn-primary" style="min-width:100px;">OK</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const btn = modal.querySelector('#modal-ok-btn');
+    btn.focus();
+    btn.onclick = () => {
+        modal.remove();
+        if (onConfirm) onConfirm();
+    };
+
+    // Close on background click
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.remove();
+            if (onConfirm) onConfirm();
+        }
+    };
+}
+
+// --- Cart System (Updated for Quantity) ---
 function addToCart(productId) {
     // productId comes from dataset (string) or internal logic. 
     // Ensure we compare strings to support both '1' and 'ext-123'
     const product = state.products.find(p => String(p.id) === String(productId));
-    if (product) {
-        state.cart.push(product);
-        updateCartCount();
-        showToast(`${product.name} wurde zum Warenkorb hinzugefügt.`);
-    } else {
+    if (!product) {
         console.error('Product not found:', productId);
+        return;
     }
+
+    const existingItem = state.cart.find(item => String(item.id) === String(productId));
+
+    if (existingItem) {
+        existingItem.quantity = (existingItem.quantity || 1) + 1;
+    } else {
+        // Clone and add quantity
+        state.cart.push({ ...product, quantity: 1 });
+    }
+
+    updateCartCount();
+    showModal('Hinzugefügt', `${product.name} liegt im Warenkorb.`);
 }
 
 function updateCartCount() {
-    if (elements.cartCount) elements.cartCount.textContent = state.cart.length;
+    if (elements.cartCount) {
+        const totalQty = state.cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        elements.cartCount.textContent = totalQty;
+    }
 }
 
 function renderCart() {
@@ -475,15 +523,22 @@ function renderCart() {
         container.innerHTML = '<p>Ihr Warenkorb ist leer.</p>';
     } else {
         state.cart.forEach((item, index) => {
-            total += item.price;
+            const itemTotal = item.price * (item.quantity || 1);
+            total += itemTotal;
+
             const el = document.createElement('div');
             el.className = 'cart-item';
             el.innerHTML = `
-                <div>
+                <div style="flex:1">
                     <strong>${item.name}</strong>
-                    <div>${formatPrice(item.price)}</div>
+                    <div style="font-size:0.9rem; color:var(--text-muted);">${formatPrice(item.price)} / Stk</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="removeFromCart(${index})">Entfernen</button>
+                <div style="display:flex; align-items:center; gap:10px; margin:0 15px;">
+                    <button class="btn btn-secondary btn-sm" onclick="changeCartQty(${index}, -1)">-</button>
+                    <span style="font-weight:bold; min-width:20px; text-align:center;">${item.quantity || 1}</span>
+                    <button class="btn btn-secondary btn-sm" onclick="changeCartQty(${index}, 1)">+</button>
+                </div>
+                <div style="font-weight:bold;">${formatPrice(itemTotal)}</div>
             `;
             container.appendChild(el);
         });
@@ -492,37 +547,58 @@ function renderCart() {
     if (elements.cartTotal) elements.cartTotal.textContent = formatPrice(total);
 }
 
-window.removeFromCart = function (index) {
-    state.cart.splice(index, 1);
+window.changeCartQty = function (index, delta) {
+    const item = state.cart[index];
+    if (!item) return;
+
+    item.quantity = (item.quantity || 1) + delta;
+
+    if (item.quantity <= 0) {
+        if (confirm(`${item.name} entfernen?`)) {
+            state.cart.splice(index, 1);
+        } else {
+            item.quantity = 1;
+        }
+    }
+
     renderCart();
     updateCartCount();
 };
 
 function placeOrder() {
-    if (state.cart.length === 0) return showToast('Warenkorb ist leer.', 'error');
+    if (state.cart.length === 0) return showModal('Fehler', 'Warenkorb ist leer.');
 
     const note = elements.orderNote ? elements.orderNote.value : '';
 
     const orders = JSON.parse(localStorage.getItem('orders') || '[]');
 
-    // Sort logic requires parsing the ID to ensure we find the true max
-    // IDs are #0001, #0002 etc.
+    // Fixed ID Logic:
+    // 1. Filter checks for IDs matching pattern #\d+
+    // 2. Parse max ID, defaulting to 0
     let maxId = 0;
-    if (orders.length > 0) {
-        maxId = orders.reduce((max, o) => {
-            const numPart = parseInt(String(o.id).replace('#', ''), 10);
-            return numPart > max ? numPart : max;
-        }, 0);
-    }
+
+    orders.forEach(o => {
+        // Strip ALL non-digits to be safe, but we specifically look for #xxxx
+        const strId = String(o.id);
+        if (strId.startsWith('#')) {
+            const numPart = parseInt(strId.replace(/\D/g, ''), 10); // Regex strip non-digits
+            if (!isNaN(numPart) && numPart > maxId && numPart < 90000) { // < 90000 Check to exclude timestamps
+                maxId = numPart;
+            }
+        }
+    });
+
     const newIdNum = maxId + 1;
     // Format: #0001 (4 digits)
     const formattedId = '#' + String(newIdNum).padStart(4, '0');
 
+    const total = state.cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+
     const order = {
         id: formattedId,
         user: state.currentUser.username,
-        items: [...state.cart],
-        total: state.cart.reduce((sum, item) => sum + item.price, 0),
+        items: JSON.parse(JSON.stringify(state.cart)), // Deep copy with quantities
+        total: total,
         date: new Date().toLocaleString('de-DE'),
         status: 'open',
         note: note
@@ -535,8 +611,9 @@ function placeOrder() {
     if (elements.orderNote) elements.orderNote.value = '';
     updateCartCount();
 
-    showToast('Vielen Dank für Ihre Bestellung!', 'success');
-    navigateTo('catalog');
+    showModal('Erfolg', 'Vielen Dank für Ihre Bestellung! Bestellnummer: ' + formattedId, () => {
+        navigateTo('catalog');
+    });
 }
 
 // --- Profile & Orders ---
@@ -547,35 +624,32 @@ function renderProfile() {
 
     const orders = JSON.parse(localStorage.getItem('orders') || '[]')
         .filter(o => o.user === state.currentUser.username)
+        // Sort: Newest First (Descending ID)
         .sort((a, b) => {
-            // Extract number from #0001
-            const idA = parseInt(String(a.id).replace('#', ''), 10);
-            const idB = parseInt(String(b.id).replace('#', ''), 10);
-            return idB - idA; // Descending (Newest first)
+            const idA = parseInt(String(a.id).replace(/\D/g, ''), 10) || 0;
+            const idB = parseInt(String(b.id).replace(/\D/g, ''), 10) || 0;
+            return idB - idA;
         });
 
     if (orders.length === 0) list.innerHTML = '<p>Keine Bestellungen.</p>';
 
     orders.forEach(order => {
-        const isLocked = order.status && order.status !== 'open';
+        const isLocked = false; // ALLOW DELETE FOR ALL (User request)
 
         const card = document.createElement('div');
         card.className = 'order-card';
         card.innerHTML = `
             <div class="order-header">
-                <span>#${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
+                <span>${order.id} <span class="status-badge ${getStatusClass(order.status)}">${getStatusLabel(order.status)}</span></span>
                 <span>${order.date}</span>
-                ${isLocked ? '<span style="color:#ef4444">🔒</span>' : ''}
             </div>
             <div class="order-body">
-                <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
+                <ul>${(order.items || []).map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')}</ul>
                 ${order.note ? `<p style="font-style:italic; color:var(--text-muted)">Your Note: ${order.note}</p>` : ''}
                 ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
                 
                 <div style="margin-top:1rem; text-align:right;">
-                    ${!isLocked ? `
-                        <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Stornieren</button>
-                    ` : '<span style="color:var(--text-muted)">In Bearbeitung - Keine Änderungen möglich</span>'}
+                    <button class="btn btn-secondary btn-sm delete-order" data-id="${order.id}">Bestellung löschen</button>
                     <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
                 </div>
             </div>
@@ -587,9 +661,10 @@ function renderProfile() {
 function handleProfileAction(e) {
     if (e.target.classList.contains('delete-order')) {
         const id = e.target.dataset.id;
-        if (confirm('Bestellung wirklich stornieren?')) {
+        if (confirm('Bestellung wirklich löschen? Dies kann nicht rückgängig gemacht werden.')) {
             let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            orders = orders.filter(o => o.id !== id);
+            // Strict String filtering
+            orders = orders.filter(o => String(o.id) !== String(id));
             localStorage.setItem('orders', JSON.stringify(orders));
             renderProfile();
         }
@@ -606,7 +681,7 @@ function handleAdminAction(e) {
     if (!id) return;
 
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const index = orders.findIndex(o => o.id === id);
+    const index = orders.findIndex(o => String(o.id) === String(id));
     if (index === -1) return;
 
     if (e.target.classList.contains('claim-order')) {
@@ -639,8 +714,8 @@ function renderAdminDashboard() {
     const ordersList = elements.ordersList;
     if (!ordersList) return;
     const orders = JSON.parse(localStorage.getItem('orders') || '[]').sort((a, b) => {
-        const idA = parseInt(String(a.id).replace('#', ''), 10);
-        const idB = parseInt(String(b.id).replace('#', ''), 10);
+        const idA = parseInt(String(a.id).replace(/\D/g, ''), 10) || 0;
+        const idB = parseInt(String(b.id).replace(/\D/g, ''), 10) || 0;
         return idB - idA;
     });
     ordersList.innerHTML = '';
@@ -673,11 +748,11 @@ function renderAdminDashboard() {
 
         card.innerHTML = `
             <div class="order-header">
-                <span>#${order.id} - ${order.user}</span>
+                <span>${order.id} - ${order.user}</span>
                 <span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span>
             </div>
             <div class="order-body">
-                <ul>${order.items.map(i => `<li>${i.name}</li>`).join('')}</ul>
+                <ul>${(order.items || []).map(i => `<li>${i.quantity || 1}x ${i.name}</li>`).join('')}</ul>
                 ${order.note ? `<p style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px;"><strong>Kunden-Notiz:</strong> ${order.note}</p>` : ''}
                 ${order.adminReply ? `<div class="admin-reply-box"><strong>Deine Antwort:</strong> ${order.adminReply}</div>` : ''}
                 
@@ -700,7 +775,7 @@ function handleCreateUser(e) {
     if (newUsername && newPassword) {
         const users = JSON.parse(localStorage.getItem('users') || '[]');
         if (users.find(u => u.username === newUsername)) {
-            showToast('Benutzer existiert bereits!', 'error');
+            showModal('Fehler', 'Benutzer existiert bereits!');
             return;
         }
 
