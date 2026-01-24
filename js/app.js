@@ -15,6 +15,13 @@ function init() {
         profile: document.getElementById('profile-view')
     };
 
+    // Create Toast Container
+    if (!document.getElementById('toast-container')) {
+        const tc = document.createElement('div');
+        tc.id = 'toast-container';
+        document.body.appendChild(tc);
+    }
+
     navContainer = document.getElementById('main-nav');
     menuToggle = document.getElementById('menu-toggle');
 
@@ -448,7 +455,7 @@ function addToCart(productId) {
     if (product) {
         state.cart.push(product);
         updateCartCount();
-        alert(`${product.name} wurde zum Warenkorb hinzugefügt.`);
+        showToast(`${product.name} wurde zum Warenkorb hinzugefügt.`);
     } else {
         console.error('Product not found:', productId);
     }
@@ -492,7 +499,7 @@ window.removeFromCart = function (index) {
 };
 
 function placeOrder() {
-    if (state.cart.length === 0) return alert('Warenkorb ist leer.');
+    if (state.cart.length === 0) return showToast('Warenkorb ist leer.', 'error');
 
     const note = elements.orderNote ? elements.orderNote.value : '';
 
@@ -528,7 +535,7 @@ function placeOrder() {
     if (elements.orderNote) elements.orderNote.value = '';
     updateCartCount();
 
-    alert('Vielen Dank für Ihre Bestellung!');
+    showToast('Vielen Dank für Ihre Bestellung!', 'success');
     navigateTo('catalog');
 }
 
@@ -693,7 +700,7 @@ function handleCreateUser(e) {
     if (newUsername && newPassword) {
         const users = JSON.parse(localStorage.getItem('users') || '[]');
         if (users.find(u => u.username === newUsername)) {
-            alert('Benutzer existiert bereits!');
+            showToast('Benutzer existiert bereits!', 'error');
             return;
         }
 
@@ -721,6 +728,28 @@ function getStatusLabel(status) {
 
 function formatPrice(price) {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
+}
+
+// Toast Utility
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    // Remove on click
+    toast.onclick = () => toast.remove();
+
+    container.appendChild(toast);
+
+    // Auto remove
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
 
 // Start
