@@ -45,18 +45,20 @@
         <!-- Catalog -->
         <section id="catalog-view" class="view hidden">
             <div class="header-actions">
-                <h1>Katalog</h1>
-                <div class="search-container">
+                <div class="search-wrapper">
+                    <span class="search-icon">&#128269;</span>
                     <input type="text" id="snuzone-search" placeholder="Suche..." class="search-input">
-                    <button id="search-btn" class="btn btn-primary">Go</button>
+                    <button id="search-clear-btn" class="search-clear" title="Löschen">✕</button>
+                    <!-- "Go" button removed, search triggers on Enter -->
                 </div>
-                <div style="font-weight: 600; color: var(--primary-color);">
+                <div style="font-weight: 600; color: var(--primary-color); margin-left: 15px; white-space: nowrap;">
                     Warenkorb: <span id="cart-count">0</span>
                 </div>
             </div>
 
+            <div id="search-feedback" class="search-feedback hidden"></div>
+
             <div id="search-results" class="search-results hidden">
-                <h3>Suchergebnisse</h3>
                 <div id="snuzone-results-grid" class="product-grid"></div>
             </div>
 
