@@ -566,16 +566,103 @@ function handleProfileAction(e) {
         const o = orders.find(x => x.id === id);
         if (o) {
             state.editingOrderId = o.id;
-            o.items.forEach(i => addToCartLogic(i)); // psuedo
-            // Actually push to cart logic
-            o.items.forEach(old => {
-                const ex = state.cart.find(x => x.name === old.name);
-                if (ex) ex.quantity += old.quantity;
-                else state.cart.push(old);
-            });
+            o.items.forEach(i => addToCartLogic(i));
             DB.deleteOrder(id);
             navigateTo('cart');
-            showModal('Edit', 'Loaded');
+            showModal('Bestellung bearbeitet', 'Inhalte geladen');
+        }
+    }
+}
+
+// --- Missing Implementations ---
+
+function showModal(title, msg) {
+    // Check if a modal already exists
+    const existing = document.querySelector('.notification-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'notification-modal';
+    modal.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-title">${title}</div>
+            <div class="notification-msg">${msg}</div>
+            <button class="btn btn-primary" onclick="this.closest('.notification-modal').remove()">Ok</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    // Auto close after 3s
+    setTimeout(() => {
+        if (modal && modal.parentElement) modal.remove();
+    }, 3000);
+}
+
+function renderCatalog() {
+    const grid = elements.productGrid;
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // Check if we have manually added products from search, otherwise show prompt
+    if (state.products.length === 0) {
+        grid.innerHTML = `
+            <div style="text-align:center; padding: 2rem; grid-column: 1/-1;">
+                <h3>Willkommen!</h3>
+                <p style="color:var(--text-muted)">Bitte nutzen Sie die Suchen-Funktion oben, um Produkte zu finden.</p>
+            </div>
+        `;
+    } else {
+        state.products.forEach(p => {
+            const card = document.createElement('article');
+            card.className = 'product-card';
+            card.innerHTML = `
+                 <img src="${p.image}" class="product-image">
+                 <div class="product-info">
+                     <h3>${p.name}</h3>
+                     <div class="product-footer">
+                         <div class="product-price">${p.price || ''}</div>
+                         <button class="btn btn-primary btn-sm add-to-cart" data-id="${p.id}">Add</button>
+                     </div>
+                 </div>
+             `;
+            grid.appendChild(card);
+        });
+    }
+}
+
+function renderAdminDashboard() {
+    const list = elements.ordersList;
+    if (!list) return;
+    list.innerHTML = '';
+    const orders = DB.getOrders();
+    if (orders.length === 0) {
+        list.innerHTML = '<p>Keine Bestellungen.</p>';
+        return;
+    }
+    orders.forEach(o => {
+        const div = document.createElement('div');
+        div.className = 'order-card';
+        div.innerHTML = `
+            <div style="flex:1">
+                <b>${o.id}</b> <span class="text-muted">(${o.user})</span>
+                <span class="status-badge status-${o.status}" style="margin-left:10px">${o.status}</span>
+                <div style="font-size:0.85rem; margin-top:5px">
+                   ${o.items.map(i => i.quantity + 'x ' + i.name).join(', ')}
+                </div>
+            </div>
+            <div style="display:flex; gap:5px">
+                <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</button>
+            </div>
+         `;
+        list.appendChild(div);
+    });
+}
+
+function handleAdminAction(e) {
+    if (e.target.classList.contains('delete-order')) {
+        const id = e.target.dataset.id;
+        if (confirm('Bestellung ' + id + ' wirklich löschen?')) {
+            DB.deleteOrder(id);
+            renderAdminDashboard();
         }
     }
 }
