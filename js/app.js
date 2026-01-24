@@ -449,12 +449,10 @@ function renderCatalog() {
 
 // --- Modal Notification System ---
 function showModal(title, message, onConfirm = null) {
-    // Remove existing
     const existing = document.getElementById('notification-modal');
     if (existing) existing.remove();
 
     const modal = document.createElement('div');
-    modal.id = 'notification-modal';
     modal.className = 'notification-modal';
 
     modal.innerHTML = `
@@ -469,18 +467,42 @@ function showModal(title, message, onConfirm = null) {
 
     const btn = modal.querySelector('#modal-ok-btn');
     btn.focus();
-    btn.onclick = () => {
+
+    const close = () => {
         modal.remove();
         if (onConfirm) onConfirm();
     };
 
-    // Close on background click
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            modal.remove();
-            if (onConfirm) onConfirm();
-        }
+    btn.onclick = close;
+    modal.onclick = (e) => { if (e.target === modal) close(); };
+}
+
+function showConfirm(title, message, onYes) {
+    const existing = document.getElementById('notification-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'notification-modal';
+
+    modal.innerHTML = `
+        <div class="notification-content">
+            <div class="notification-title">${title}</div>
+            <div class="notification-msg">${message}</div>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button id="modal-cancel-btn" class="btn btn-secondary">Abbrechen</button>
+                <button id="modal-yes-btn" class="btn btn-primary">Bestätigen</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('#modal-cancel-btn').onclick = () => modal.remove();
+    modal.querySelector('#modal-yes-btn').onclick = () => {
+        modal.remove();
+        onYes();
     };
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 }
 
 // --- Cart System (Updated for Quantity) ---
@@ -659,7 +681,37 @@ function renderProfile() {
 function createOrderCard(order, isArchived) {
     const card = document.createElement('div');
     card.className = 'order-card';
-    // If rejected, maybe dim or style differently? For now standard.
+
+    const isFinal = order.status === 'ordered' || order.status === 'rejected';
+    const isOpen = order.status === 'open' || order.status === 'captured';
+
+    let actionButtons = '';
+
+    if (isArchived) {
+        actionButtons = `<button class="btn btn-secondary btn-sm restore-order" data-id="${order.id}">Wiederherstellen</button>`;
+    } else {
+        // Active List
+        if (isOpen) {
+            actionButtons = `
+                <button class="btn btn-primary btn-sm edit-order" data-id="${order.id}">Bearbeiten</button>
+             `;
+        }
+
+        // Archive only if final
+        if (isFinal) {
+            actionButtons += `<button class="btn btn-secondary btn-sm archive-order" data-id="${order.id}" style="margin-left:10px;">Archivieren</button>`;
+        }
+    }
+
+    // Always allow delete for cleanup? or strict?
+    // User requested "Delete Completed" before, but logic says Archive.
+    // Let's keep a hard Delete for everything as fallback if requested, or stick to Edit/Archive flow.
+    // User said: "man sollte sie wieder herausholen [from archive]... aber auch löschen" and "Edit if not finished".
+    // Let's add a Delete Icon or similar for archived? Or just "Delete" button.
+
+    if (isArchived) {
+        actionButtons += `<button class="btn btn-danger btn-sm delete-order" data-id="${order.id}" style="margin-left:10px;">Löschen</button>`;
+    }
 
     card.innerHTML = `
         <div class="order-header">
@@ -672,7 +724,7 @@ function createOrderCard(order, isArchived) {
             ${order.adminReply ? `<div class="admin-reply-box"><strong>Admin:</strong> ${order.adminReply}</div>` : ''}
             
             <div style="margin-top:1rem; text-align:right;">
-                ${!isArchived ? `<button class="btn btn-secondary btn-sm archive-order" data-id="${order.id}">Archivieren</button>` : '<span style="color:var(--text-muted)">Archiviert</span>'}
+                ${actionButtons}
                 <div style="margin-top:0.5rem">Gesamt: ${formatPrice(order.total)}</div>
             </div>
         </div>
@@ -687,34 +739,79 @@ window.toggleArchive = function (header) {
 };
 
 function handleProfileAction(e) {
+    const id = e.target.dataset.id;
+    if (!id) return;
+
     if (e.target.classList.contains('delete-order')) {
-        const id = e.target.dataset.id;
-        if (confirm('Bestellung wirklich löschen? Dies kann nicht rückgängig gemacht werden.')) {
+        showConfirm('Bestellung löschen', 'Wirklich unwiderruflich löschen?', () => {
             let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            // Strict String filtering
             orders = orders.filter(o => String(o.id) !== String(id));
             localStorage.setItem('orders', JSON.stringify(orders));
             renderProfile();
-        }
-    } else if (e.target.classList.contains('archive-order')) {
-        const id = e.target.dataset.id;
-        if (confirm('Bestellung ins Archiv verschieben?')) {
-            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
-            const order = orders.find(o => String(o.id) === String(id));
-            if (order) {
-                if (!order.archivedBy) order.archivedBy = [];
-                order.archivedBy.push(state.currentUser.username);
-                localStorage.setItem('orders', JSON.stringify(orders));
-                renderProfile();
+        });
+    }
+    else if (e.target.classList.contains('archive-order')) {
+        showConfirm('Archivieren', 'Bestellung ins Archiv verschieben?', () => {
+            updateOrder(id, (o) => {
+                if (!o.archivedBy) o.archivedBy = [];
+                o.archivedBy.push(state.currentUser.username);
+            });
+        });
+    }
+    else if (e.target.classList.contains('restore-order')) {
+        updateOrder(id, (o) => {
+            if (o.archivedBy) {
+                o.archivedBy = o.archivedBy.filter(u => u !== state.currentUser.username);
             }
-        }
+        });
+    }
+    else if (e.target.classList.contains('edit-order')) {
+        showConfirm('Bestellung bearbeiten', 'Bestellung wird aufgelöst und Inhalte zurück in den Warenkorb gelegt.', () => {
+            let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            const orderIndex = orders.findIndex(o => String(o.id) === String(id));
+            if (orderIndex !== -1) {
+                const order = orders[orderIndex];
+                // Restore items to cart (merged or overwrite? User implies Edit = take contents back. Merging is safer.)
+                // Actually user said "Items zurück in Warenkorb kommen oder so".
+
+                // Add items to current cart
+                order.items.forEach(oldItem => {
+                    const existing = state.cart.find(ci => String(ci.id) === String(oldItem.id));
+                    if (existing) {
+                        existing.quantity = (existing.quantity || 1) + (oldItem.quantity || 1);
+                    } else {
+                        state.cart.push(oldItem);
+                    }
+                });
+
+                if (order.note && elements.orderNote) elements.orderNote.value = order.note;
+
+                // Delete Order
+                orders.splice(orderIndex, 1);
+                localStorage.setItem('orders', JSON.stringify(orders));
+
+                // Navigate
+                updateCartCount();
+                navigateTo('cart');
+                showModal('Bearbeitungsmodus', 'Inhalte wurden in den Warenkorb geladen.');
+            }
+        });
+    }
+}
+
+function updateOrder(id, mutator) {
+    let orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const order = orders.find(o => String(o.id) === String(id));
+    if (order) {
+        mutator(order);
+        localStorage.setItem('orders', JSON.stringify(orders));
+        renderProfile();
     }
 }
 
 
 // --- Admin System ---
 function handleAdminAction(e) {
-    // Determine ID from button or card wrapper if needed
     const btn = e.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id || e.target.closest('.order-card').dataset.id;
@@ -723,36 +820,45 @@ function handleAdminAction(e) {
     let orders = JSON.parse(localStorage.getItem('orders') || '[]');
     const index = orders.findIndex(o => String(o.id) === String(id));
     if (index === -1) return;
+    const order = orders[index];
 
     if (e.target.classList.contains('claim-order')) {
-        orders[index].status = 'captured';
-        orders[index].processedBy = state.currentUser.username;
+        order.status = 'captured';
+        order.processedBy = state.currentUser.username;
         saveAndRenderAdmin(orders);
     }
     else if (e.target.classList.contains('set-ordered')) {
-        orders[index].status = 'ordered';
+        // Can add reply if needed, prompt optional
+        // User asked for "Always answer". Let's assume the explicit Reply button handles text, 
+        // OR we can popup a modal for the status change if they want to add a note.
+        // Simplified: Change Status. User can add reply separately via "Antworten".
+        order.status = 'ordered';
         saveAndRenderAdmin(orders);
     }
     else if (e.target.classList.contains('set-rejected')) {
-        const reason = prompt("Grund für Ablehnung:", "Leider nicht lieferbar");
-        if (reason) {
-            orders[index].status = 'rejected';
-            orders[index].adminReply = reason;
-            saveAndRenderAdmin(orders);
-        }
+        // Custom modal without default text
+        const reason = prompt("Grund für Ablehnung (optional):", "");
+        order.status = 'rejected';
+        if (reason) order.adminReply = reason; // Override or append? User implies answering.
+        saveAndRenderAdmin(orders);
+    }
+    else if (e.target.classList.contains('set-captured')) {
+        // Undo
+        order.status = 'captured';
+        saveAndRenderAdmin(orders);
     }
     else if (e.target.classList.contains('submit-reply')) {
         const input = e.target.previousElementSibling;
         if (input) {
-            orders[index].adminReply = input.value;
+            order.adminReply = input.value;
             saveAndRenderAdmin(orders);
+            showModal('Gesendet', 'Antwort wurde gespeichert.');
         }
     }
 }
 
 function saveAndRenderAdmin(orders) {
     localStorage.setItem('orders', JSON.stringify(orders));
-    // Small delay or refresh is instant
     renderAdminDashboard();
 }
 
@@ -784,20 +890,33 @@ function renderAdminDashboard() {
         card.className = 'order-card';
         card.dataset.id = order.id;
 
+        // Common Reply Input (Available for all except maybe Open)
+        const replySection = `
+            <div style="margin-top:10px; display:flex; gap:10px;">
+                <input type="text" placeholder="Nachricht an Kunden..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
+                <button class="btn btn-secondary btn-sm submit-reply">Senden</button>
+            </div>
+        `;
+
         let actionButtons = '';
         if (status === 'open') {
             actionButtons = `<button class="btn btn-primary btn-sm claim-order" data-id="${order.id}">Bearbeiten (Claim)</button>`;
         } else if (status === 'captured') {
             actionButtons = `
-                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                    <input type="text" placeholder="Antwort..." style="flex:1; padding:8px; border-radius:8px; border:1px solid #333; background:#000; color:white;">
-                    <button class="btn btn-secondary btn-sm submit-reply">Antwort senden</button>
-                    <div style="width:100%; display:flex; gap:10px; margin-top:5px;">
-                        <button class="btn btn-primary btn-sm set-ordered" style="background:#3b82f6; flex:1;">Bestellt</button>
-                        <button class="btn btn-danger btn-sm set-rejected" style="flex:1;">Abgelehnt</button>
-                    </div>
+                ${replySection}
+                <div style="width:100%; display:flex; gap:10px; margin-top:5px;">
+                    <button class="btn btn-primary btn-sm set-ordered" style="background:#3b82f6; flex:1;">Bestellt</button>
+                    <button class="btn btn-danger btn-sm set-rejected" style="flex:1;">Abgelehnt</button>
                 </div>
             `;
+        } else if (isFinal) {
+            // Undo capability
+            actionButtons = `
+                ${replySection}
+                <div style="margin-top:10px;">
+                    <button class="btn btn-secondary btn-sm set-captured" style="width:100%">Status zurücksetzen (Undo)</button>
+                </div>
+             `;
         }
 
         card.innerHTML = `
@@ -812,7 +931,7 @@ function renderAdminDashboard() {
                 
                 <div style="margin-top:1rem; text-align:right;">
                    <div style="margin-bottom:1rem; font-weight:bold;">${formatPrice(order.total)}</div>
-                   ${!isFinal ? actionButtons : ''}
+                   ${actionButtons}
                 </div>
             </div>
         `;
