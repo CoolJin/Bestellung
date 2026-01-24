@@ -142,6 +142,7 @@ const state = {
 
 // --- Snuzone Search System ---
 let currentSearchResults = [];
+let searchController = null; // To cancel previous searches
 
 async function handleSearch() {
     const query = elements.snuzoneSearch.value.trim();
@@ -151,6 +152,12 @@ async function handleSearch() {
     const feedback = elements.searchFeedback;
     const grid = elements.snuzoneResultsGrid;
 
+    // Cancel previous search
+    if (searchController) {
+        searchController.abort();
+    }
+    searchController = new AbortController();
+
     // UI Updates
     resultsContainer.classList.remove('hidden');
     feedback.classList.remove('hidden');
@@ -158,15 +165,29 @@ async function handleSearch() {
     grid.innerHTML = ''; // Clear previous
 
     try {
-        const products = await searchSnuzone(query);
+        const products = await searchSnuzone(query, searchController.signal);
+
+        // If aborted, this won't be reached usually due to exception, 
+        // but if we handle it inside searchSnuzone, check signal.
+        if (searchController.signal.aborted) return;
+
         currentSearchResults = products;
 
         feedback.classList.add('hidden');
         renderSearchResults(products);
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Search aborted');
+            return; // Ignore aborts
+        }
         console.error('Search error:', error);
         feedback.innerHTML = `<div class="error-message">Fehler: ${error.message}</div>`;
         grid.innerHTML = '';
+    } finally {
+        // cleanup if this was the active controller
+        if (searchController && !searchController.signal.aborted) {
+            searchController = null;
+        }
     }
 }
 
@@ -177,11 +198,12 @@ function handleClearSearch() {
     elements.snuzoneSearch.focus();
 }
 
-async function searchSnuzone(query) {
+async function searchSnuzone(query, signal) {
     const proxies = [
         {
             name: 'AllOrigins',
-            url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`,
+            // Encode unique timestamp to bust cache if needed
+            url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&t=${Date.now()}`,
             extract: async (res) => {
                 const data = await res.json();
                 return data.contents;
@@ -199,27 +221,44 @@ async function searchSnuzone(query) {
     let usedProxy = null;
 
     for (const proxy of proxies) {
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+
         try {
             console.log(`Trying proxy: ${proxy.name}...`);
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            // We combine the abort signal with a timeout signal for individual proxy strictness
+            const timeoutController = new AbortController();
+            const timeoutId = setTimeout(() => timeoutController.abort(), 8000);
 
-            const response = await fetch(proxy.url(SEARCH_URL), { signal: controller.signal });
-            clearTimeout(timeoutId);
+            // Listen to main signal to abort timeoutController if main aborts
+            const onAbort = () => timeoutController.abort();
+            signal.addEventListener('abort', onAbort);
 
-            if (!response.ok) throw new Error(`Status ${response.status}`);
+            try {
+                const response = await fetch(proxy.url(SEARCH_URL), { signal: timeoutController.signal });
+                clearTimeout(timeoutId);
 
-            htmlContent = await proxy.extract(response);
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+
+                htmlContent = await proxy.extract(response);
+            } finally {
+                clearTimeout(timeoutId);
+                signal.removeEventListener('abort', onAbort);
+            }
+
             if (htmlContent && htmlContent.length > 500) {
                 usedProxy = proxy;
                 break;
             }
         } catch (e) {
+            if (signal.aborted) throw e; // Propagate main abort
             console.warn(`Proxy ${proxy.name} failed:`, e);
         }
     }
 
-    if (!htmlContent) throw new Error('Verbindung zu Snuzone fehlgeschlagen (Alle Proxies blockiert oder Timeout).');
+    if (!htmlContent) {
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        throw new Error('Verbindung zu Snuzone fehlgeschlagen.');
+    }
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -235,69 +274,76 @@ async function searchSnuzone(query) {
     if (links.length === 0) return [];
 
     const productPromises = links.map(async (url) => {
+        if (signal.aborted) return null;
         try {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 6000);
+            // Individual product fetch timeout
+            const timeoutController = new AbortController();
+            const id = setTimeout(() => timeoutController.abort(), 6000);
 
-            const proxyUrl = usedProxy ? usedProxy.url(url) : proxies[0].url(url);
-            const pRes = await fetch(proxyUrl, { signal: controller.signal });
-            clearTimeout(id);
+            const onAbort = () => timeoutController.abort();
+            signal.addEventListener('abort', onAbort);
 
-            const pContent = await (usedProxy ? usedProxy.extract(pRes) : pRes.text());
-            const pDoc = parser.parseFromString(pContent, 'text/html');
+            try {
+                const proxyUrl = usedProxy ? usedProxy.url(url) : proxies[0].url(url);
+                const pRes = await fetch(proxyUrl, { signal: timeoutController.signal });
 
-            const title = pDoc.querySelector('meta[property="og:title"]')?.content ||
-                pDoc.querySelector('h1')?.textContent?.trim() || 'Unbekanntes Produkt';
+                const pContent = await (usedProxy ? usedProxy.extract(pRes) : pRes.text());
+                const pDoc = parser.parseFromString(pContent, 'text/html');
 
-            let image = pDoc.querySelector('meta[property="og:image"]')?.content ||
-                pDoc.querySelector('.product__media img')?.src ||
-                'https://placehold.co/400x300?text=No+Image';
+                const title = pDoc.querySelector('meta[property="og:title"]')?.content ||
+                    pDoc.querySelector('h1')?.textContent?.trim() || 'Unbekanntes Produkt';
 
-            if (image.startsWith('//')) image = 'https:' + image;
+                let image = pDoc.querySelector('meta[property="og:image"]')?.content ||
+                    pDoc.querySelector('.product__media img')?.src ||
+                    'https://placehold.co/400x300?text=No+Image';
 
-            // Flexible Price Parsing
-            let price = 0;
-            const priceMeta = pDoc.querySelector('meta[property="og:price:amount"]');
-            const priceEl = pDoc.querySelector('.price-item--regular, .price-item--sale, .product-price');
+                if (image.startsWith('//')) image = 'https:' + image;
 
-            if (priceMeta) {
-                price = parseFloat(priceMeta.content);
-            } else if (priceEl) {
-                const txt = priceEl.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
-                price = parseFloat(txt) || 0;
-            }
+                // Flexible Price Parsing
+                let price = 0;
+                const priceMeta = pDoc.querySelector('meta[property="og:price:amount"]');
+                const priceEl = pDoc.querySelector('.price-item--regular, .price-item--sale, .product-price');
 
-            // Real Sold Out Detection
-            let isSoldOut = false;
-            // 1. Check Button
-            const addToCartBtn = pDoc.querySelector('button[name="add"], .product-form__submit');
-            if (addToCartBtn && (addToCartBtn.disabled || addToCartBtn.textContent.toLowerCase().includes('ausverkauft') || addToCartBtn.textContent.toLowerCase().includes('sold out'))) {
-                isSoldOut = true;
-            }
-            // 2. Check meta availability
-            const availability = pDoc.querySelector('meta[property="og:availability"]');
-            if (availability && (availability.content.includes('out of stock') || availability.content.includes('OutOfStock'))) {
-                isSoldOut = true;
-            }
-            // 3. Fallback text search
-            if (!isSoldOut) {
-                const info = pDoc.querySelector('.product-info, .product-meta, .product__info-container');
-                if (info && (info.textContent.toLowerCase().includes('ausverkauft') || info.textContent.toLowerCase().includes('currently unavailable'))) {
+                if (priceMeta) {
+                    price = parseFloat(priceMeta.content);
+                } else if (priceEl) {
+                    const txt = priceEl.textContent.trim().replace(/[^0-9,.]/g, '').replace(',', '.');
+                    price = parseFloat(txt) || 0;
+                }
+
+                // Sold Out Logic
+                let isSoldOut = false;
+                const addToCartBtn = pDoc.querySelector('button[name="add"], .product-form__submit');
+                if (addToCartBtn && (addToCartBtn.disabled || addToCartBtn.textContent.toLowerCase().includes('ausverkauft') || addToCartBtn.textContent.toLowerCase().includes('sold out'))) {
                     isSoldOut = true;
                 }
-            }
+                const availability = pDoc.querySelector('meta[property="og:availability"]');
+                if (availability && (availability.content.includes('out of stock') || availability.content.includes('OutOfStock'))) {
+                    isSoldOut = true;
+                }
+                if (!isSoldOut) {
+                    const info = pDoc.querySelector('.product-info, .product-meta, .product__info-container');
+                    if (info && (info.textContent.toLowerCase().includes('ausverkauft') || info.textContent.toLowerCase().includes('currently unavailable'))) {
+                        isSoldOut = true;
+                    }
+                }
 
-            return {
-                id: 'ext-' + Date.now() + Math.random().toString(36).substr(2, 9),
-                name: title,
-                price: price,
-                image: image,
-                desc: 'Importiert von Snuzone',
-                externalUrl: url,
-                soldOut: isSoldOut
-            };
+                return {
+                    id: 'ext-' + Date.now() + Math.random().toString(36).substr(2, 9),
+                    name: title,
+                    price: price,
+                    image: image,
+                    desc: 'Importiert von Snuzone',
+                    externalUrl: url,
+                    soldOut: isSoldOut
+                };
+
+            } finally {
+                clearTimeout(id);
+                signal.removeEventListener('abort', onAbort);
+            }
         } catch (e) {
-            console.warn('Failed to fetch product detail:', url, e);
+            // Ignore single product fails
             return null;
         }
     });

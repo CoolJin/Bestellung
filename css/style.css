@@ -243,12 +243,13 @@ input:focus {
     color: var(--text-muted);
     pointer-events: none;
     font-size: 1.2rem;
+    z-index: 10;
 }
 
 .search-input {
     width: 100%;
-    padding: 14px 45px 14px 45px;
-    /* Space for L and R icons */
+    /* More padding to prevent text overlap with icons */
+    padding: 14px 50px 14px 50px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: 50px;
