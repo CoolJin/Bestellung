@@ -474,10 +474,14 @@ function placeOrder() {
 function renderProfile() {
     const list = elements.profileOrdersList;
     if (!list) return;
+
+    // Check open states before clearing
+    const cancelledOpen = list.querySelector('.archive-container[data-type="cancelled"] .archive-list.open') !== null;
+    const archivedOpen = list.querySelector('.archive-container[data-type="archived"] .archive-list.open') !== null;
+
     list.innerHTML = '';
 
     const all = DB.getOrders().filter(o => o.user === state.currentUser.username).sort((a, b) => b.id.localeCompare(a.id));
-    // Simple ID sort (string desc)
 
     const active = all.filter(o => !o.archivedBy?.includes(state.currentUser.username) && o.status !== 'cancelled');
     const cancelled = all.filter(o => o.status === 'cancelled' && !o.archivedBy?.includes(state.currentUser.username));
@@ -486,18 +490,20 @@ function renderProfile() {
     active.forEach(o => list.appendChild(createOrderCard(o)));
 
     if (cancelled.length > 0) {
-        list.appendChild(createCollapsible('Storniert', cancelled));
+        list.appendChild(createCollapsible('Storniert', cancelled, false, cancelledOpen, 'cancelled'));
     }
 
     if (archived.length > 0) {
-        list.appendChild(createCollapsible('Archiv', archived, true));
+        list.appendChild(createCollapsible('Archiv', archived, true, archivedOpen, 'archived'));
     }
 }
 
-function createCollapsible(title, orders, isArchive) {
+function createCollapsible(title, orders, isArchive, isOpen = false, type = '') {
     const div = document.createElement('div');
     div.className = 'archive-container';
-    div.innerHTML = `<div class="archive-header" onclick="this.nextElementSibling.classList.toggle('open')"><span>${title} (${orders.length})</span><span>▼</span></div><div class="archive-list"></div>`;
+    if (type) div.dataset.type = type; // Mark type for state persistence
+
+    div.innerHTML = `<div class="archive-header" onclick="this.nextElementSibling.classList.toggle('open')"><span>${title} (${orders.length})</span><span>▼</span></div><div class="archive-list ${isOpen ? 'open' : ''}"></div>`;
     const container = div.querySelector('.archive-list');
     orders.forEach(o => container.appendChild(createOrderCard(o, isArchive, title === 'Storniert')));
     return div;
@@ -543,10 +549,10 @@ function handleProfileAction(e) {
     const cls = e.target.classList;
 
     if (cls.contains('cancel-order')) {
-        if (confirm('Stornieren?')) {
+        showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
             DB.updateOrder(id, o => o.status = 'cancelled');
             renderProfile();
-        }
+        });
     }
     if (cls.contains('archive-order')) {
         DB.updateOrder(id, o => { if (!o.archivedBy) o.archivedBy = []; o.archivedBy.push(state.currentUser.username); });
@@ -557,8 +563,10 @@ function handleProfileAction(e) {
         renderProfile();
     }
     if (cls.contains('delete-order')) {
-        if (confirm('Löschen?')) DB.deleteOrder(id);
-        renderProfile();
+        showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
+            DB.deleteOrder(id);
+            renderProfile();
+        });
     }
     if (cls.contains('edit-order')) {
         // logic to restore to cart
@@ -575,6 +583,30 @@ function handleProfileAction(e) {
 }
 
 // --- Missing Implementations ---
+
+function showConfirm(title, msg, onConfirm) {
+    const existing = document.getElementById('custom-confirm-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'custom-confirm-modal';
+    modal.className = 'modal'; // Reuse existing modal style
+    modal.innerHTML = `
+        <div class="modal-content glass-panel">
+            <h3>${title}</h3>
+            <p>${msg}</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Abbrechen</button>
+                <button class="btn btn-primary" id="confirm-yes-btn">Ja</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('confirm-yes-btn').onclick = () => {
+        onConfirm();
+        modal.remove();
+    };
+}
 
 function showModal(title, msg) {
     // Check if a modal already exists
@@ -602,15 +634,8 @@ function renderCatalog() {
     if (!grid) return;
     grid.innerHTML = '';
 
-    // Check if we have manually added products from search, otherwise show prompt
-    if (state.products.length === 0) {
-        grid.innerHTML = `
-            <div style="text-align:center; padding: 2rem; grid-column: 1/-1;">
-                <h3>Willkommen!</h3>
-                <p style="color:var(--text-muted)">Bitte nutzen Sie die Suchen-Funktion oben, um Produkte zu finden.</p>
-            </div>
-        `;
-    } else {
+    // User requested "as it was" -> No welcome text.
+    if (state.products.length > 0) {
         state.products.forEach(p => {
             const card = document.createElement('article');
             card.className = 'product-card';
@@ -620,7 +645,7 @@ function renderCatalog() {
                      <h3>${p.name}</h3>
                      <div class="product-footer">
                          <div class="product-price">${p.price || ''}</div>
-                         <button class="btn btn-primary btn-sm add-to-cart" data-id="${p.id}">Add</button>
+                         <button class="btn btn-primary btn-sm add-to-cart" data-id="${p.id}">Hinzufügen</button>
                      </div>
                  </div>
              `;
@@ -657,14 +682,32 @@ function renderAdminDashboard() {
     });
 }
 
-function handleAdminAction(e) {
-    if (e.target.classList.contains('delete-order')) {
-        const id = e.target.dataset.id;
-        if (confirm('Bestellung ' + id + ' wirklich löschen?')) {
-            DB.deleteOrder(id);
-            renderAdminDashboard();
-        }
-    }
+
+// function handleAdminAction moved to end
+
+
+function showConfirm(title, msg, onConfirm) {
+    const existing = document.getElementById('custom-confirm-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'custom-confirm-modal';
+    modal.className = 'modal'; // Reuse existing modal style
+    modal.innerHTML = `
+        <div class="modal-content glass-panel">
+            <h3>${title}</h3>
+            <p>${msg}</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Abbrechen</button>
+                <button class="btn btn-primary" id="confirm-yes-btn">Ja</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('confirm-yes-btn').onclick = () => {
+        onConfirm();
+        modal.remove();
+    };
 }
 
 // --- Utils ---
