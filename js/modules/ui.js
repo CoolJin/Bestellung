@@ -74,8 +74,23 @@ export const UI = {
         state.cart.forEach((item, index) => {
             const div = document.createElement('div');
             div.className = 'cart-item';
+
+            // Calculate Item Totals
+            let unitPrice = 0;
+            // Parse price "3,45 €" -> 3.45 float
+            if (item.price && typeof item.price === 'string') {
+                unitPrice = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
+            }
+            const lineTotal = (unitPrice * (item.quantity || 1)).toFixed(2).replace('.', ',');
+            const displayUnit = item.price || '0,00 €';
+
             div.innerHTML = `
-                <div style="flex:1"><b>${item.name}</b></div>
+                <div style="flex:1">
+                    <b>${item.name}</b>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 4px;">
+                        ${displayUnit} x ${item.quantity || 1} = <b>${lineTotal} €</b>
+                    </div>
+                </div>
                 <div>
                     <button class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, -1)">-</button>
                     <span style="margin:0 10px">${item.quantity || 1}</span>
