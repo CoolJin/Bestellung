@@ -94,8 +94,27 @@ const DB = {
     },
 
     authenticate(username, password) {
+        console.log(`DB: Authenticating ${username} with ${password}`);
+        console.log('DB: Current Users:', this.state.users);
+
+        // Emergency Fallback: If no users exist at all, create defaults immediately
+        if (!this.state.users || this.state.users.length === 0) {
+            console.warn('DB: No users found during auth. Restoring defaults.');
+            this.state.users = [
+                { username: 'admin', password: '123', role: 'admin' },
+                { username: 'user', password: '123', role: 'user' }
+            ];
+            this.saveData();
+        }
+
         const user = this.state.users.find(u => u.username === username && u.password === password);
-        if (user) return { username: user.username, role: user.role };
+
+        if (user) {
+            console.log('DB: Auth successful', user);
+            return { username: user.username, role: user.role };
+        }
+
+        console.warn('DB: Auth failed for', username);
         return null;
     },
 
