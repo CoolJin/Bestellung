@@ -217,6 +217,14 @@ window.app = {
             DB.updateOrder(id, o => { if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username); });
             UI.renderProfile(this.elements, DB, this.state);
         }
+        if (cls.contains('revive-order')) {
+            DB.updateOrder(id, o => {
+                o.status = 'open';
+                // Also unarchive if implicit
+                if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
+            });
+            UI.renderProfile(this.elements, DB, this.state);
+        }
         if (cls.contains('delete-order')) {
             UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
                 DB.deleteOrder(id);

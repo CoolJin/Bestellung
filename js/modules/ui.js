@@ -92,9 +92,9 @@ export const UI = {
 
             div.innerHTML = `
                 <div style="flex:1">
-                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <div style="display:flex; justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: 4px;">
                         <b>${item.name}</b>
-                        <span style="font-size: 0.85em; color: var(--text-muted); margin-left: 8px;">${displayUnit} / Stück</span>
+                        <span style="font-size: 0.85em; color: var(--text-muted);">${displayUnit} / Stück</span>
                     </div>
                     <div style="font-weight: 700;">
                         ${lineTotalStr} €
@@ -227,7 +227,9 @@ export const UI = {
             btns = `<button class="btn btn-secondary btn-sm restore-order" data-id="${order.id}">Wiederherstellen</button>
                     <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</button>`;
         } else if (order.status === 'cancelled') {
-            btns = `<button class="btn btn-secondary btn-sm archive-order" data-id="${order.id}">Archivieren</button>`;
+            // User wants "Erneut bestellen" (Restore) and "Löschen"
+            btns = `<button class="btn btn-secondary btn-sm revive-order" data-id="${order.id}">Erneut bestellen</button>
+                    <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</button>`;
         } else {
             // Active
             if (order.status === 'open' || order.status === 'captured') {
@@ -254,22 +256,31 @@ export const UI = {
             displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
         }
 
+        // Date Format: Remove Seconds
+        let dateStr = order.date;
+        try {
+            // Assume format "D.M.YYYY, HH:MM:SS"
+            const parts = dateStr.split(', ');
+            if (parts.length > 1) {
+                const timeParts = parts[1].split(':');
+                if (timeParts.length >= 2) {
+                    dateStr = `${parts[0]}, ${timeParts[0]}:${timeParts[1]}`;
+                }
+            }
+        } catch (e) { }
+
         card.innerHTML = `
             <div class="order-header">
                 <span class="order-id-span">${order.id} <span class="status-badge status-${order.status}">${order.status}</span></span>
-                <span>${order.date}</span>
-                <span style="font-weight:700; color:var(--primary-color)">${displayTotal}</span>
+                <span>${dateStr}</span>
+                <!-- Header Total removed as per request -->
             </div>
             <div class="order-body">
                  <ul class="order-items-list">
                     ${order.items.map(i => {
             let p = i.price || '0,00 €';
-            let lineSumStr = '';
-            // active calc for line item total if we want to show it? User asked for total price list.
-            // "Der Gesamtpreis wird trotzdem nicht berechnet" -> usually refers to the order total.
-            // user also said "product name... direct right... unit price".
             return `<li>
-                            <div style="display:flex; justify-content:space-between; width:100%">
+                            <div style="display:grid; grid-template-columns: 1fr auto; gap: 20px; width:100%">
                                 <span>${i.quantity}x ${i.name}</span>
                                 <span class="text-muted" style="font-size:0.9em">${p} / Stück</span>
                             </div>
