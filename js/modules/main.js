@@ -16,7 +16,17 @@ window.app = {
     currentView: 'login',
 
     async init() {
-        await DB.init();
+        try {
+            await DB.init();
+        } catch (e) {
+            console.error('Startup Error:', e);
+            document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center;">
+                <h1>Fehler beim Starten</h1>
+                <p>${e.message}</p>
+                <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
+            </div>`;
+            return;
+        }
 
         this.views = {
             login: document.getElementById('login-view'),

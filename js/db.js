@@ -14,6 +14,9 @@ const DB = {
 
     async init() {
         console.log('DB: Initializing Supabase...');
+        if (!supabaseClient) {
+            throw new Error('Supabase SDK konnte nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.');
+        }
         await this.refreshData();
         console.log('DB: Data loaded from Cloud');
     },
