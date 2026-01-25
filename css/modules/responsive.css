@@ -1,0 +1,43 @@
+/* Responsive Design */
+
+/* Desktop Overrides */
+@media (min-width: 769px) {
+    .floating-nav {
+        /* Desktop: Top Nav */
+        bottom: auto;
+        top: 24px;
+    }
+
+    body {
+        padding-bottom: 0;
+        padding-top: 100px;
+    }
+
+    .admin-panel {
+        display: block;
+        /* Remove grid to allow full width as requested */
+    }
+}
+
+/* Mobile Overrides */
+@media (max-width: 768px) {
+    .nav-container {
+        justify-content: center;
+        /* Center items on mobile */
+        gap: 15px;
+    }
+
+    .floating-nav {
+        /* Ensure it's reachable on bottom */
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .nav-link {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+}

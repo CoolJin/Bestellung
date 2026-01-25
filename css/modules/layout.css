@@ -1,0 +1,86 @@
+/* Layout */
+#app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.view.hidden {
+    display: none;
+    opacity: 0;
+}
+
+.view {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cards & Containers - Global */
+.card,
+.product-card,
+.login-card,
+.admin-section {
+    background: var(--surface-color);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+}
+
+/* Login Layout */
+.login-card {
+    max-width: 400px;
+    margin: 10vh auto;
+    text-align: center;
+}
+
+/* Admin/Profile Panel Layout */
+#profile-orders-list {
+    display: flex;
+    flex-direction: column !important;
+    gap: 15px;
+    width: 100%;
+}
+
+.order-card {
+    width: 100%;
+    max-width: 100%;
+}
+
+.archive-container {
+    width: 100%;
+    margin-top: 2rem;
+    order: 999;
+}
+
+.admin-panel {
+    display: grid;
+    /* Defined here, but overridden in responsive or separate admin module */
+    gap: 24px;
+}
+
+/* Search Header Layout */
+.header-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* Product Grid Layout */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}

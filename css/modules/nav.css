@@ -1,0 +1,52 @@
+/* Glassmorphism Floating Nav */
+.floating-nav {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    padding: 12px 24px;
+    border-radius: 50px;
+    display: flex;
+    flex-direction: row;
+    /* Force horizontal */
+    align-items: center;
+    /* Prevent vertical stretch */
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    width: max-content;
+    /* Ensure it only takes needed space */
+    max-width: 90vw;
+    /* Prevent overflow on small screens */
+    height: auto;
+    /* Prevent full height */
+    flex-wrap: wrap;
+    /* Handle many items gracefully */
+    justify-content: center;
+}
+
+.nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+    color: white;
+    background: var(--primary-color);
+    box-shadow: 0 0 15px var(--accent-glow);
+}

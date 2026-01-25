@@ -1,0 +1,28 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    overflow-y: scroll;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding-bottom: 100px;
+    /* Space for bottom nav */
+}
+
+/* Typography */
+h1,
+h2,
+h3 {
+    color: white;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
