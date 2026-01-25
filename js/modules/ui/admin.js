@@ -102,15 +102,15 @@ export const AdminUI = {
                 </div>
             `;
 
-            // Handlers (Create/Delete/View)
-            content.querySelector('#create-user-btn').onclick = () => {
+            // Handlers (Create/Delete/View) - Now Async
+            content.querySelector('#create-user-btn').onclick = async () => {
                 const nameIn = content.querySelector('#new-user-name');
                 const passIn = content.querySelector('#new-user-pass');
                 const username = nameIn.value.trim();
                 const password = passIn.value.trim();
                 if (!username || !password) return CoreUI.showModal('Fehler', 'Bitte Name und Passwort eingeben');
                 try {
-                    DB.createUser(username, password);
+                    await DB.createUser(username, password);
                     selfRender(elements, DB, showConfirm, selfRender);
                 } catch (e) {
                     CoreUI.showModal('Fehler', e.message);
@@ -119,8 +119,8 @@ export const AdminUI = {
             content.querySelectorAll('.delete-user').forEach(btn => {
                 btn.onclick = () => {
                     const u = btn.dataset.user;
-                    showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, () => {
-                        DB.deleteUser(u);
+                    showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, async () => {
+                        await DB.deleteUser(u);
                         selfRender(elements, DB, showConfirm, selfRender);
                     });
                 };
@@ -164,8 +164,8 @@ export const AdminUI = {
 
                     showAdminModal('Rolle ändern?', `
                         Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?
-                    `, (modal) => {
-                        DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
+                    `, async (modal) => {
+                        await DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
                         selfRender(elements, DB, showConfirm, selfRender);
                     });
                 };
@@ -180,11 +180,11 @@ export const AdminUI = {
                             <input type="text" id="modal-pw-1" placeholder="Neues Passwort" style="width:100%;">
                             <input type="text" id="modal-pw-2" placeholder="Passwort bestätigen" style="width:100%;">
                         </div>
-                    `, (modal) => {
+                    `, async (modal) => {
                         const p1 = modal.querySelector('#modal-pw-1').value.trim();
                         const p2 = modal.querySelector('#modal-pw-2').value.trim();
                         if (p1 && p1 === p2) {
-                            DB.updateUser(username, { password: p1 });
+                            await DB.updateUser(username, { password: p1 });
                             selfRender(elements, DB, showConfirm, selfRender);
                         } else {
                             CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein oder sind leer.');
@@ -197,7 +197,7 @@ export const AdminUI = {
 
         // --- ORDERS TAB ---
         let orders = DB.getOrders()
-            .filter(o => !o.deletedByAdmin) // Filter out orders deleted by admin
+            .filter(o => !o.deletedByAdmin)
             .sort((a, b) => b.id.localeCompare(a.id));
 
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
@@ -244,7 +244,6 @@ export const AdminUI = {
                 displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
             }
 
-            // Date Format: Remove Seconds if present
             let dateStr = o.date;
             try {
                 const parts = dateStr.split(', ');
@@ -312,5 +311,35 @@ export const AdminUI = {
              `;
             content.appendChild(div);
         });
+
+        // Event Delegator for Admin Actions (Orders) - Handlers
+        list.onclick = async (e) => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+
+            if (e.target.classList.contains('reject-order')) {
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
+                await DB.updateOrder(id, o => o.status = newStatus);
+                selfRender(elements, DB, showConfirm, selfRender);
+            }
+            if (e.target.classList.contains('confirm-order')) {
+                const currentStatus = e.target.dataset.status;
+                const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
+                await DB.updateOrder(id, o => o.status = newStatus);
+                selfRender(elements, DB, showConfirm, selfRender);
+            }
+            if (e.target.classList.contains('toggle-paid')) {
+                await DB.updateOrder(id, o => o.paid = !o.paid);
+                selfRender(elements, DB, showConfirm, selfRender);
+            }
+            if (e.target.classList.contains('save-note-btn')) {
+                const noteInput = list.querySelector(`.admin-note-input[data-id="${id}"]`);
+                if (noteInput) {
+                    await DB.updateOrder(id, o => o.adminNote = noteInput.value);
+                    CoreUI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
+                }
+            }
+        };
     }
 };

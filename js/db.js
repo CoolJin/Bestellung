@@ -1,94 +1,31 @@
 /**
- * Database Module (db.js)
- * Handles data persistence using localStorage, initialized from data.json.
- * Simulates a file-based database.
+ * Database Module (db.js) - Refactored for Supabase
+ * Handles data persistence using Supabase Cloud Database.
+ * All methods are now ASYNC.
  */
 
-const DB = {
-    // Keys
-    KEYS: {
-        DATA: 'app_data_v1', // Unified store or keep separate? Let's keep keys separate for cleaner LS, but init from JSON.
-        USERS: 'users',
-        ORDERS: 'orders',
-        SESSION: 'session'
-    },
+import { supabaseClient } from './supabase-client.js';
 
+const DB = {
     state: {
         users: [],
         orders: []
     },
 
     async init() {
-        // Try to load from LocalStorage first
-        const localUsers = localStorage.getItem(this.KEYS.USERS);
-        const localOrders = localStorage.getItem(this.KEYS.ORDERS);
-
-        let usersLoaded = false;
-        let ordersLoaded = false;
-
-        if (localUsers) {
-            try {
-                this.state.users = JSON.parse(localUsers);
-                usersLoaded = true;
-                console.log('DB: Users loaded from LocalStorage');
-            } catch (e) {
-                console.error('DB: Error parsing users from LS', e);
-            }
-        }
-
-        if (localOrders) {
-            try {
-                this.state.orders = JSON.parse(localOrders);
-                ordersLoaded = true;
-                console.log('DB: Orders loaded from LocalStorage');
-            } catch (e) {
-                console.error('DB: Error parsing orders from LS', e);
-            }
-        }
-
-        // If either is missing, try to fetch default data for missing parts
-        if (!usersLoaded || !ordersLoaded) {
-            try {
-                const res = await fetch('data/data.json');
-                if (res.ok) {
-                    const data = await res.json();
-
-                    // Only overwrite if not already loaded from LS
-                    if (!usersLoaded) {
-                        this.state.users = data.users || [];
-                        // Fallback defaults if JSON empty
-                        if (this.state.users.length === 0) {
-                            this.state.users = [
-                                { username: 'admin', password: '123', role: 'admin' },
-                                { username: 'user', password: '123', role: 'user' }
-                            ];
-                        }
-                    }
-
-                    if (!ordersLoaded) {
-                        this.state.orders = data.orders || [];
-                    }
-
-                    this.saveData(); // Save normalized data
-                    console.log('DB: Initialized missing data from defaults');
-                }
-            } catch (e) {
-                console.error('DB: Failed to load defaults.', e);
-                // Emergency defaults
-                if (!usersLoaded) {
-                    this.state.users = [
-                        { username: 'admin', password: '123', role: 'admin' },
-                        { username: 'user', password: '123', role: 'user' }
-                    ];
-                }
-                this.saveData();
-            }
-        }
+        console.log('DB: Initializing Supabase...');
+        await this.refreshData();
+        console.log('DB: Data loaded from Cloud');
     },
 
-    saveData() {
-        localStorage.setItem(this.KEYS.USERS, JSON.stringify(this.state.users));
-        localStorage.setItem(this.KEYS.ORDERS, JSON.stringify(this.state.orders));
+    async refreshData() {
+        const { data: users, error: userError } = await supabaseClient.from('users').select('*');
+        if (userError) console.error('DB: Error fetching users', userError);
+        else this.state.users = users || [];
+
+        const { data: orders, error: orderError } = await supabaseClient.from('orders').select('*');
+        if (orderError) console.error('DB: Error fetching orders', orderError);
+        else this.state.orders = orders || [];
     },
 
     // --- Users ---
@@ -96,54 +33,79 @@ const DB = {
         return this.state.users;
     },
 
-    createUser(username, password) {
+    async createUser(username, password) {
         if (this.state.users.find(u => u.username === username)) {
             throw new Error('Benutzer existiert bereits');
         }
-        this.state.users.push({ username, password, role: 'user' });
-        this.saveData();
+
+        const newUser = { username, password, role: 'user' };
+
+        // Optimistic Update
+        this.state.users.push(newUser);
+
+        const { error } = await supabaseClient.from('users').insert([newUser]);
+        if (error) {
+            console.error('DB: Create User Error', error);
+            // Rollback
+            this.state.users = this.state.users.filter(u => u.username !== username);
+            throw new Error('Fehler beim Erstellen des Benutzers: ' + error.message);
+        }
     },
 
-    deleteUser(username) {
+    async deleteUser(username) {
+        // Optimistic
         this.state.users = this.state.users.filter(u => u.username !== username);
-        this.saveData();
+
+        const { error } = await supabaseClient.from('users').delete().eq('username', username);
+        if (error) {
+            console.error('DB: Delete User Error', error);
+            await this.refreshData(); // Rollback by refresh
+        }
     },
 
-    updateUser(username, updates) {
+    async updateUser(username, updates) {
         const user = this.state.users.find(u => u.username === username);
         if (!user) throw new Error('User not found');
         Object.assign(user, updates);
-        this.saveData();
+
+        const { error } = await supabaseClient.from('users').update(updates).eq('username', username);
+        if (error) {
+            console.error('DB: Update User Error', error);
+            await this.refreshData();
+        }
     },
 
-    authenticate(username, password) {
-        console.log(`DB: Authenticating ${username} with ${password}`);
-        console.log('DB: Current Users:', this.state.users);
+    async authenticate(username, password) {
+        // We can still use local state for fast auth checked against loaded users,
+        // or strictly await fetch. For speed, we check local state (which is synced on init).
+        // But to be safe against new users from other devices, let's re-fetch if not found?
+        // Or just trust init() + realtime (future).
+        // Let's rely on state populated by init().
 
-        // Emergency Fallback: If no users exist at all, create defaults immediately
-        if (!this.state.users || this.state.users.length === 0) {
-            console.warn('DB: No users found during auth. Restoring defaults.');
-            this.state.users = [
-                { username: 'admin', password: '123', role: 'admin' },
-                { username: 'user', password: '123', role: 'user' }
-            ];
-            this.saveData();
+        let user = this.state.users.find(u => u.username === username && u.password === password);
+
+        if (!user) {
+            // Try fetching fresh just in case
+            const { data } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).single();
+            if (data) {
+                user = data;
+                // Update local list if missing
+                if (!this.state.users.find(u => u.username === user.username)) {
+                    this.state.users.push(user);
+                }
+            }
         }
-
-        const user = this.state.users.find(u => u.username === username && u.password === password);
 
         if (user) {
             console.log('DB: Auth successful', user);
             return { username: user.username, role: user.role };
         }
-
-        console.warn('DB: Auth failed for', username);
         return null;
     },
 
     // --- Session ---
     saveSession(user) {
-        localStorage.setItem(this.KEYS.SESSION, JSON.stringify({
+        localStorage.setItem('session_v2', JSON.stringify({
             user,
             lastActive: Date.now()
         }));
@@ -151,18 +113,16 @@ const DB = {
 
     getSession() {
         try {
-            const data = localStorage.getItem(this.KEYS.SESSION);
+            const data = localStorage.getItem('session_v2');
             if (!data) return null;
             const session = JSON.parse(data);
             const now = Date.now();
-            // 15 Minutes Timeout
-            if (now - session.lastActive > 900000) {
+            if (now - session.lastActive > 900000) { // 15 min
                 this.clearSession();
                 return null;
             }
-            // Update last active
             session.lastActive = now;
-            localStorage.setItem(this.KEYS.SESSION, JSON.stringify(session));
+            localStorage.setItem('session_v2', JSON.stringify(session));
             return session.user;
         } catch (e) {
             return null;
@@ -170,16 +130,16 @@ const DB = {
     },
 
     updateSessionActivity() {
-        const data = localStorage.getItem(this.KEYS.SESSION);
+        const data = localStorage.getItem('session_v2');
         if (data) {
             const session = JSON.parse(data);
             session.lastActive = Date.now();
-            localStorage.setItem(this.KEYS.SESSION, JSON.stringify(session));
+            localStorage.setItem('session_v2', JSON.stringify(session));
         }
     },
 
     clearSession() {
-        localStorage.removeItem(this.KEYS.SESSION);
+        localStorage.removeItem('session_v2');
     },
 
     // --- Orders ---
@@ -187,24 +147,67 @@ const DB = {
         return this.state.orders;
     },
 
-    saveOrder(order) {
-        this.state.orders.push(order);
-        this.saveData();
+    async saveOrder(order) {
+        // Map app order object to DB schema
+        // App uses: id, user, total, status, items, date, paid, adminNote
+        // DB uses: id, user_id (FK), total, status, items (jsonb), date, paid, admin_note
+
+        const dbOrder = {
+            id: order.id,
+            user_id: order.user,
+            status: order.status,
+            total: order.total,
+            items: order.items,
+            date: order.date,
+            paid: order.paid || false,
+            admin_note: order.adminNote || '',
+            archived_by: order.archivedBy || [],
+            deleted_by_admin: order.deletedByAdmin || false
+        };
+
+        this.state.orders.push(order); // Optimistic
+
+        const { error } = await supabaseClient.from('orders').insert([dbOrder]);
+        if (error) {
+            console.error('DB: Save Order Error', error);
+            this.state.orders = this.state.orders.filter(o => o.id !== order.id);
+            throw new Error('Fehler beim Speichern der Bestellung');
+        }
     },
 
-    updateOrder(id, mutator) {
+    async updateOrder(id, mutator) {
         const order = this.state.orders.find(o => String(o.id) === String(id));
         if (order) {
-            mutator(order);
-            this.saveData();
+            mutator(order); // Update local object in place
+
+            // Prepare partial update for DB
+            const dbUpdate = {};
+            // Map fields back to DB columns
+            if (order.status !== undefined) dbUpdate.status = order.status;
+            if (order.paid !== undefined) dbUpdate.paid = order.paid;
+            if (order.adminNote !== undefined) dbUpdate.admin_note = order.adminNote;
+            if (order.deletedByAdmin !== undefined) dbUpdate.deleted_by_admin = order.deletedByAdmin;
+            if (order.archivedBy !== undefined) dbUpdate.archived_by = order.archivedBy;
+
+            const { error } = await supabaseClient.from('orders').update(dbUpdate).eq('id', id);
+
+            if (error) {
+                console.error('DB: Update Order Error', error);
+                await this.refreshData(); // Revert
+            }
             return true;
         }
         return false;
     },
 
-    deleteOrder(id) {
+    async deleteOrder(id) {
         this.state.orders = this.state.orders.filter(o => String(o.id) !== String(id));
-        this.saveData();
+
+        const { error } = await supabaseClient.from('orders').delete().eq('id', id);
+        if (error) {
+            console.error('DB: Delete Order Error', error);
+            await this.refreshData();
+        }
     },
 
     // --- ID Generation ---
@@ -222,13 +225,11 @@ const DB = {
                 maxId = numPart;
             }
         });
-        // Start explicit numbering if empty, e.g. 1000
         if (maxId === 0) maxId = 1000;
-
         const newIdNum = maxId + 1;
         return '#' + String(newIdNum).padStart(4, '0');
     }
 };
 
-// Export to window for app.js
 window.DB = DB;
+export { DB };

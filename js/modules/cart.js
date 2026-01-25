@@ -36,7 +36,7 @@ export const Cart = {
         }
     },
 
-    placeOrder(state, DB, elements, updateCartCount, navigateTo) {
+    async placeOrder(state, DB, elements, updateCartCount, navigateTo) {
         if (state.cart.length === 0) return UI.showModal('Fehler', 'Warenkorb leer');
         const newId = DB.generateOrderId(state.editingOrderId);
 
@@ -60,11 +60,15 @@ export const Cart = {
             note: elements.orderNote ? elements.orderNote.value : ''
         };
 
-        DB.saveOrder(order);
-        state.cart = [];
-        state.editingOrderId = null;
-        updateCartCount();
-        navigateTo('profile');
-        UI.showModal('Erfolg', 'Bestellung ' + newId);
+        try {
+            await DB.saveOrder(order);
+            state.cart = [];
+            state.editingOrderId = null;
+            updateCartCount();
+            navigateTo('profile');
+            UI.showModal('Erfolg', 'Bestellung ' + newId);
+        } catch (e) {
+            UI.showModal('Fehler', e.message);
+        }
     }
 };

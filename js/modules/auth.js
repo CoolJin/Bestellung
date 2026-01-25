@@ -13,17 +13,17 @@ export const Auth = {
         }
     },
 
-    login(username, password, DB, state, navigateTo, updateUI, elements) {
+    async login(username, password, DB, state, navigateTo, updateUI, elements) {
         elements.loginError.textContent = '';
         const btn = elements.loginForm.querySelector('button');
         btn.textContent = 'Lade...';
         btn.disabled = true;
 
-        setTimeout(() => {
-            btn.textContent = 'Anmelden';
-            btn.disabled = false;
+        // Artificial delay removed or kept? DB call takes time anyway. 
+        // We can keep the structure but await DB.
 
-            const user = DB.authenticate(username, password);
+        try {
+            const user = await DB.authenticate(username, password);
             if (user) {
                 state.currentUser = user;
                 DB.saveSession(user);
@@ -32,7 +32,12 @@ export const Auth = {
             } else {
                 elements.loginError.textContent = 'Ungültige Anmeldedaten';
             }
-        }, 500);
+        } catch (e) {
+            elements.loginError.textContent = 'Login Fehler: ' + e.message;
+        } finally {
+            btn.textContent = 'Anmelden';
+            btn.disabled = false;
+        }
     },
 
     logout(DB, state, navigateTo, updateUI) {
@@ -43,11 +48,11 @@ export const Auth = {
         updateUI();
     },
 
-    handleCreateUser(e, DB, elements) {
+    async handleCreateUser(e, DB, elements) {
         e.preventDefault();
         if (!elements.newUsername || !elements.newPassword) return;
         try {
-            DB.createUser(elements.newUsername.value, elements.newPassword.value);
+            await DB.createUser(elements.newUsername.value, elements.newPassword.value);
             elements.adminMsg.textContent = 'Benutzer erstellt!';
             elements.adminMsg.style.color = 'var(--primary-color)';
             e.target.reset();
