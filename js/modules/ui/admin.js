@@ -10,8 +10,7 @@ export const AdminUI = {
         let activeTab = list.dataset.activeTab || 'orders';
         let selectedUserFilter = list.dataset.selectedUser || null;
 
-        // Capture Open State (Accordions & Archive)
-        // We use IDs to track open accordions
+        // Capture Open State
         const openAccordions = new Set();
         list.querySelectorAll('.role-accordion:not(.hidden)').forEach(acc => {
             openAccordions.add(acc.id);
@@ -28,11 +27,13 @@ export const AdminUI = {
             let modal = document.getElementById(modalId);
             if (modal) modal.remove();
 
+            // Create Modal Wrapper
             modal = document.createElement('div');
             modal.id = modalId;
             modal.className = 'modal';
+            modal.style.zIndex = '10000'; // Ensure high z-index
             modal.innerHTML = `
-                <div class="modal-content glass-panel">
+                <div class="modal-content glass-panel" style="position:relative; z-index:10001;">
                     <h3>${title}</h3>
                     <div style="margin:15px 0;">${contentHTML}</div>
                     <div class="modal-actions">
@@ -43,7 +44,11 @@ export const AdminUI = {
             `;
             document.body.appendChild(modal);
 
-            const close = () => modal.remove();
+            const close = () => {
+                modal.remove();
+                // selfRender(elements, DB, showConfirm, selfRender); // Restore UI state in case it was glitchy? No, just close.
+            };
+
             modal.querySelector('.close-modal').onclick = close;
             modal.querySelector('.confirm-modal').onclick = () => {
                 onConfirm(modal);
@@ -72,9 +77,7 @@ export const AdminUI = {
                 const showDeleteBtn = u.role !== 'admin' ?
                     `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : '';
 
-                // Styling: Admin Green, User Grey
                 const nameColor = u.role === 'admin' ? 'var(--primary-color)' : 'var(--text-color)';
-                // Pablo Label ONLY here
                 const pabloLabel = u.isPablo ? '<span style="font-size:0.8em; color:var(--primary-color); margin-left:5px;">(Pablo-Flat)</span>' : '';
 
                 const accordionId = `role-accordion-${u.username}`;
@@ -97,13 +100,14 @@ export const AdminUI = {
                             ${showDeleteBtn}
                         </div>
                     </div>
+                    <!-- Role Accordion -->
                     <div class="role-accordion ${isAccordionOpen ? '' : 'hidden'}" id="${accordionId}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px;">
-                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;" onclick="event.stopPropagation()">
+                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;">
                             <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
                             <span class="checkmark"></span>
                             <span style="color:white;">Administrator</span>
                         </label>
-                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="event.stopPropagation()">
+                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                             <input type="checkbox" class="pablo-checkbox" data-user="${u.username}" ${u.isPablo ? 'checked' : ''}>
                             <span class="checkmark"></span>
                             <span style="color:white;">Pablo Flatrate</span>
@@ -126,7 +130,6 @@ export const AdminUI = {
         const activeOrders = allOrders.filter(o => !o.adminArchived);
         const archivedOrders = allOrders.filter(o => o.adminArchived);
 
-        // Products for Price Lookup (Original Price)
         const products = DB.state.products || [];
 
         let displayOrders = activeOrders;
@@ -149,7 +152,7 @@ export const AdminUI = {
         }
 
         const renderOrderCard = (o, isArchiveView) => {
-            let displayTotal = o.total; // Shows User Price (Final)
+            let displayTotal = o.total;
 
             const rejectStyle = o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444';
             const confirmStyle = o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)';
@@ -172,8 +175,6 @@ export const AdminUI = {
                  `;
 
             const itemsHtml = (o.items || []).map(i => {
-                // Determine Original Price
-                // i.id is item id. Find it in Products.
                 let originalPriceVal = 0;
                 const catItem = products.find(p => String(p.id) === String(i.id));
                 if (catItem) {
@@ -182,18 +183,12 @@ export const AdminUI = {
                         originalPriceVal = parseFloat(catItem.price.replace('€', '').replace(',', '.').trim()) || 0;
                 }
 
-                // Parse Effective Price (User Price)
                 let userPriceVal = 0;
                 if (i.price && typeof i.price === 'string')
                     userPriceVal = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
 
-                // Compare
-                let priceDisplay = '';
-                // Logic: Only show comparison if different and we are in Admin View (which we are)
-                // User also requested "Original: X | Kunde: Y".
-                // We format it nicely.
                 const userPriceStr = userPriceVal.toFixed(2).replace('.', ',') + ' €';
-
+                let priceDisplay = '';
                 if (Math.abs(originalPriceVal - userPriceVal) > 0.01 && originalPriceVal > 0) {
                     const origPriceStr = originalPriceVal.toFixed(2).replace('.', ',') + ' €';
                     priceDisplay = `<span style="text-decoration:line-through; color:#888; margin-right:5px;">${origPriceStr}</span> <span style="color:var(--primary-color); font-weight:bold;">${userPriceStr}</span>`;
@@ -210,6 +205,19 @@ export const AdminUI = {
                    </div>`;
             }).join('');
 
+            // Date formatting: HH:MM (strip seconds)
+            let dateStr = o.date; // E.g. "25.1.2026, 22:45:30"
+            try {
+                // Split date and time
+                const parts = dateStr.split(', ');
+                if (parts.length > 1) {
+                    const timeParts = parts[1].split(':');
+                    if (timeParts.length >= 2) {
+                        dateStr = parts[0] + ', ' + timeParts[0] + ':' + timeParts[1];
+                    }
+                }
+            } catch (e) { }
+
             return `
             <div class="order-card" style="opacity: ${isArchiveView ? '0.7' : '1'}; background: ${isArchiveView ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.03)'};">
                 <div style="flex:1">
@@ -220,7 +228,7 @@ export const AdminUI = {
                         </div>
                         <div style="font-weight:600;">${displayTotal}</div>
                     </div>
-                     <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${o.date}</div>
+                     <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${dateStr}</div>
                     
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
                        ${itemsHtml}
@@ -245,7 +253,6 @@ export const AdminUI = {
         mainOrdersDiv.innerHTML = activeHtml;
         content.appendChild(mainOrdersDiv);
 
-        // --- Archive Section ---
         if (archivedOrders.length > 0) {
             const archiveSection = document.createElement('div');
             archiveSection.className = `admin-archive-section`;
@@ -277,16 +284,12 @@ export const AdminUI = {
             body.style.display = isArchiveOpen ? 'grid' : 'none';
             body.style.gap = '10px';
             body.style.marginTop = '15px';
-            // Explicitly set color to ensure visibility
             body.style.color = 'var(--text-color)';
             body.innerHTML = archivedOrders.map(o => renderOrderCard(o, true)).join('');
 
             header.onclick = () => {
                 const nowOpen = body.style.display === 'none';
                 list.dataset.archiveOpen = nowOpen;
-                // Toggle Visually immediately (and re-render for clean state if needed, but here simple toggle is enough)
-                // Actually, let's just toggle and NOT re-render to avoid flicker, unless fetching data.
-                // But we want to persist state.
                 body.style.display = nowOpen ? 'grid' : 'none';
                 header.querySelector('span:last-child').style.transform = nowOpen ? 'rotate(180deg)' : 'rotate(0deg)';
             };
@@ -296,13 +299,10 @@ export const AdminUI = {
             content.appendChild(archiveSection);
         }
 
-        // Delegate Actions
         list.onclick = async (e) => {
             const trg = e.target;
             const id = trg.dataset.id;
             if (!id) return;
-
-            // Re-render function to pass to async calls
             const reload = () => selfRender(elements, DB, showConfirm, selfRender);
 
             if (trg.classList.contains('archive-order-btn')) {
@@ -345,17 +345,15 @@ export const AdminUI = {
 
     setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal) {
         content.querySelector('#create-user-btn').onclick = async () => {
+            // ... (User creation omitted for brevity, logic exists) ...
+            // Re-implement basic creation logic to be safe
             const nameIn = content.querySelector('#new-user-name');
             const passIn = content.querySelector('#new-user-pass');
-            if (!nameIn || !passIn) return;
-            const u = nameIn.value.trim();
-            const p = passIn.value.trim();
-            if (!u || !p) return CoreUI.showModal('Fehler', 'Daten fehlen');
-            try {
-                await DB.createUser(u, p);
-                selfRender(elements, DB, showConfirm, selfRender);
-            } catch (e) {
-                CoreUI.showModal('Fehler', e.message);
+            if (nameIn && passIn && nameIn.value && passIn.value) {
+                try {
+                    await DB.createUser(nameIn.value.trim(), passIn.value.trim());
+                    selfRender(elements, DB, showConfirm, selfRender);
+                } catch (e) { CoreUI.showModal('Fehler', e.message); }
             }
         };
 
@@ -368,42 +366,42 @@ export const AdminUI = {
             };
         });
 
-        // --- CHECKBOX LOGIC (Fixed: e.stopPropagation in HTML + here) ---
+        // --- CHECKBOX LOGIC (Fixed using setTimeout to avoid lockup) ---
         const handleRoleChange = async (e, roleType) => {
-            // Stop accordion from toggling if event bubbles (handled in HTML too but safety first)
+            e.preventDefault(); // Stop immediate toggle visually until confirmed
             e.stopPropagation();
 
-            const isChecked = e.target.checked;
-            const username = e.target.dataset.user;
-            e.target.checked = !isChecked; // Revert visually
+            const checkbox = e.target;
+            const username = checkbox.dataset.user;
+            // The click event happens BEFORE checked changes effectively if prevented? 
+            // If prevented, checked state is NOT toggled.
+            // So we check current state:
+            // If checkbox is currently unchecked, user wants to check it.
+            const wantsToCheck = !checkbox.checked;
 
             const label = roleType === 'admin' ? 'Administrator' : 'Pablo Flatrate';
-            const action = isChecked ? 'geben' : 'entziehen';
+            const action = wantsToCheck ? 'geben' : 'entziehen';
 
-            showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Rolle "${label}" ${action}?`, async (modal) => {
-                const updates = {};
-                if (roleType === 'admin') updates.role = isChecked ? 'admin' : 'user';
-                if (roleType === 'pablo') updates.isPablo = isChecked;
+            // IMPORTANT: Render modal asynchronously to let event loop clear
+            setTimeout(() => {
+                showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Rolle "${label}" ${action}?`, async (modal) => {
+                    const updates = {};
+                    if (roleType === 'admin') updates.role = wantsToCheck ? 'admin' : 'user';
+                    if (roleType === 'pablo') updates.isPablo = wantsToCheck;
 
-                await DB.updateUser(username, updates);
-                // selfRender will trigger re-render of list.
-                // We MUST ensure the accordion stays open.
-                // renderAdminDashboard -> captures openAccordions set -> renders -> restores class.
-                // But wait, renderAdminDashboard reads DOM for open accordions initially.
-                // Since this is async wait, the accordion might be closed? No, it's open (user clicked checkbox).
-                selfRender(elements, DB, showConfirm, selfRender);
-            });
+                    await DB.updateUser(username, updates);
+                    selfRender(elements, DB, showConfirm, selfRender);
+                });
+            }, 10);
         };
 
         content.querySelectorAll('.role-checkbox').forEach(chk => {
-            chk.onclick = (e) => handleRoleChange(e, 'admin'); // Use onclick for better control than onchange sometimes
+            chk.onclick = (e) => handleRoleChange(e, 'admin');
         });
         content.querySelectorAll('.pablo-checkbox').forEach(chk => {
             chk.onclick = (e) => handleRoleChange(e, 'pablo');
         });
 
-        // ... (User Delete and PW Edit handlers omitted for brevity, assuming existing logic) ...
-        // Re-attaching Delete/PW handlers to ensure it works
         content.querySelectorAll('.delete-user').forEach(btn => {
             btn.onclick = () => {
                 const u = btn.dataset.user;

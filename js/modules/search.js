@@ -1,137 +1,68 @@
 // --- js/modules/search.js ---
+import { UI } from './ui/ui.js';
+import { ProductsUI } from './ui/products.js'; // Might move render logic here
+import { Cart } from './cart.js'; // Import Cart for Pricing calculation
+
 export const Search = {
-    controller: null,
-    results: [],
+    init(state, elements, addToCart) {
+        this.state = state;
+        this.elements = elements;
+        this.addToCart = addToCart;
 
-    async handleSearch(query, elements, renderSearchResults, clearSearch) {
-        if (!query) return clearSearch();
-
-        const resultsContainer = document.getElementById('search-results');
-        const feedback = elements.searchFeedback;
-        const grid = elements.snuzoneResultsGrid;
-
-        if (this.controller) this.controller.abort();
-        this.controller = new AbortController();
-
-        resultsContainer.classList.remove('hidden');
-        feedback.classList.remove('hidden');
-        feedback.innerHTML = '<span class="loader"></span> Suche läuft...';
-        grid.innerHTML = '';
-
-        try {
-            const products = await this.searchSnuzone(query, this.controller.signal);
-            if (this.controller.signal.aborted) return;
-
-            this.results = products;
-            feedback.innerHTML = '';
-            feedback.classList.add('hidden');
-            renderSearchResults(products);
-        } catch (error) {
-            if (error.name === 'AbortError') return;
-            feedback.innerHTML = `<div class="error-message">${error.message}</div>`;
+        if (elements.searchInput) {
+            elements.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
         }
     },
 
-    clearSearch(elements) {
-        elements.snuzoneSearch.value = '';
-        document.getElementById('search-results').classList.add('hidden');
-        elements.searchFeedback.classList.add('hidden');
-    },
-
-    async searchSnuzone(query, signal) {
-        const proxies = [
-            { url: (q) => `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(q)}`, extractor: async (r) => await r.text() },
-            { url: (q) => `https://api.allorigins.win/get?url=${encodeURIComponent('https://snuzone.com/search?q=' + q)}`, extractor: async (r) => (await r.json()).contents }
-        ];
-
-        let html = null;
-        for (const proxy of proxies) {
-            if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 6000);
-                const onAbort = () => controller.abort();
-                signal.addEventListener('abort', onAbort);
-
-                const res = await fetch(proxy.url(query), { signal: controller.signal });
-                clearTimeout(timeout);
-                if (!res.ok) throw new Error('Status ' + res.status);
-
-                html = await proxy.extractor(res);
-                signal.removeEventListener('abort', onAbort);
-
-                if (html && html.length > 500) break;
-            } catch (e) {
-                console.warn('Proxy failed', e);
-            }
+    handleSearch(query) {
+        query = query.toLowerCase();
+        if (query.length < 1) {
+            // Show Catalog (Initial 12) if empty
+            // We reuse renderSearchResults logic or custom?
+            // User requested "Show all" initially.
+            this.renderSearchResults(this.state.products.slice(0, 12));
+            return;
         }
 
-        if (!html) throw new Error('Keine Verbindung zu Snuzone.');
+        const results = this.state.products.filter(p => {
+            return p.name.toLowerCase().includes(query);
+            // Ignore description for now if unnecessary
+        });
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+        this.renderSearchResults(results);
+    },
 
-        // Parse Search Results Grid directly (No detail fetches needed)
-        const productsItems = Array.from(doc.querySelectorAll('.grid-product'));
+    renderSearchResults(products) {
+        // Calculate Effective Prices for Products before rendering
+        // Use currentUser from state
+        const processedProducts = products.map(p => {
+            // Clone
+            const item = { ...p };
+            const price = Cart.calculatePrice(item, this.state.currentUser);
+            item.price = price.toFixed(2).replace('.', ',') + ' €';
+            return item;
+        });
 
-        const details = productsItems.map(el => {
-            try {
-                let p = {};
+        ProductsUI.renderSearchResults(processedProducts, this.elements);
 
-                // Strategy 1: Wishlist JSON Data (Most Reliable)
-                const wishlistBtn = el.querySelector('button[data-component="WishlistButton"]');
-                if (wishlistBtn && wishlistBtn.dataset.props) {
-                    try {
-                        const props = JSON.parse(wishlistBtn.dataset.props);
-                        p.name = props.dt;
-                        p.price = props.pr ? props.pr.toFixed(2).replace('.', ',') + ' €' : 'Ausverkauft';
-                        // Fix Image URL (remove params like ?v=...)
-                        let img = props.iu;
-                        if (img) {
-                            if (img.startsWith('//')) img = 'https:' + img;
-                            p.image = img.split('?')[0];
-                        }
-                        p.soldOut = false;
-                        if (props.stk !== undefined && props.stk === 0) p.soldOut = true;
-                    } catch (e) { }
-                }
-
-                // Strategy 2: DOM fallback
-                if (!p.name) {
-                    p.name = el.querySelector('.grid-product__title')?.textContent?.trim() || 'Produkt';
-                }
-                if (!p.price) {
-                    const priceEl = el.querySelector('.product-price');
-                    if (priceEl) p.price = priceEl.textContent.trim().replace(/\n/g, '').replace(/ +/g, ' ');
-                    if (!p.price || p.price === '') p.price = 'Preis auf Anfrage';
-                }
-                if (!p.image) {
-                    const imgDiv = el.querySelector('.grid__image-ratio');
-                    if (imgDiv && imgDiv.dataset.bgset) {
-                        // bgset format: "//url 180w, //url 360w"
-                        const firstUrl = imgDiv.dataset.bgset.split(',')[0].trim().split(' ')[0];
-                        if (firstUrl) p.image = 'https:' + firstUrl;
+        // Setup Handlers (Add Button)
+        const grid = this.elements.snuzoneResultsGrid;
+        if (grid) {
+            grid.querySelectorAll('.add-external').forEach(btn => {
+                btn.onclick = () => {
+                    const index = btn.dataset.index;
+                    // Note: index matches passed array. 
+                    // ProductsUI renders using index of passed array.
+                    const product = processedProducts[index];
+                    if (product) {
+                        this.addToCart(product, 1, this.state, () => {
+                            // Update cart count UI helper
+                            const count = this.state.cart.reduce((a, b) => a + (b.quantity || 1), 0);
+                            if (this.elements.cartCount) this.elements.cartCount.textContent = count;
+                        });
                     }
-                }
-
-                // Final Sold Out Check
-                if (p.soldOut === undefined) {
-                    const badge = el.querySelector('.grid-product__tag--sold-out') || el.querySelector('.sold-out-badge');
-                    if (badge) p.soldOut = true;
-                    if (p.price && p.price.toLowerCase().includes('ausverkauft')) p.soldOut = true;
-                }
-
-                return {
-                    id: 'ext-' + Math.random().toString(36),
-                    name: p.name,
-                    price: p.price,
-                    image: p.image || 'https://placehold.co/300x300?text=No+Image',
-                    soldOut: !!p.soldOut,
-                    desc: 'Snuzone Import'
                 };
-            } catch (e) { return null; }
-        }).filter(item => item && item.name !== 'Produkt').slice(0, 12);
-
-        return details;
+            });
+        }
     }
 };
