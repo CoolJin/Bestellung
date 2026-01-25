@@ -103,30 +103,8 @@
 
         <!-- Admin -->
         <section id="admin-dashboard-view" class="view hidden">
-            <h1 style="margin-bottom: 2rem;">Dashboard</h1>
-
-            <div class="admin-panel">
-                <div class="admin-section">
-                    <h3>Benutzer erstellen</h3>
-                    <form id="create-user-form" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label>Neuer Benutzername</label>
-                            <input type="text" id="new-username" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Passwort</label>
-                            <input type="text" id="new-password" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Erstellen</button>
-                        <div id="admin-msg" style="color: var(--primary-color); margin-top: 0.5rem;"></div>
-                    </form>
-                </div>
-
-                <div class="admin-section">
-                    <h3>Bestellungen</h3>
-                    <div id="orders-list"></div>
-                </div>
-            </div>
+            <!-- Dynamic Content injected into orders-list -->
+            <div id="orders-list" class="admin-panel"></div>
         </section>
 
     </main>

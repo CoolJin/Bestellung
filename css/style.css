@@ -462,7 +462,8 @@ input:focus {
     }
 
     .admin-panel {
-        grid-template-columns: 1fr 2fr;
+        display: block;
+        /* Remove grid to allow full width for single view */
     }
 }
 
