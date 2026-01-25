@@ -252,6 +252,12 @@ window.app = {
                     // Assuming append is okay or user wants to "Load back".
                     // Code below adds items.
                     o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
+
+                    // Restore Note
+                    if (o.note && this.elements.orderNote) {
+                        this.elements.orderNote.value = o.note;
+                    }
+
                     DB.deleteOrder(id);
                     this.navigateTo('cart');
                     UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');

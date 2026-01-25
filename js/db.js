@@ -1,7 +1,5 @@
 /**
- * Database Module (db.js) - Refactored for Supabase
- * Handles data persistence using Supabase Cloud Database.
- * All methods are now ASYNC.
+ * Database Module (db.js) - Refactored for Supabase & Cloud Cart
  */
 
 import { supabaseClient } from './supabase-client.js';
@@ -41,7 +39,7 @@ const DB = {
             throw new Error('Benutzer existiert bereits');
         }
 
-        const newUser = { username, password, role: 'user' };
+        const newUser = { username, password, role: 'user', cart: [] };
 
         // Optimistic Update
         this.state.users.push(newUser);
@@ -78,13 +76,18 @@ const DB = {
         }
     },
 
-    async authenticate(username, password) {
-        // We can still use local state for fast auth checked against loaded users,
-        // or strictly await fetch. For speed, we check local state (which is synced on init).
-        // But to be safe against new users from other devices, let's re-fetch if not found?
-        // Or just trust init() + realtime (future).
-        // Let's rely on state populated by init().
+    // --- Cart Cloud Sync ---
+    async saveCart(username, cart) {
+        if (!username) return;
+        // Find local user and update state immediately (Optimistic UI for session consistency)
+        const user = this.state.users.find(u => u.username === username);
+        if (user) user.cart = cart;
 
+        const { error } = await supabaseClient.from('users').update({ cart: cart }).eq('username', username);
+        if (error) console.error('DB: Save Cart Error', error);
+    },
+
+    async authenticate(username, password) {
         let user = this.state.users.find(u => u.username === username && u.password === password);
 
         if (!user) {
@@ -92,7 +95,6 @@ const DB = {
             const { data } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).single();
             if (data) {
                 user = data;
-                // Update local list if missing
                 if (!this.state.users.find(u => u.username === user.username)) {
                     this.state.users.push(user);
                 }
@@ -101,7 +103,8 @@ const DB = {
 
         if (user) {
             console.log('DB: Auth successful', user);
-            return { username: user.username, role: user.role };
+            // Return full user object including cart
+            return { username: user.username, role: user.role, cart: user.cart || [] };
         }
         return null;
     },
@@ -109,7 +112,7 @@ const DB = {
     // --- Session ---
     saveSession(user) {
         localStorage.setItem('session_v2', JSON.stringify({
-            user,
+            user, // This snapshot might have old cart, so we prefer refreshing from state on load
             lastActive: Date.now()
         }));
     },
@@ -126,7 +129,13 @@ const DB = {
             }
             session.lastActive = now;
             localStorage.setItem('session_v2', JSON.stringify(session));
-            return session.user;
+
+            // Refresh User Data (Cart) from State (which is fresh from Cloud)
+            const freshUser = this.state.users.find(u => u.username === session.user.username);
+
+            // If user found in fresh state, return THAT (contains syncd cart)
+            // If not found (rare race condition if init failed?), return session user backup
+            return freshUser || session.user;
         } catch (e) {
             return null;
         }
@@ -151,10 +160,6 @@ const DB = {
     },
 
     async saveOrder(order) {
-        // Map app order object to DB schema
-        // App uses: id, user, total, status, items, date, paid, adminNote
-        // DB uses: id, user_id (FK), total, status, items (jsonb), date, paid, admin_note
-
         const dbOrder = {
             id: order.id,
             user_id: order.user,
@@ -164,6 +169,7 @@ const DB = {
             date: order.date,
             paid: order.paid || false,
             admin_note: order.adminNote || '',
+            note: order.note || '', // Mapped from order.note
             archived_by: order.archivedBy || [],
             deleted_by_admin: order.deletedByAdmin || false
         };
@@ -183,9 +189,7 @@ const DB = {
         if (order) {
             mutator(order); // Update local object in place
 
-            // Prepare partial update for DB
             const dbUpdate = {};
-            // Map fields back to DB columns
             if (order.status !== undefined) dbUpdate.status = order.status;
             if (order.paid !== undefined) dbUpdate.paid = order.paid;
             if (order.adminNote !== undefined) dbUpdate.admin_note = order.adminNote;

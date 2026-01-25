@@ -1,12 +1,10 @@
 // --- js/modules/cart.js ---
 import { UI } from './ui.js';
+import { DB } from '../../db.js';
 
 export const Cart = {
     addToCartLogic(product, state, updateCartCount) {
         if (!product) return;
-        // Do NOT add to state.products (Catalog) to avoid polluting the list
-
-        // Pass the entire product object to addToCart
         this.addToCart(product, (product.quantity || 1), state, updateCartCount);
     },
 
@@ -16,7 +14,6 @@ export const Cart = {
         if (typeof productOrId === 'object') {
             product = productOrId;
         } else {
-            // Lookup in catalog
             product = state.products.find(p => String(p.id) === String(productOrId));
         }
 
@@ -26,12 +23,16 @@ export const Cart = {
         if (existing) {
             existing.quantity = (existing.quantity || 1) + qty;
         } else {
-            // Push valid product to cart
             state.cart.push({ ...product, quantity: qty });
         }
 
         updateCartCount();
         UI.showModal('Hinzugefügt', product.name);
+
+        // Sync to Cloud
+        if (state.currentUser) {
+            DB.saveCart(state.currentUser.username, state.cart);
+        }
     },
 
     updateCartCount(state, elements) {
@@ -44,8 +45,14 @@ export const Cart = {
         if (item) {
             item.quantity = (item.quantity || 1) + delta;
             if (item.quantity <= 0) state.cart.splice(index, 1);
+
             renderCart();
             updateCartCount();
+
+            // Sync to Cloud
+            if (state.currentUser) {
+                DB.saveCart(state.currentUser.username, state.cart);
+            }
         }
     },
 
@@ -53,7 +60,6 @@ export const Cart = {
         if (state.cart.length === 0) return UI.showModal('Fehler', 'Warenkorb leer');
         const newId = DB.generateOrderId(state.editingOrderId);
 
-        // Calculate Total
         const totalVal = state.cart.reduce((acc, item) => {
             let p = 0;
             if (item.price && typeof item.price === 'string') {
@@ -77,8 +83,14 @@ export const Cart = {
             await DB.saveOrder(order);
             state.cart = [];
             state.editingOrderId = null;
-            if (elements.orderNote) elements.orderNote.value = ''; // Clear note
+            if (elements.orderNote) elements.orderNote.value = '';
             updateCartCount();
+
+            // Clear Cloud Cart
+            if (state.currentUser) {
+                DB.saveCart(state.currentUser.username, []);
+            }
+
             navigateTo('profile');
             UI.showModal('Erfolg', 'Bestellung ' + newId);
         } catch (e) {

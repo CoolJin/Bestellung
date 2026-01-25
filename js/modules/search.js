@@ -130,7 +130,7 @@ export const Search = {
                     desc: 'Snuzone Import'
                 };
             } catch (e) { return null; }
-        }).filter(item => item && item.name !== 'Produkt');
+        }).filter(item => item && item.name !== 'Produkt').slice(0, 12);
 
         return details;
     }

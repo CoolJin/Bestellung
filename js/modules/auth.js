@@ -1,12 +1,20 @@
 // --- js/modules/auth.js ---
+import { UI } from './ui.js';
+
 export const Auth = {
     checkSession(DB, state, updateUI, navigateTo, currentView) {
         const user = DB.getSession();
         if (user) {
             state.currentUser = user;
+            // Load cart from user object (synced in db.js getSession)
+            state.cart = user.cart || [];
             updateUI();
+
+            // Redirect logic
             if (currentView === 'login') {
                 navigateTo(user.role === 'admin' ? 'admin' : 'catalog');
+            } else {
+                navigateTo(currentView);
             }
         } else {
             navigateTo('login');
@@ -19,13 +27,13 @@ export const Auth = {
         btn.textContent = 'Lade...';
         btn.disabled = true;
 
-        // Artificial delay removed or kept? DB call takes time anyway. 
-        // We can keep the structure but await DB.
-
         try {
             const user = await DB.authenticate(username, password);
             if (user) {
                 state.currentUser = user;
+                // Load cloud cart
+                state.cart = user.cart || [];
+
                 DB.saveSession(user);
                 navigateTo(user.role === 'admin' ? 'admin' : 'catalog');
                 updateUI();
@@ -41,9 +49,9 @@ export const Auth = {
     },
 
     logout(DB, state, navigateTo, updateUI) {
-        DB.clearSession();
         state.currentUser = null;
-        state.cart = [];
+        state.cart = []; // Clear Cart locally
+        DB.clearSession();
         navigateTo('login');
         updateUI();
     },
@@ -58,7 +66,7 @@ export const Auth = {
             e.target.reset();
         } catch (err) {
             elements.adminMsg.textContent = err.message;
-            elements.adminMsg.style.color = '#ef4444';
+            elements.adminMsg.style.color = 'red';
         }
     }
 };
