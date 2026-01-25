@@ -1,8 +1,8 @@
-// --- js/modules/main.js ---
 import { Auth } from './auth.js';
 import { Search } from './search.js';
 import { Cart } from './cart.js';
 import { UI } from './ui.js';
+import { DB } from '../db.js';
 
 window.app = {
     views: {},
