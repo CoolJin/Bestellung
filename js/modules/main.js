@@ -224,6 +224,14 @@ window.app = {
 
         window.addEventListener('click', () => DB.updateSessionActivity());
         window.addEventListener('keypress', () => DB.updateSessionActivity());
+
+        // Listen for internal tab changes from UI module
+        window.addEventListener('admin-tab-changed', (e) => {
+            if (this.elements.ordersList) {
+                this.elements.ordersList.dataset.activeTab = e.detail.tab;
+                this.renderNav(); // Re-render nav to update active class based on dataset/state
+            }
+        });
     },
 
     changeCartQty(index, delta) {

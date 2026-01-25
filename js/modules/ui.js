@@ -130,6 +130,35 @@ export const UI = {
         const content = document.createElement('div');
         list.appendChild(content);
 
+        // --- Helper for Modals ---
+        const showAdminModal = (title, contentHTML, onConfirm) => {
+            const modalId = 'admin-dynamic-modal';
+            let modal = document.getElementById(modalId);
+            if (modal) modal.remove();
+
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content glass-panel">
+                    <h3>${title}</h3>
+                    <div style="margin:15px 0;">${contentHTML}</div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary close-modal">Abbrechen</button>
+                        <button class="btn btn-primary confirm-modal">Bestätigen</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const close = () => modal.remove();
+            modal.querySelector('.close-modal').onclick = close;
+            modal.querySelector('.confirm-modal').onclick = () => {
+                onConfirm(modal);
+                close();
+            };
+        };
+
         // --- USERS TAB ---
         if (activeTab === 'users') {
             content.innerHTML = `
@@ -154,10 +183,11 @@ export const UI = {
                                         <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
                                     </div>
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                        <button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>
+                                        ${u.role !== 'admin' ? `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : ''}
                                         <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen verwalten</button>
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort bearbeiten</button>
                                         ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
+                                        <!-- Hide orders button for admin as requested -->
                                     </div>
                                 </div>
                                 <div class="role-edit-section hidden" id="role-edit-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
@@ -205,39 +235,50 @@ export const UI = {
                 btn.onclick = () => {
                     list.dataset.activeTab = 'orders';
                     list.dataset.selectedUser = btn.dataset.user;
+                    // Trigger custom event to update Top Nav
+                    window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
                     renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
                 };
             });
 
-            // New Handlers for Role/PW
+            // New Handlers for Role/PW (Modals)
             content.querySelectorAll('.manage-role-btn').forEach(btn => {
                 btn.onclick = () => {
-                    const section = content.querySelector(`#role-edit-${btn.dataset.user}`);
-                    section.classList.toggle('hidden');
+                    const username = btn.dataset.user;
+                    const u = DB.getUsers().find(user => user.username === username);
+                    const is目前Admin = u.role === 'admin';
+
+                    showAdminModal('Rollen verwalten', `
+                       <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                           <input type="checkbox" id="modal-role-check" ${is目前Admin ? 'checked' : ''} style="width:20px; height:20px;"> 
+                           <span style="font-size:1.1rem;">Administrator Berechtigung</span>
+                       </label>
+                   `, (modal) => {
+                        const isAdmin = modal.querySelector('#modal-role-check').checked;
+                        DB.updateUser(username, { role: isAdmin ? 'admin' : 'user' });
+                        renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                    });
                 };
             });
+
             content.querySelectorAll('.edit-pw-btn').forEach(btn => {
                 btn.onclick = () => {
-                    const section = content.querySelector(`#pw-edit-${btn.dataset.user}`);
-                    section.classList.toggle('hidden');
-                };
-            });
-            content.querySelectorAll('.save-role-confirm').forEach(btn => {
-                btn.onclick = () => {
-                    const section = content.querySelector(`#role-edit-${btn.dataset.user}`);
-                    const isAdmin = section.querySelector('.admin-role-check').checked;
-                    DB.updateUser(btn.dataset.user, { role: isAdmin ? 'admin' : 'user' });
-                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
-                };
-            });
-            content.querySelectorAll('.save-pw-confirm').forEach(btn => {
-                btn.onclick = () => {
-                    const section = content.querySelector(`#pw-edit-${btn.dataset.user}`);
-                    const newPw = section.querySelector('.new-pw-input').value.trim();
-                    if (newPw) {
-                        DB.updateUser(btn.dataset.user, { password: newPw });
-                        renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
-                    }
+                    const username = btn.dataset.user;
+                    showAdminModal('Passwort ändern', `
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <input type="text" id="modal-pw-1" placeholder="Neues Passwort" style="width:100%;">
+                            <input type="text" id="modal-pw-2" placeholder="Passwort bestätigen" style="width:100%;">
+                        </div>
+                    `, (modal) => {
+                        const p1 = modal.querySelector('#modal-pw-1').value.trim();
+                        const p2 = modal.querySelector('#modal-pw-2').value.trim();
+                        if (p1 && p1 === p2) {
+                            DB.updateUser(username, { password: p1 });
+                            renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                        } else {
+                            UI.showModal('Fehler', 'Passwörter stimmen nicht überein oder sind leer.');
+                        }
+                    });
                 };
             });
             return;
