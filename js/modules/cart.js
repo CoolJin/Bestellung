@@ -1,6 +1,6 @@
 // --- js/modules/cart.js ---
 import { UI } from './ui.js';
-import { DB } from '../../db.js';
+import { DB } from '../db.js';
 
 export const Cart = {
     addToCartLogic(product, state, updateCartCount) {
