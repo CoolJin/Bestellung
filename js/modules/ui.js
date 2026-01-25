@@ -121,28 +121,14 @@ export const UI = {
         const list = elements.ordersList;
         if (!list) return;
 
-        // --- Tab Navigation ---
+        // --- Tab Navigation controlled by Top Nav ---
         let activeTab = list.dataset.activeTab || 'orders';
         let selectedUserFilter = list.dataset.selectedUser || null;
 
-        list.innerHTML = `
-            <div class="admin-tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--glass-border); padding-bottom:10px;">
-                <button class="btn btn-sm ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'} tab-btn" data-tab="orders">Bestellungen</button>
-                <button class="btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'} tab-btn" data-tab="users">Benutzer</button>
-            </div>
-            <div id="admin-content-area"></div>
-        `;
-
-        const content = list.querySelector('#admin-content-area');
-
-        // Event Listeners for Tabs
-        list.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.onclick = () => {
-                list.dataset.activeTab = btn.dataset.tab;
-                if (btn.dataset.tab === 'orders') list.dataset.selectedUser = '';
-                renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
-            };
-        });
+        // Clear list to render fresh content
+        list.innerHTML = '';
+        const content = document.createElement('div');
+        list.appendChild(content);
 
         // --- USERS TAB ---
         if (activeTab === 'users') {
@@ -214,19 +200,7 @@ export const UI = {
 
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             orders = orders.filter(o => o.user === selectedUserFilter);
-            content.innerHTML += `
-                <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
-                    <span>Filter: <strong>${selectedUserFilter}</strong> (${orders.length} Bestellungen)</span>
-                    <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
-                </div>
-            `;
-            setTimeout(() => {
-                const cfBtn = content.querySelector('#clear-filter-btn');
-                if (cfBtn) cfBtn.onclick = () => {
-                    list.dataset.selectedUser = '';
-                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
-                };
-            }, 0);
+            // Visual Filter Indicator removed as per request ("Unten musst du da gar nichts mehr haben")
         }
 
         if (orders.length === 0) {

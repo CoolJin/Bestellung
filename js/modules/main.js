@@ -116,7 +116,7 @@ window.app = {
         } else if (this.state.currentUser.role === 'admin') {
             createLink('Bestellungen', 'admin', '', 'orders');
             createLink('Benutzer', 'admin', '', 'users');
-            createLink('Logout', 'logout', 'logout-btn');
+            createLink('Abmelden', 'logout', 'btn-danger'); // Ensuring it's red and German
         }
     },
 
