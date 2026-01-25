@@ -102,7 +102,7 @@ export const AdminUI = {
                 </div>
             `;
 
-            // Handlers (Create/Delete/View) - Now Async
+            // Handlers
             content.querySelector('#create-user-btn').onclick = async () => {
                 const nameIn = content.querySelector('#new-user-name');
                 const passIn = content.querySelector('#new-user-pass');
@@ -129,22 +129,15 @@ export const AdminUI = {
                 btn.onclick = () => {
                     list.dataset.activeTab = 'orders';
                     list.dataset.selectedUser = btn.dataset.user;
-                    // Trigger custom event to update Top Nav
                     window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
                     selfRender(elements, DB, showConfirm, selfRender);
                 };
             });
-
-            // New Handlers for Role (Accordion + Modal Confirm)
             content.querySelectorAll('.manage-role-btn').forEach(btn => {
                 btn.onclick = () => {
                     const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
                     const isHidden = accordion.classList.contains('hidden');
-
-                    // Toggle Visibility
                     accordion.classList.toggle('hidden');
-
-                    // Toggle Button Style (Secondary (Outline-ish) <-> Primary (Filled))
                     if (isHidden) {
                         btn.classList.remove('btn-secondary');
                         btn.classList.add('btn-primary');
@@ -154,24 +147,17 @@ export const AdminUI = {
                     }
                 };
             });
-
             content.querySelectorAll('.role-checkbox').forEach(chk => {
                 chk.onchange = (e) => {
                     const isChecked = e.target.checked;
                     const username = e.target.dataset.user;
-                    // Revert immediately to wait for confirmation
-                    e.target.checked = !isChecked;
-
-                    showAdminModal('Rolle ändern?', `
-                        Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?
-                    `, async (modal) => {
+                    e.target.checked = !isChecked; // Revert
+                    showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?`, async (modal) => {
                         await DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
                         selfRender(elements, DB, showConfirm, selfRender);
                     });
                 };
             });
-
-            // Password Modal
             content.querySelectorAll('.edit-pw-btn').forEach(btn => {
                 btn.onclick = () => {
                     const username = btn.dataset.user;
@@ -202,15 +188,12 @@ export const AdminUI = {
 
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             orders = orders.filter(o => o.user === selectedUserFilter);
-
-            // Render Filter Banner
             content.innerHTML += `
                 <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
                     <span>Filter: <strong>${selectedUserFilter}</strong> (${orders.length} Bestellungen)</span>
                     <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
                 </div>
             `;
-            // Must attach event after rendering
             setTimeout(() => {
                 const cfBtn = content.querySelector('#clear-filter-btn');
                 if (cfBtn) cfBtn.onclick = () => {
@@ -228,19 +211,14 @@ export const AdminUI = {
         }
 
         orders.forEach(o => {
-            // Calc Total
             let displayTotal = o.total;
-            if (!displayTotal || displayTotal === '0' || displayTotal === 0 || displayTotal === '0,00 €') {
+            if (!displayTotal || displayTotal === '0' || displayTotal === '0,00 €') {
                 let sum = 0;
-                if (o.items && o.items.length > 0) {
-                    sum = o.items.reduce((acc, i) => {
-                        let price = 0;
-                        if (i.price && typeof i.price === 'string') {
-                            price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                        }
-                        return acc + (price * (i.quantity || 1));
-                    }, 0);
-                }
+                if (o.items) sum = o.items.reduce((acc, i) => {
+                    let price = 0;
+                    if (i.price && typeof i.price === 'string') price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                    return acc + (price * (i.quantity || 1));
+                }, 0);
                 displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
             }
 
@@ -269,13 +247,10 @@ export const AdminUI = {
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
                        ${o.items.map(i => {
                 let unitPrice = 0;
-                if (i.price && typeof i.price === 'string') {
-                    unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                }
+                if (i.price && typeof i.price === 'string') unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
                 const lineSum = unitPrice * (i.quantity || 1);
                 const lineTotalStr = lineSum.toFixed(2).replace('.', ',') + ' €';
                 const displayUnit = i.price || '0,00 €';
-
                 return `
                            <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
                                 <div style="display:flex; gap: 15px;">
@@ -287,36 +262,26 @@ export const AdminUI = {
             }).join('')}
                     </div>
 
-                    <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
-                        <label style="font-size:0.8em; color:var(--text-muted);">Admin Notiz:</label>
-                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden..." style="resize: none; background: #fff; color: #333; font-weight: 500;">${o.adminNote || ''}</textarea>
-                        <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:5px; width:100%;">Notiz Speichern</button>
+                    <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                        <label style="font-size:0.85em; color:var(--text-muted); display:block; margin-bottom:5px;">Admin Notiz:</label>
+                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden..." 
+                            style="resize: vertical; background: rgba(0,0,0,0.3); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 6px; padding: 8px; width: 100%; font-family: inherit; font-size: 0.9em; min-height: 60px;">${o.adminNote || ''}</textarea>
+                        <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:8px; width:100%; justify-content:center;">Notiz Speichern</button>
                     </div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 130px;">
-                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
-                        style="${o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444'}">
-                        Ablehnen
-                    </button>
-                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}"
-                        style="${o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)'}">
-                        Bestellt
-                    </button>
-                    ${o.status === 'bestellt' ?
-                    `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${o.paid ? '#22c55e' : '#ef4444'}; color: ${o.paid ? '#22c55e' : '#ef4444'}">
-                            ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
-                        </button>`
-                    : ''}
+                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444'}">Ablehnen</button>
+                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)'}">Bestellt</button>
+                    ${o.status === 'bestellt' ? `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${o.paid ? '#22c55e' : '#ef4444'}; color: ${o.paid ? '#22c55e' : '#ef4444'}">${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}</button>` : ''}
                 </div>
              `;
             content.appendChild(div);
         });
 
-        // Event Delegator for Admin Actions (Orders) - Handlers
+        // Delegate (Async)
         list.onclick = async (e) => {
             const id = e.target.dataset.id;
             if (!id) return;
-
             if (e.target.classList.contains('reject-order')) {
                 const currentStatus = e.target.dataset.status;
                 const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
@@ -338,6 +303,10 @@ export const AdminUI = {
                 if (noteInput) {
                     await DB.updateOrder(id, o => o.adminNote = noteInput.value);
                     CoreUI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
+                    // Optional: Call selfRender to prove persistence? 
+                    // User said "Text disappears". If we don't render, it stays. 
+                    // If we want to ensure sync, we can render. 
+                    // Let's stick to NO selfRender for note to avoid jump, assuming successful update.
                 }
             }
         };

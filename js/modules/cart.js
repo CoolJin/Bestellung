@@ -4,19 +4,32 @@ import { UI } from './ui.js';
 export const Cart = {
     addToCartLogic(product, state, updateCartCount) {
         if (!product) return;
-        const existing = state.products.find(p => String(p.id) === String(product.id));
-        if (!existing) {
-            state.products.push(product);
-        }
-        this.addToCart(product.id, product.quantity || 1, state, updateCartCount);
+        // Do NOT add to state.products (Catalog) to avoid polluting the list
+
+        // Pass the entire product object to addToCart
+        this.addToCart(product, (product.quantity || 1), state, updateCartCount);
     },
 
-    addToCart(productId, qty = 1, state, updateCartCount) {
-        const product = state.products.find(p => String(p.id) === String(productId));
+    addToCart(productOrId, qty = 1, state, updateCartCount) {
+        let product = null;
+
+        if (typeof productOrId === 'object') {
+            product = productOrId;
+        } else {
+            // Lookup in catalog
+            product = state.products.find(p => String(p.id) === String(productOrId));
+        }
+
         if (!product) return;
-        const existing = state.cart.find(i => String(i.id) === String(productId));
-        if (existing) existing.quantity = (existing.quantity || 1) + qty;
-        else state.cart.push({ ...product, quantity: qty });
+
+        const existing = state.cart.find(i => String(i.id) === String(product.id));
+        if (existing) {
+            existing.quantity = (existing.quantity || 1) + qty;
+        } else {
+            // Push valid product to cart
+            state.cart.push({ ...product, quantity: qty });
+        }
+
         updateCartCount();
         UI.showModal('Hinzugefügt', product.name);
     },
@@ -64,6 +77,7 @@ export const Cart = {
             await DB.saveOrder(order);
             state.cart = [];
             state.editingOrderId = null;
+            if (elements.orderNote) elements.orderNote.value = ''; // Clear note
             updateCartCount();
             navigateTo('profile');
             UI.showModal('Erfolg', 'Bestellung ' + newId);

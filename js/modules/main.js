@@ -172,7 +172,7 @@ window.app = {
             if (e.target.classList.contains('add-external')) {
                 const idx = e.target.dataset.index;
                 Cart.addToCartLogic(Search.results[idx], this.state, () => Cart.updateCartCount(this.state, this.elements));
-                document.getElementById('search-results').classList.add('hidden');
+                // Search results stay visible
             }
         });
 
@@ -245,11 +245,17 @@ window.app = {
             const orders = DB.getOrders();
             const o = orders.find(x => x.id === id);
             if (o) {
-                this.state.editingOrderId = o.id;
-                o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
-                DB.deleteOrder(id);
-                this.navigateTo('cart');
-                UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
+                UI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird überschrieben. Fortfahren?', () => {
+                    this.state.editingOrderId = o.id;
+                    // Reset Cart first? Or overwrite? Logic implies appending. 
+                    // To act as "Edit", usually we clear first, but code appends.
+                    // Assuming append is okay or user wants to "Load back".
+                    // Code below adds items.
+                    o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
+                    DB.deleteOrder(id);
+                    this.navigateTo('cart');
+                    UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
+                });
             }
         }
     }
