@@ -147,14 +147,30 @@ export const UI = {
 
                     <div class="user-list" style="display:grid; gap:10px;">
                         ${DB.getUsers().map(u => `
-                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
-                                    <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
+                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
+                                        <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
+                                    </div>
+                                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                                        <button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>
+                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen verwalten</button>
+                                        <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort bearbeiten</button>
+                                        ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
+                                    </div>
                                 </div>
-                                <div style="display:flex; gap:5px;">
-                                    ${u.role !== 'admin' ? `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : ''}
-                                    ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
+                                <div class="role-edit-section hidden" id="role-edit-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                                    <label style="display:inline-flex; align-items:center; gap:8px; color:white; margin-right:10px;">
+                                        <input type="checkbox" class="admin-role-check" ${u.role === 'admin' ? 'checked' : ''}> Admin
+                                    </label>
+                                    <button class="btn btn-primary btn-sm save-role-confirm" data-user="${u.username}">Bestätigen</button>
+                                </div>
+                                <div class="pw-edit-section hidden" id="pw-edit-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                                    <div style="display:flex; gap:10px;">
+                                        <input type="text" class="new-pw-input" placeholder="Neues Passwort" value="${u.password}" style="flex:1;">
+                                        <button class="btn btn-primary btn-sm save-pw-confirm" data-user="${u.username}">Speichern</button>
+                                    </div>
                                 </div>
                             </div>
                         `).join('')}
@@ -192,6 +208,38 @@ export const UI = {
                     renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
                 };
             });
+
+            // New Handlers for Role/PW
+            content.querySelectorAll('.manage-role-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const section = content.querySelector(`#role-edit-${btn.dataset.user}`);
+                    section.classList.toggle('hidden');
+                };
+            });
+            content.querySelectorAll('.edit-pw-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const section = content.querySelector(`#pw-edit-${btn.dataset.user}`);
+                    section.classList.toggle('hidden');
+                };
+            });
+            content.querySelectorAll('.save-role-confirm').forEach(btn => {
+                btn.onclick = () => {
+                    const section = content.querySelector(`#role-edit-${btn.dataset.user}`);
+                    const isAdmin = section.querySelector('.admin-role-check').checked;
+                    DB.updateUser(btn.dataset.user, { role: isAdmin ? 'admin' : 'user' });
+                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                };
+            });
+            content.querySelectorAll('.save-pw-confirm').forEach(btn => {
+                btn.onclick = () => {
+                    const section = content.querySelector(`#pw-edit-${btn.dataset.user}`);
+                    const newPw = section.querySelector('.new-pw-input').value.trim();
+                    if (newPw) {
+                        DB.updateUser(btn.dataset.user, { password: newPw });
+                        renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                    }
+                };
+            });
             return;
         }
 
@@ -202,7 +250,23 @@ export const UI = {
 
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             orders = orders.filter(o => o.user === selectedUserFilter);
-            // Visual Filter Indicator removed
+
+            // Render Filter Banner (Simulated inside content, inserted before orders)
+            // We append it to content first
+            content.innerHTML += `
+                <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
+                    <span>Filter: <strong>${selectedUserFilter}</strong> (${orders.length} Bestellungen)</span>
+                    <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
+                </div>
+            `;
+            // Must attach event after rendering
+            setTimeout(() => {
+                const cfBtn = content.querySelector('#clear-filter-btn');
+                if (cfBtn) cfBtn.onclick = () => {
+                    list.dataset.selectedUser = '';
+                    renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
+                };
+            }, 0);
         }
 
         // Render Header for Orders View? User says "Bei Bestellungen sollen nur Bestellungen sein". 

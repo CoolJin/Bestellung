@@ -93,6 +93,13 @@ const DB = {
         this.saveData();
     },
 
+    updateUser(username, updates) {
+        const user = this.state.users.find(u => u.username === username);
+        if (!user) throw new Error('User not found');
+        Object.assign(user, updates);
+        this.saveData();
+    },
+
     authenticate(username, password) {
         console.log(`DB: Authenticating ${username} with ${password}`);
         console.log('DB: Current Users:', this.state.users);
