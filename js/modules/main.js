@@ -15,7 +15,9 @@ window.app = {
     },
     currentView: 'login',
 
-    init() {
+    async init() {
+        await DB.init();
+
         this.views = {
             login: document.getElementById('login-view'),
             catalog: document.getElementById('catalog-view'),

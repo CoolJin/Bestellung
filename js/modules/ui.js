@@ -203,7 +203,7 @@ export const UI = {
                                 <!-- Accordion for Roles -->
                                 <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; border-left: 3px solid var(--primary-color);">
                                     <div style="margin-bottom:8px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
-                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer; padding:5px;">
+                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer; padding: 5px 5px 5px 55px;">
                                         <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
                                         <span class="checkmark"></span>
                                         <span style="color:white; font-size:1rem;">Administrator</span>
