@@ -245,7 +245,8 @@ input:focus {
 /* Custom Checkbox Styling */
 .custom-checkbox-label {
     position: relative;
-    padding-left: 45px;
+    padding-left: 55px;
+    /* Increased from 45px to prevent any text overlap */
     cursor: pointer;
     font-size: 1rem;
     user-select: none;

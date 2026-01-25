@@ -125,6 +125,16 @@ export const UI = {
         let activeTab = list.dataset.activeTab || 'orders';
         let selectedUserFilter = list.dataset.selectedUser || null;
 
+        // Capture Open Accordions (State Persistence within Session)
+        const openAccordions = [];
+        list.querySelectorAll('.role-accordion').forEach(acc => {
+            if (!acc.classList.contains('hidden')) {
+                // Extract username from id "role-accordion-USERNAME"
+                const username = acc.id.replace('role-accordion-', '');
+                openAccordions.push(username);
+            }
+        });
+
         // Clear list to render fresh content
         list.innerHTML = '';
         const content = document.createElement('div');

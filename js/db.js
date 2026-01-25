@@ -23,48 +23,64 @@ const DB = {
         const localUsers = localStorage.getItem(this.KEYS.USERS);
         const localOrders = localStorage.getItem(this.KEYS.ORDERS);
 
-        if (localUsers && localOrders) {
-            this.state.users = JSON.parse(localUsers);
-            this.state.orders = JSON.parse(localOrders);
-            console.log('DB: Loaded from LocalStorage');
+        let usersLoaded = false;
+        let ordersLoaded = false;
 
-            // Safety Check: If LS has no users (e.g. from previous empty load), restore defaults
-            if (this.state.users.length === 0) {
-                console.log('DB: LocalStorage users empty, restoring defaults.');
-                this.state.users = [
-                    { username: 'admin', password: '123', role: 'admin' },
-                    { username: 'user', password: '123', role: 'user' }
-                ];
-                this.saveData();
+        if (localUsers) {
+            try {
+                this.state.users = JSON.parse(localUsers);
+                usersLoaded = true;
+                console.log('DB: Users loaded from LocalStorage');
+            } catch (e) {
+                console.error('DB: Error parsing users from LS', e);
             }
-        } else {
-            // First time load or clear: Fetch from data.json
+        }
+
+        if (localOrders) {
+            try {
+                this.state.orders = JSON.parse(localOrders);
+                ordersLoaded = true;
+                console.log('DB: Orders loaded from LocalStorage');
+            } catch (e) {
+                console.error('DB: Error parsing orders from LS', e);
+            }
+        }
+
+        // If either is missing, try to fetch default data for missing parts
+        if (!usersLoaded || !ordersLoaded) {
             try {
                 const res = await fetch('data/data.json');
                 if (res.ok) {
                     const data = await res.json();
-                    this.state.users = data.users || [];
-                    this.state.orders = data.orders || [];
 
-                    // Fallback: If no users loaded, restore defaults
-                    if (this.state.users.length === 0) {
-                        this.state.users = [
-                            { username: 'admin', password: '123', role: 'admin' },
-                            { username: 'user', password: '123', role: 'user' }
-                        ];
+                    // Only overwrite if not already loaded from LS
+                    if (!usersLoaded) {
+                        this.state.users = data.users || [];
+                        // Fallback defaults if JSON empty
+                        if (this.state.users.length === 0) {
+                            this.state.users = [
+                                { username: 'admin', password: '123', role: 'admin' },
+                                { username: 'user', password: '123', role: 'user' }
+                            ];
+                        }
                     }
 
-                    this.saveData(); // Persist to LS immediately
-                    console.log('DB: Initialized from data.json');
-                } else {
-                    throw new Error('Fetch failed');
+                    if (!ordersLoaded) {
+                        this.state.orders = data.orders || [];
+                    }
+
+                    this.saveData(); // Save normalized data
+                    console.log('DB: Initialized missing data from defaults');
                 }
             } catch (e) {
-                console.error('DB: Failed to load data.json, using defaults.', e);
-                this.state.users = [
-                    { username: 'admin', password: '123', role: 'admin' },
-                    { username: 'user', password: '123', role: 'user' }
-                ];
+                console.error('DB: Failed to load defaults.', e);
+                // Emergency defaults
+                if (!usersLoaded) {
+                    this.state.users = [
+                        { username: 'admin', password: '123', role: 'admin' },
+                        { username: 'user', password: '123', role: 'user' }
+                    ];
+                }
                 this.saveData();
             }
         }
