@@ -14,7 +14,6 @@ export const AdminUI = {
         const openAccordions = [];
         list.querySelectorAll('.role-accordion').forEach(acc => {
             if (!acc.classList.contains('hidden')) {
-                // Extract username from id "role-accordion-USERNAME"
                 const username = acc.id.replace('role-accordion-', '');
                 openAccordions.push(username);
             }
@@ -56,6 +55,42 @@ export const AdminUI = {
 
         // --- USERS TAB ---
         if (activeTab === 'users') {
+            const users = DB.getUsers();
+
+            const renderUserCard = (u) => {
+                const isOpen = openAccordions.includes(u.username);
+                const roleBtnClass = isOpen ? 'btn-primary' : 'btn-secondary';
+                const showOrdersBtn = u.role !== 'admin' ?
+                    `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : '';
+                const showDeleteBtn = u.role !== 'admin' ?
+                    `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : '';
+
+                return `
+                <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
+                            <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
+                        </div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                            ${showOrdersBtn}
+                            <button class="btn btn-sm ${roleBtnClass} manage-role-btn" data-user="${u.username}">Rollen verwalten</button>
+                            <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort bearbeiten</button>
+                            ${showDeleteBtn}
+                        </div>
+                    </div>
+                    
+                    <div class="role-accordion ${isOpen ? '' : 'hidden'}" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; border-left: 3px solid var(--primary-color);">
+                        <div style="margin-bottom:8px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
+                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer; padding: 5px 5px 5px 35px;">
+                            <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
+                            <span class="checkmark"></span>
+                            <span style="color:white; font-size:1rem;">Administrator</span>
+                        </label>
+                    </div>
+                </div>`;
+            };
+
             content.innerHTML = `
                 <div class="user-management-panel">
                     <h3>Benutzer verwalten</h3>
@@ -70,114 +105,14 @@ export const AdminUI = {
                     </div>
 
                     <div class="user-list" style="display:grid; gap:10px;">
-                        ${DB.getUsers().map(u => {
-                const isOpen = openAccordions.includes(u.username);
-                return `
-                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
-                                        <div style="font-size:0.9em; color:#aaa;">Passwort: ${u.password}</div>
-                                    </div>
-                                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                        ${u.role !== 'admin' ? `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : ''}
-                                        <button class="btn btn-sm ${isOpen ? 'btn-primary' : 'btn-secondary'} manage-role-btn" data-user="${u.username}">Rollen verwalten</button>
-                                        <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort bearbeiten</button>
-                                        ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
-                                    </div>
-                                </div>
-                                
-                                <!-- Accordion for Roles -->
-                                <div class="role-accordion ${isOpen ? '' : 'hidden'}" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; border-left: 3px solid var(--primary-color);">
-                                    <div style="margin-bottom:8px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
-                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer; padding: 5px 5px 5px 35px;">
-                                        <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
-                                        <span class="checkmark"></span>
-                                        <span style="color:white; font-size:1rem;">Administrator</span>
-                                    </label>
-                                </div>
-                            </div>
-                        `}).join('')}
+                        ${users.map(u => renderUserCard(u)).join('')}
                     </div>
                 </div>
             `;
 
-            // Handlers
-            content.querySelector('#create-user-btn').onclick = async () => {
-                const nameIn = content.querySelector('#new-user-name');
-                const passIn = content.querySelector('#new-user-pass');
-                const username = nameIn.value.trim();
-                const password = passIn.value.trim();
-                if (!username || !password) return CoreUI.showModal('Fehler', 'Bitte Name und Passwort eingeben');
-                try {
-                    await DB.createUser(username, password);
-                    selfRender(elements, DB, showConfirm, selfRender);
-                } catch (e) {
-                    CoreUI.showModal('Fehler', e.message);
-                }
-            };
-            content.querySelectorAll('.delete-user').forEach(btn => {
-                btn.onclick = () => {
-                    const u = btn.dataset.user;
-                    showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, async () => {
-                        await DB.deleteUser(u);
-                        selfRender(elements, DB, showConfirm, selfRender);
-                    });
-                };
-            });
-            content.querySelectorAll('.view-user-orders').forEach(btn => {
-                btn.onclick = () => {
-                    list.dataset.activeTab = 'orders';
-                    list.dataset.selectedUser = btn.dataset.user;
-                    window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
-                    selfRender(elements, DB, showConfirm, selfRender);
-                };
-            });
-            content.querySelectorAll('.manage-role-btn').forEach(btn => {
-                btn.onclick = () => {
-                    const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
-                    const isHidden = accordion.classList.contains('hidden');
-                    accordion.classList.toggle('hidden');
-                    if (isHidden) {
-                        btn.classList.remove('btn-secondary');
-                        btn.classList.add('btn-primary');
-                    } else {
-                        btn.classList.add('btn-secondary');
-                        btn.classList.remove('btn-primary');
-                    }
-                };
-            });
-            content.querySelectorAll('.role-checkbox').forEach(chk => {
-                chk.onchange = (e) => {
-                    const isChecked = e.target.checked;
-                    const username = e.target.dataset.user;
-                    e.target.checked = !isChecked; // Revert
-                    showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?`, async (modal) => {
-                        await DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
-                        selfRender(elements, DB, showConfirm, selfRender);
-                    });
-                };
-            });
-            content.querySelectorAll('.edit-pw-btn').forEach(btn => {
-                btn.onclick = () => {
-                    const username = btn.dataset.user;
-                    showAdminModal('Passwort ändern', `
-                        <div style="display:flex; flex-direction:column; gap:10px;">
-                            <input type="text" id="modal-pw-1" placeholder="Neues Passwort" style="width:100%;">
-                            <input type="text" id="modal-pw-2" placeholder="Passwort bestätigen" style="width:100%;">
-                        </div>
-                    `, async (modal) => {
-                        const p1 = modal.querySelector('#modal-pw-1').value.trim();
-                        const p2 = modal.querySelector('#modal-pw-2').value.trim();
-                        if (p1 && p1 === p2) {
-                            await DB.updateUser(username, { password: p1 });
-                            selfRender(elements, DB, showConfirm, selfRender);
-                        } else {
-                            CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein oder sind leer.');
-                        }
-                    });
-                };
-            });
+            // Setup Handlers (omitted for brevity, assume similar logic)
+            // Need to re-attach handlers since we overwrote innerHTML
+            this.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal);
             return;
         }
 
@@ -211,6 +146,7 @@ export const AdminUI = {
         }
 
         orders.forEach(o => {
+            // Formatting
             let displayTotal = o.total;
             if (!displayTotal || displayTotal === '0' || displayTotal === '0,00 €') {
                 let sum = 0;
@@ -231,6 +167,35 @@ export const AdminUI = {
                 }
             } catch (e) { }
 
+            // Action Buttons Logic
+            const rejectStyle = o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444';
+            const confirmStyle = o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)';
+
+            let paidButton = '';
+            if (o.status === 'bestellt') {
+                const paidColor = o.paid ? '#22c55e' : '#ef4444';
+                const paidText = o.paid ? 'Bezahlt' : 'Nicht bezahlt';
+                paidButton = `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${paidColor}; color: ${paidColor}">${paidText}</button>`;
+            }
+
+            // Items List
+            const itemsHtml = o.items.map(i => {
+                let unitPrice = 0;
+                if (i.price && typeof i.price === 'string') unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                const lineSum = unitPrice * (i.quantity || 1);
+                const lineTotalStr = lineSum.toFixed(2).replace('.', ',') + ' €';
+                const displayUnit = i.price || '0,00 €';
+
+                return `
+                   <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
+                        <div style="display:flex; gap: 15px;">
+                            <span>${i.quantity}x ${i.name}</span>
+                            <span class="text-muted">${displayUnit} / Stk.</span>
+                        </div>
+                        <span>${lineTotalStr}</span>
+                   </div>`;
+            }).join('');
+
             const div = document.createElement('div');
             div.className = 'order-card';
             div.innerHTML = `
@@ -245,21 +210,7 @@ export const AdminUI = {
                     <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${dateStr}</div>
                     
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
-                       ${o.items.map(i => {
-                let unitPrice = 0;
-                if (i.price && typeof i.price === 'string') unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                const lineSum = unitPrice * (i.quantity || 1);
-                const lineTotalStr = lineSum.toFixed(2).replace('.', ',') + ' €';
-                const displayUnit = i.price || '0,00 €';
-                return `
-                           <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
-                                <div style="display:flex; gap: 15px;">
-                                    <span>${i.quantity}x ${i.name}</span>
-                                    <span class="text-muted">${displayUnit} / Stk.</span>
-                                </div>
-                                <span>${lineTotalStr}</span>
-                           </div>`;
-            }).join('')}
+                       ${itemsHtml}
                     </div>
 
                     <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
@@ -270,9 +221,9 @@ export const AdminUI = {
                     </div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 130px;">
-                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444'}">Ablehnen</button>
-                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)'}">Bestellt</button>
-                    ${o.status === 'bestellt' ? `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${o.paid ? '#22c55e' : '#ef4444'}; color: ${o.paid ? '#22c55e' : '#ef4444'}">${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}</button>` : ''}
+                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${rejectStyle}">Ablehnen</button>
+                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${confirmStyle}">Bestellt</button>
+                    ${paidButton}
                 </div>
              `;
             content.appendChild(div);
@@ -282,6 +233,7 @@ export const AdminUI = {
         list.onclick = async (e) => {
             const id = e.target.dataset.id;
             if (!id) return;
+
             if (e.target.classList.contains('reject-order')) {
                 const currentStatus = e.target.dataset.status;
                 const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
@@ -303,12 +255,92 @@ export const AdminUI = {
                 if (noteInput) {
                     await DB.updateOrder(id, o => o.adminNote = noteInput.value);
                     CoreUI.showModal('Gespeichert', 'Notiz wurde aktualisiert.');
-                    // Optional: Call selfRender to prove persistence? 
-                    // User said "Text disappears". If we don't render, it stays. 
-                    // If we want to ensure sync, we can render. 
-                    // Let's stick to NO selfRender for note to avoid jump, assuming successful update.
                 }
             }
         };
+    },
+
+    setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal) {
+        content.querySelector('#create-user-btn').onclick = async () => {
+            const nameIn = content.querySelector('#new-user-name');
+            const passIn = content.querySelector('#new-user-pass');
+            if (!nameIn || !passIn) return;
+            const username = nameIn.value.trim();
+            const password = passIn.value.trim();
+            if (!username || !password) return CoreUI.showModal('Fehler', 'Bitte Name und Passwort eingeben');
+            try {
+                await DB.createUser(username, password);
+                selfRender(elements, DB, showConfirm, selfRender);
+            } catch (e) {
+                CoreUI.showModal('Fehler', e.message);
+            }
+        };
+        content.querySelectorAll('.delete-user').forEach(btn => {
+            btn.onclick = () => {
+                const u = btn.dataset.user;
+                showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, async () => {
+                    await DB.deleteUser(u);
+                    selfRender(elements, DB, showConfirm, selfRender);
+                });
+            };
+        });
+        content.querySelectorAll('.view-user-orders').forEach(btn => {
+            btn.onclick = () => {
+                const list = elements.ordersList;
+                if (list) {
+                    list.dataset.activeTab = 'orders';
+                    list.dataset.selectedUser = btn.dataset.user;
+                    window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
+                    selfRender(elements, DB, showConfirm, selfRender);
+                }
+            };
+        });
+        content.querySelectorAll('.manage-role-btn').forEach(btn => {
+            btn.onclick = () => {
+                const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
+                if (accordion) {
+                    const isHidden = accordion.classList.contains('hidden');
+                    accordion.classList.toggle('hidden');
+                    if (isHidden) {
+                        btn.classList.remove('btn-secondary');
+                        btn.classList.add('btn-primary');
+                    } else {
+                        btn.classList.add('btn-secondary');
+                        btn.classList.remove('btn-primary');
+                    }
+                }
+            };
+        });
+        content.querySelectorAll('.role-checkbox').forEach(chk => {
+            chk.onchange = (e) => {
+                const isChecked = e.target.checked;
+                const username = e.target.dataset.user;
+                e.target.checked = !isChecked; // Revert
+                showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?`, async (modal) => {
+                    await DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
+                    selfRender(elements, DB, showConfirm, selfRender);
+                });
+            };
+        });
+        content.querySelectorAll('.edit-pw-btn').forEach(btn => {
+            btn.onclick = () => {
+                const username = btn.dataset.user;
+                showAdminModal('Passwort ändern', `
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <input type="text" id="modal-pw-1" placeholder="Neues Passwort" style="width:100%;">
+                        <input type="text" id="modal-pw-2" placeholder="Passwort bestätigen" style="width:100%;">
+                    </div>
+                `, async (modal) => {
+                    const p1 = modal.querySelector('#modal-pw-1').value.trim();
+                    const p2 = modal.querySelector('#modal-pw-2').value.trim();
+                    if (p1 && p1 === p2) {
+                        await DB.updateUser(username, { password: p1 });
+                        selfRender(elements, DB, showConfirm, selfRender);
+                    } else {
+                        CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein oder sind leer.');
+                    }
+                });
+            };
+        });
     }
 };
