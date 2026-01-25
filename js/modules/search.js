@@ -9,8 +9,12 @@ export const Search = {
         this.elements = elements;
         this.addToCart = addToCart;
 
-        if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        // Correct property name from main.js is snuzoneSearch
+        const input = elements.snuzoneSearch || elements.searchInput;
+        if (input) {
+            input.addEventListener('input', (e) => this.handleSearch(e.target.value));
+            // Also handle immediate search if value exists (e.g. back nav)
+            if (input.value) this.handleSearch(input.value);
         }
     },
 
