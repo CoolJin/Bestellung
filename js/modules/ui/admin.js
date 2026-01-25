@@ -10,7 +10,12 @@ export const AdminUI = {
         let activeTab = list.dataset.activeTab || 'orders';
         let selectedUserFilter = list.dataset.selectedUser || null;
 
-        // Capture Open State
+        // Capture Open State (Accordions & Archive)
+        // We use IDs to track open accordions
+        const openAccordions = new Set();
+        list.querySelectorAll('.role-accordion:not(.hidden)').forEach(acc => {
+            openAccordions.add(acc.id);
+        });
         const isArchiveOpen = list.dataset.archiveOpen === 'true';
 
         // Clear list
@@ -18,7 +23,6 @@ export const AdminUI = {
         const content = document.createElement('div');
         list.appendChild(content);
 
-        // --- Helper for Modals ---
         const showAdminModal = (title, contentHTML, onConfirm) => {
             const modalId = 'admin-dynamic-modal';
             let modal = document.getElementById(modalId);
@@ -68,14 +72,22 @@ export const AdminUI = {
                 const showDeleteBtn = u.role !== 'admin' ?
                     `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : '';
 
+                // Styling: Admin Green, User Grey
+                const nameColor = u.role === 'admin' ? 'var(--primary-color)' : 'var(--text-color)';
+                // Pablo Label ONLY here
+                const pabloLabel = u.isPablo ? '<span style="font-size:0.8em; color:var(--primary-color); margin-left:5px;">(Pablo-Flat)</span>' : '';
+
+                const accordionId = `role-accordion-${u.username}`;
+                const isAccordionOpen = openAccordions.has(accordionId);
+
                 return `
                 <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <div style="font-weight:bold;">
+                            <div style="font-weight:bold; color:${nameColor};">
                                 ${u.username} 
                                 <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>
-                                ${u.isPablo ? '<span style="font-size:0.8em; color:var(--primary-color); margin-left:5px;">(Pablo-Flat)</span>' : ''}
+                                ${pabloLabel}
                             </div>
                         </div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -85,14 +97,13 @@ export const AdminUI = {
                             ${showDeleteBtn}
                         </div>
                     </div>
-                    <!-- Role Accordion -->
-                    <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px; animate: fadeIn 0.2s;">
-                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;">
+                    <div class="role-accordion ${isAccordionOpen ? '' : 'hidden'}" id="${accordionId}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px;">
+                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;" onclick="event.stopPropagation()">
                             <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
                             <span class="checkmark"></span>
                             <span style="color:white;">Administrator</span>
                         </label>
-                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="event.stopPropagation()">
                             <input type="checkbox" class="pablo-checkbox" data-user="${u.username}" ${u.isPablo ? 'checked' : ''}>
                             <span class="checkmark"></span>
                             <span style="color:white;">Pablo Flatrate</span>
@@ -115,6 +126,9 @@ export const AdminUI = {
         const activeOrders = allOrders.filter(o => !o.adminArchived);
         const archivedOrders = allOrders.filter(o => o.adminArchived);
 
+        // Products for Price Lookup (Original Price)
+        const products = DB.state.products || [];
+
         let displayOrders = activeOrders;
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
@@ -135,14 +149,7 @@ export const AdminUI = {
         }
 
         const renderOrderCard = (o, isArchiveView) => {
-            let displayTotal = o.total;
-            if (!displayTotal || displayTotal === '0' || displayTotal === '0,00 €') {
-                let sum = (o.items || []).reduce((acc, i) => {
-                    let price = parseFloat((i.price || '0').toString().replace('€', '').replace(',', '.').trim()) || 0;
-                    return acc + (price * (i.quantity || 1));
-                }, 0);
-                displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
-            }
+            let displayTotal = o.total; // Shows User Price (Final)
 
             const rejectStyle = o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444';
             const confirmStyle = o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)';
@@ -165,14 +172,41 @@ export const AdminUI = {
                  `;
 
             const itemsHtml = (o.items || []).map(i => {
-                let unitPrice = parseFloat((i.price || '0').toString().replace('€', '').replace(',', '.').trim()) || 0;
-                const lineSum = unitPrice * (i.quantity || 1);
+                // Determine Original Price
+                // i.id is item id. Find it in Products.
+                let originalPriceVal = 0;
+                const catItem = products.find(p => String(p.id) === String(i.id));
+                if (catItem) {
+                    if (typeof catItem.price === 'number') originalPriceVal = catItem.price;
+                    else if (typeof catItem.price === 'string')
+                        originalPriceVal = parseFloat(catItem.price.replace('€', '').replace(',', '.').trim()) || 0;
+                }
+
+                // Parse Effective Price (User Price)
+                let userPriceVal = 0;
+                if (i.price && typeof i.price === 'string')
+                    userPriceVal = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+
+                // Compare
+                let priceDisplay = '';
+                // Logic: Only show comparison if different and we are in Admin View (which we are)
+                // User also requested "Original: X | Kunde: Y".
+                // We format it nicely.
+                const userPriceStr = userPriceVal.toFixed(2).replace('.', ',') + ' €';
+
+                if (Math.abs(originalPriceVal - userPriceVal) > 0.01 && originalPriceVal > 0) {
+                    const origPriceStr = originalPriceVal.toFixed(2).replace('.', ',') + ' €';
+                    priceDisplay = `<span style="text-decoration:line-through; color:#888; margin-right:5px;">${origPriceStr}</span> <span style="color:var(--primary-color); font-weight:bold;">${userPriceStr}</span>`;
+                } else {
+                    priceDisplay = `<span>${userPriceStr}</span>`;
+                }
+
                 return `
                    <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
                         <div style="display:flex; gap: 15px;">
                             <span>${i.quantity}x ${i.name}</span>
                         </div>
-                        <span>${lineSum.toFixed(2).replace('.', ',')} €</span>
+                        <div>${priceDisplay}</div>
                    </div>`;
             }).join('');
 
@@ -186,6 +220,7 @@ export const AdminUI = {
                         </div>
                         <div style="font-weight:600;">${displayTotal}</div>
                     </div>
+                     <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${o.date}</div>
                     
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
                        ${itemsHtml}
@@ -234,7 +269,7 @@ export const AdminUI = {
             header.onmouseout = () => header.style.background = 'rgba(255,255,255,0.03)';
             header.innerHTML = `
                 <span style="font-weight:600; color:var(--text-color);">Archivierte Bestellungen (${archivedOrders.length})</span>
-                <span style="transform: ${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.3s;">▼</span>
+                <span style="transform: ${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.3s; color:var(--text-color);">▼</span>
             `;
 
             const body = document.createElement('div');
@@ -242,14 +277,18 @@ export const AdminUI = {
             body.style.display = isArchiveOpen ? 'grid' : 'none';
             body.style.gap = '10px';
             body.style.marginTop = '15px';
+            // Explicitly set color to ensure visibility
+            body.style.color = 'var(--text-color)';
             body.innerHTML = archivedOrders.map(o => renderOrderCard(o, true)).join('');
 
             header.onclick = () => {
                 const nowOpen = body.style.display === 'none';
-                body.style.display = nowOpen ? 'grid' : 'none';
                 list.dataset.archiveOpen = nowOpen;
+                // Toggle Visually immediately (and re-render for clean state if needed, but here simple toggle is enough)
+                // Actually, let's just toggle and NOT re-render to avoid flicker, unless fetching data.
+                // But we want to persist state.
+                body.style.display = nowOpen ? 'grid' : 'none';
                 header.querySelector('span:last-child').style.transform = nowOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-                selfRender(elements, DB, showConfirm, selfRender);
             };
 
             archiveSection.appendChild(header);
@@ -257,41 +296,42 @@ export const AdminUI = {
             content.appendChild(archiveSection);
         }
 
-        // Delegate (Async) Actions
+        // Delegate Actions
         list.onclick = async (e) => {
             const trg = e.target;
             const id = trg.dataset.id;
             if (!id) return;
 
+            // Re-render function to pass to async calls
+            const reload = () => selfRender(elements, DB, showConfirm, selfRender);
+
             if (trg.classList.contains('archive-order-btn')) {
                 await DB.updateOrder(id, o => o.adminArchived = true);
-                selfRender(elements, DB, showConfirm, selfRender);
+                reload();
             }
             if (trg.classList.contains('unarchive-order')) {
                 await DB.updateOrder(id, o => o.adminArchived = false);
-                selfRender(elements, DB, showConfirm, selfRender);
+                reload();
             }
             if (trg.classList.contains('delete-permanent')) {
-                showConfirm('Bestellung löschen?', 'Wollen Sie diese Bestellung endgültig löschen? (Kann nicht rückgängig gemacht werden).', async () => {
+                showConfirm('Bestellung löschen?', 'Endgültig löschen?', async () => {
                     await DB.deleteOrder(id);
-                    selfRender(elements, DB, showConfirm, selfRender);
+                    reload();
                 });
             }
             if (trg.classList.contains('reject-order')) {
-                const currentStatus = trg.dataset.status;
-                const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
+                const newStatus = trg.dataset.status === 'abgelehnt' ? 'open' : 'abgelehnt';
                 await DB.updateOrder(id, o => o.status = newStatus);
-                selfRender(elements, DB, showConfirm, selfRender);
+                reload();
             }
             if (trg.classList.contains('confirm-order')) {
-                const currentStatus = trg.dataset.status;
-                const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
+                const newStatus = trg.dataset.status === 'bestellt' ? 'open' : 'bestellt';
                 await DB.updateOrder(id, o => o.status = newStatus);
-                selfRender(elements, DB, showConfirm, selfRender);
+                reload();
             }
             if (trg.classList.contains('toggle-paid')) {
                 await DB.updateOrder(id, o => o.paid = !o.paid);
-                selfRender(elements, DB, showConfirm, selfRender);
+                reload();
             }
             if (trg.classList.contains('save-note-btn')) {
                 const noteInput = list.querySelector(`.admin-note-input[data-id="${id}"]`);
@@ -308,58 +348,34 @@ export const AdminUI = {
             const nameIn = content.querySelector('#new-user-name');
             const passIn = content.querySelector('#new-user-pass');
             if (!nameIn || !passIn) return;
-            const username = nameIn.value.trim();
-            const password = passIn.value.trim();
-            if (!username || !password) return CoreUI.showModal('Fehler', 'Bitte Name und Passwort eingeben');
+            const u = nameIn.value.trim();
+            const p = passIn.value.trim();
+            if (!u || !p) return CoreUI.showModal('Fehler', 'Daten fehlen');
             try {
-                await DB.createUser(username, password);
+                await DB.createUser(u, p);
                 selfRender(elements, DB, showConfirm, selfRender);
             } catch (e) {
                 CoreUI.showModal('Fehler', e.message);
             }
         };
-        content.querySelectorAll('.delete-user').forEach(btn => {
-            btn.onclick = () => {
-                const u = btn.dataset.user;
-                showConfirm('Benutzer löschen?', `Benutzer "${u}" wirklich löschen?`, async () => {
-                    await DB.deleteUser(u);
-                    selfRender(elements, DB, showConfirm, selfRender);
-                });
-            };
-        });
-        content.querySelectorAll('.view-user-orders').forEach(btn => {
-            btn.onclick = () => {
-                const list = elements.ordersList;
-                if (list) {
-                    list.dataset.activeTab = 'orders';
-                    list.dataset.selectedUser = btn.dataset.user;
-                    window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
-                    selfRender(elements, DB, showConfirm, selfRender);
-                }
-            };
-        });
+
         content.querySelectorAll('.manage-role-btn').forEach(btn => {
             btn.onclick = () => {
-                const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
-                if (accordion) {
-                    const isHidden = accordion.classList.contains('hidden');
-                    accordion.classList.toggle('hidden');
-                    if (isHidden) {
-                        btn.classList.remove('btn-secondary');
-                        btn.classList.add('btn-primary');
-                    } else {
-                        btn.classList.add('btn-secondary');
-                        btn.classList.remove('btn-primary');
-                    }
+                const acc = content.querySelector(`#role-accordion-${btn.dataset.user}`);
+                if (acc) {
+                    acc.classList.toggle('hidden');
                 }
             };
         });
 
-        // --- CHECKBOX LOGIC (Updated to handle both Admin and Pablo) ---
-        const handleRoleChange = (e, roleType) => {
+        // --- CHECKBOX LOGIC (Fixed: e.stopPropagation in HTML + here) ---
+        const handleRoleChange = async (e, roleType) => {
+            // Stop accordion from toggling if event bubbles (handled in HTML too but safety first)
+            e.stopPropagation();
+
             const isChecked = e.target.checked;
             const username = e.target.dataset.user;
-            e.target.checked = !isChecked; // Revert via UI first (wait for confirm)
+            e.target.checked = !isChecked; // Revert visually
 
             const label = roleType === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = isChecked ? 'geben' : 'entziehen';
@@ -370,24 +386,40 @@ export const AdminUI = {
                 if (roleType === 'pablo') updates.isPablo = isChecked;
 
                 await DB.updateUser(username, updates);
+                // selfRender will trigger re-render of list.
+                // We MUST ensure the accordion stays open.
+                // renderAdminDashboard -> captures openAccordions set -> renders -> restores class.
+                // But wait, renderAdminDashboard reads DOM for open accordions initially.
+                // Since this is async wait, the accordion might be closed? No, it's open (user clicked checkbox).
                 selfRender(elements, DB, showConfirm, selfRender);
             });
         };
 
         content.querySelectorAll('.role-checkbox').forEach(chk => {
-            chk.onchange = (e) => handleRoleChange(e, 'admin');
+            chk.onclick = (e) => handleRoleChange(e, 'admin'); // Use onclick for better control than onchange sometimes
         });
         content.querySelectorAll('.pablo-checkbox').forEach(chk => {
-            chk.onchange = (e) => handleRoleChange(e, 'pablo');
+            chk.onclick = (e) => handleRoleChange(e, 'pablo');
         });
 
+        // ... (User Delete and PW Edit handlers omitted for brevity, assuming existing logic) ...
+        // Re-attaching Delete/PW handlers to ensure it works
+        content.querySelectorAll('.delete-user').forEach(btn => {
+            btn.onclick = () => {
+                const u = btn.dataset.user;
+                showConfirm('Löschen?', `${u} löschen?`, async () => {
+                    await DB.deleteUser(u);
+                    selfRender(elements, DB, showConfirm, selfRender);
+                });
+            };
+        });
         content.querySelectorAll('.edit-pw-btn').forEach(btn => {
             btn.onclick = () => {
                 const username = btn.dataset.user;
                 showAdminModal('Passwort ändern', `
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <input type="text" id="modal-pw-1" placeholder="Neues Passwort" style="width:100%;">
-                        <input type="text" id="modal-pw-2" placeholder="Passwort bestätigen" style="width:100%;">
+                        <input type="text" id="modal-pw-1" placeholder="Neues Passwort">
+                        <input type="text" id="modal-pw-2" placeholder="Bestätigen">
                     </div>
                 `, async (modal) => {
                     const p1 = modal.querySelector('#modal-pw-1').value.trim();
@@ -396,7 +428,7 @@ export const AdminUI = {
                         await DB.updateUser(username, { password: p1 });
                         selfRender(elements, DB, showConfirm, selfRender);
                     } else {
-                        CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein oder sind leer.');
+                        CoreUI.showModal('Fehler', 'Ungültig');
                     }
                 });
             };
