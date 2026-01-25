@@ -1,5 +1,5 @@
 /**
- * Database Module (db.js) - Refactored for Supabase & Cloud Cart
+ * Database Module (db.js) - Refactored for Supabase & Cloud Cart & ID Logic v2
  */
 
 import { supabaseClient } from './supabase-client.js';
@@ -171,7 +171,8 @@ const DB = {
             admin_note: order.adminNote || '',
             note: order.note || '', // Mapped from order.note
             archived_by: order.archivedBy || [],
-            deleted_by_admin: order.deletedByAdmin || false
+            deleted_by_admin: order.deletedByAdmin || false,
+            admin_archived: order.adminArchived || false // New Field
         };
 
         this.state.orders.push(order); // Optimistic
@@ -195,6 +196,7 @@ const DB = {
             if (order.adminNote !== undefined) dbUpdate.admin_note = order.adminNote;
             if (order.deletedByAdmin !== undefined) dbUpdate.deleted_by_admin = order.deletedByAdmin;
             if (order.archivedBy !== undefined) dbUpdate.archived_by = order.archivedBy;
+            if (order.adminArchived !== undefined) dbUpdate.admin_archived = order.adminArchived;
 
             const { error } = await supabaseClient.from('orders').update(dbUpdate).eq('id', id);
 
@@ -208,6 +210,10 @@ const DB = {
     },
 
     async deleteOrder(id) {
+        // Soft delete (or Admin Archive) maps to 'deleted' status?
+        // User asked for "Trash" folder.
+        // If we "Delete" permanently from the "Archive" folder -> Real Delete.
+
         this.state.orders = this.state.orders.filter(o => String(o.id) !== String(id));
 
         const { error } = await supabaseClient.from('orders').delete().eq('id', id);
@@ -220,19 +226,24 @@ const DB = {
     // --- ID Generation ---
     generateOrderId(editingId = null) {
         if (editingId) {
-            const base = String(editingId).replace('B', '');
-            if (!String(editingId).endsWith('B')) return base + 'B';
-            return String(editingId);
+            // Logic for edits: Append B, but if already ends in B, keep it (don't stack B's)
+            const strId = String(editingId);
+            if (strId.endsWith('B')) return strId;
+            return strId + 'B';
         }
 
+        // Logic for New Orders: Scan MAX ID and Increment
+        // Start at 1 (0001)
         let maxId = 0;
         this.state.orders.forEach(o => {
+            // Strip non-digits (remove #, B, C...)
             const numPart = parseInt(String(o.id).replace(/\D/g, ''), 10);
             if (!isNaN(numPart) && numPart > maxId && numPart < 90000) {
                 maxId = numPart;
             }
         });
-        if (maxId === 0) maxId = 1000;
+
+        // If no orders, maxId is 0. Next is 1.
         const newIdNum = maxId + 1;
         return '#' + String(newIdNum).padStart(4, '0');
     }

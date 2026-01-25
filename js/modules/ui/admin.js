@@ -1,5 +1,6 @@
 // --- js/modules/ui/admin.js ---
 import { CoreUI } from './core.js';
+import { OrdersUI } from './orders.js'; // Use OrdersUI for helpers if needed
 
 export const AdminUI = {
     renderAdminDashboard(elements, DB, showConfirm, selfRender) {
@@ -10,16 +11,14 @@ export const AdminUI = {
         let activeTab = list.dataset.activeTab || 'orders';
         let selectedUserFilter = list.dataset.selectedUser || null;
 
-        // Capture Open Accordions (State Persistence within Session)
+        // Capture Open Accordions (State Persistence)
         const openAccordions = [];
-        list.querySelectorAll('.role-accordion').forEach(acc => {
-            if (!acc.classList.contains('hidden')) {
-                const username = acc.id.replace('role-accordion-', '');
-                openAccordions.push(username);
-            }
+        list.querySelectorAll('.role-accordion:not(.hidden)').forEach(acc => {
+            openAccordions.push(acc.id);
         });
+        const isArchiveOpen = list.querySelector('.admin-archive-section.open') !== null;
 
-        // Clear list to render fresh content
+        // Clear list
         list.innerHTML = '';
         const content = document.createElement('div');
         list.appendChild(content);
@@ -58,7 +57,7 @@ export const AdminUI = {
             const users = DB.getUsers();
 
             const renderUserCard = (u) => {
-                const isOpen = openAccordions.includes(u.username);
+                const isOpen = openAccordions.includes(`role-accordion-${u.username}`);
                 const roleBtnClass = isOpen ? 'btn-primary' : 'btn-secondary';
                 const showOrdersBtn = u.role !== 'admin' ?
                     `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : '';
@@ -109,23 +108,26 @@ export const AdminUI = {
                     </div>
                 </div>
             `;
-
-            // Setup Handlers (omitted for brevity, assume similar logic)
-            // Need to re-attach handlers since we overwrote innerHTML
             this.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal);
             return;
         }
 
         // --- ORDERS TAB ---
-        let orders = DB.getOrders()
-            .filter(o => !o.deletedByAdmin)
+        let allOrders = DB.getOrders()
+            .filter(o => !o.deletedByAdmin) // Filter out "Hard Deleted" (if any)
             .sort((a, b) => b.id.localeCompare(a.id));
 
+        // Filter: Active (Not Admin Archived) vs Archived
+        const activeOrders = allOrders.filter(o => !o.adminArchived);
+        const archivedOrders = allOrders.filter(o => o.adminArchived);
+
+        let displayOrders = activeOrders;
+
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
-            orders = orders.filter(o => o.user === selectedUserFilter);
+            displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
             content.innerHTML += `
                 <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
-                    <span>Filter: <strong>${selectedUserFilter}</strong> (${orders.length} Bestellungen)</span>
+                    <span>Filter: <strong>${selectedUserFilter}</strong> (${displayOrders.length} Bestellungen)</span>
                     <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
                 </div>
             `;
@@ -138,67 +140,58 @@ export const AdminUI = {
             }, 0);
         }
 
-        if (orders.length === 0) {
-            const msg = document.createElement('p');
-            msg.textContent = 'Keine Bestellungen gefunden.';
-            content.appendChild(msg);
-            return;
-        }
-
-        orders.forEach(o => {
+        const renderOrderCard = (o, isArchiveView) => {
+            // ... Logic copied from OrdersUI or inline ...
             // Formatting
             let displayTotal = o.total;
             if (!displayTotal || displayTotal === '0' || displayTotal === '0,00 €') {
-                let sum = 0;
-                if (o.items) sum = o.items.reduce((acc, i) => {
-                    let price = 0;
-                    if (i.price && typeof i.price === 'string') price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                let sum = (o.items || []).reduce((acc, i) => {
+                    let price = parseFloat((i.price || '0').toString().replace('€', '').replace(',', '.').trim()) || 0;
                     return acc + (price * (i.quantity || 1));
                 }, 0);
                 displayTotal = sum.toFixed(2).replace('.', ',') + ' €';
             }
 
-            let dateStr = o.date;
-            try {
-                const parts = dateStr.split(', ');
-                if (parts.length > 1) {
-                    const timeParts = parts[1].split(':');
-                    if (timeParts.length === 3) dateStr = `${parts[0]}, ${timeParts[0]}:${timeParts[1]}`;
-                }
-            } catch (e) { }
-
-            // Action Buttons Logic
+            // Buttons
             const rejectStyle = o.status === 'abgelehnt' ? 'background: #ef4444; color: white; border:1px solid #ef4444' : 'background: transparent; color: #ef4444; border: 1px solid #ef4444';
             const confirmStyle = o.status === 'bestellt' ? 'background: var(--primary-color); color: #0f172a; border:1px solid var(--primary-color)' : 'background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color)';
 
             let paidButton = '';
-            if (o.status === 'bestellt') {
+            if (o.status === 'bestellt' && !isArchiveView) {
                 const paidColor = o.paid ? '#22c55e' : '#ef4444';
                 const paidText = o.paid ? 'Bezahlt' : 'Nicht bezahlt';
                 paidButton = `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="margin-top:5px; border-color: ${paidColor}; color: ${paidColor}">${paidText}</button>`;
             }
 
-            // Items List
-            const itemsHtml = o.items.map(i => {
-                let unitPrice = 0;
-                if (i.price && typeof i.price === 'string') unitPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                const lineSum = unitPrice * (i.quantity || 1);
-                const lineTotalStr = lineSum.toFixed(2).replace('.', ',') + ' €';
-                const displayUnit = i.price || '0,00 €';
+            let actionButtons = '';
+            if (isArchiveView) {
+                actionButtons = `
+                    <button class="btn btn-secondary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
+                    <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Endgültig Löschen</button>
+                 `;
+            } else {
+                actionButtons = `
+                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${rejectStyle}">Ablehnen</button>
+                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${confirmStyle}">Bestellt</button>
+                    ${paidButton}
+                    <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="margin-top:5px; width:100%;">Archivieren</button>
+                 `;
+            }
 
+            const itemsHtml = (o.items || []).map(i => {
+                let unitPrice = parseFloat((i.price || '0').toString().replace('€', '').replace(',', '.').trim()) || 0;
+                const lineSum = unitPrice * (i.quantity || 1);
                 return `
                    <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
                         <div style="display:flex; gap: 15px;">
                             <span>${i.quantity}x ${i.name}</span>
-                            <span class="text-muted">${displayUnit} / Stk.</span>
                         </div>
-                        <span>${lineTotalStr}</span>
+                        <span>${lineSum.toFixed(2).replace('.', ',')} €</span>
                    </div>`;
             }).join('');
 
-            const div = document.createElement('div');
-            div.className = 'order-card';
-            div.innerHTML = `
+            return `
+            <div class="order-card" style="opacity: ${isArchiveView ? '0.7' : '1'}">
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                         <div>
@@ -207,33 +200,82 @@ export const AdminUI = {
                         </div>
                         <div style="font-weight:600;">${displayTotal}</div>
                     </div>
-                    <div style="font-size:0.8rem; color: #888; margin-bottom: 5px;">${dateStr}</div>
                     
                     <div style="font-size:0.85rem; margin-top:5px; color:var(--text-muted);">
                        ${itemsHtml}
                     </div>
 
+                    ${!isArchiveView ? `
                     <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
                         <label style="font-size:0.85em; color:var(--text-muted); display:block; margin-bottom:5px;">Admin Notiz:</label>
                         <textarea class="form-control admin-note-input" data-id="${o.id}" rows="2" placeholder="Notiz für Kunden..." 
-                            style="resize: vertical; background: rgba(0,0,0,0.3); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 6px; padding: 8px; width: 100%; font-family: inherit; font-size: 0.9em; min-height: 60px;">${o.adminNote || ''}</textarea>
+                            style="resize: none; background: rgba(0,0,0,0.3); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 6px; padding: 8px; width: 100%; font-family: inherit; font-size: 0.9em; min-height: 60px;">${o.adminNote || ''}</textarea>
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="margin-top:8px; width:100%; justify-content:center;">Notiz Speichern</button>
-                    </div>
+                    </div>` : ''}
                 </div>
-                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 130px;">
-                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${rejectStyle}">Ablehnen</button>
-                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${confirmStyle}">Bestellt</button>
-                    ${paidButton}
+                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width: 140px;">
+                    ${actionButtons}
                 </div>
-             `;
-            content.appendChild(div);
-        });
+            </div>`;
+        };
 
-        // Delegate (Async)
+        const activeHtml = displayOrders.length > 0 ? displayOrders.map(o => renderOrderCard(o, false)).join('') : '<p>Keine aktiven Bestellungen.</p>';
+        const mainOrdersDiv = document.createElement('div');
+        mainOrdersDiv.innerHTML = activeHtml;
+        content.appendChild(mainOrdersDiv);
+
+        // --- Archive Section ---
+        if (archivedOrders.length > 0) {
+            const archiveSection = document.createElement('div');
+            archiveSection.className = `admin-archive-section ${isArchiveOpen ? 'open' : ''}`;
+            archiveSection.style.marginTop = '30px';
+            archiveSection.style.borderTop = '1px solid var(--glass-border)';
+
+            archiveSection.innerHTML = `
+                <div class="archive-header" style="padding:15px 0; cursor:pointer; display:flex; justify-content:space-between; color:var(--text-muted);">
+                    <span>Archivierte Bestellungen (${archivedOrders.length})</span>
+                    <span>▼</span>
+                </div>
+                <div class="archive-list ${isArchiveOpen ? 'open' : ''}" style="display:${isArchiveOpen ? 'block' : 'none'};">
+                    ${archivedOrders.map(o => renderOrderCard(o, true)).join('')}
+                </div>
+            `;
+            content.appendChild(archiveSection);
+
+            // Toggle Handler
+            const header = archiveSection.querySelector('.archive-header');
+            const body = archiveSection.querySelector('.archive-list');
+            header.onclick = () => {
+                const isOpen = body.style.display === 'block';
+                body.style.display = isOpen ? 'none' : 'block';
+                if (isOpen) archiveSection.classList.remove('open');
+                else archiveSection.classList.add('open');
+            };
+        }
+
+        // Delegate (Async) Actions
         list.onclick = async (e) => {
             const id = e.target.dataset.id;
             if (!id) return;
+            // Prevent event bubbling from Archive Header
+            if (e.target.closest('.archive-header')) return;
 
+            if (e.target.classList.contains('archive-order-btn')) {
+                await DB.updateOrder(id, o => o.adminArchived = true);
+                selfRender(elements, DB, showConfirm, selfRender);
+            }
+            if (e.target.classList.contains('unarchive-order')) {
+                await DB.updateOrder(id, o => o.adminArchived = false);
+                selfRender(elements, DB, showConfirm, selfRender);
+            }
+            if (e.target.classList.contains('delete-permanent')) {
+                showConfirm('Bestellung löschen?', 'Wollen Sie diese Bestellung endgültig löschen? (Kann nicht rückgängig gemacht werden).', async () => {
+                    await DB.deleteOrder(id);
+                    selfRender(elements, DB, showConfirm, selfRender);
+                });
+            }
+
+            // Existing Actions
             if (e.target.classList.contains('reject-order')) {
                 const currentStatus = e.target.dataset.status;
                 const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
