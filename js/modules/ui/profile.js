@@ -1,9 +1,10 @@
 // --- js/modules/ui/profile.js ---
 import { UI } from './ui.js';
-import { Cart } from '../cart.js'; // Import Cart for Pricing calculation
+// REMOVED Import Cart - Circular Dependency Fix
+// import { Cart } from '../cart.js'; 
 
 export const ProfileUI = {
-    renderProfile(elements, DB, state) {
+    renderProfile(elements, DB, state, cartHelper) { // Accept cartHelper (Cart)
         const user = state.currentUser;
         if (!user) return;
 
@@ -28,7 +29,8 @@ export const ProfileUI = {
             // Recalculate Prices for Historic Orders!
             // Map items to new prices
             const updatedItems = (o.items || []).map(i => {
-                const effectivePrice = Cart.calculatePrice(i, user);
+                // Dependency Injection: Use cartHelper
+                const effectivePrice = cartHelper ? cartHelper.calculatePrice(i, user) : 0;
                 // Note: We don't save this to DB, just display
                 return {
                     ...i,
