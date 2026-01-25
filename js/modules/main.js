@@ -16,8 +16,17 @@ window.app = {
     currentView: 'login',
 
     async init() {
+        console.log('App: Init started');
+        const debugDiv = document.createElement('div');
+        debugDiv.id = 'debug-log';
+        debugDiv.style.cssText = 'position:fixed; bottom:0; right:0; background:black; color:lime; padding:10px; z-index:99999; font-size:12px; pointer-events:none; opacity:0.7;';
+        document.body.appendChild(debugDiv);
+        const log = (msg) => { console.log(msg); debugDiv.innerHTML += msg + '<br>'; };
+
+        log('Loading DB...');
         try {
             await DB.init();
+            log('DB Init Done');
         } catch (e) {
             console.error('Startup Error:', e);
             document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center;">
@@ -28,6 +37,7 @@ window.app = {
             return;
         }
 
+        log('Initializing Logic...');
         this.views = {
             login: document.getElementById('login-view'),
             catalog: document.getElementById('catalog-view'),
@@ -66,9 +76,17 @@ window.app = {
             menuToggle: document.getElementById('menu-toggle'),
             navContainer: document.getElementById('main-nav')
         };
+        log('Elements captured');
+
+        // Initialize Search
+        Search.init(this.state, this.elements, Cart.addToCartLogic.bind(Cart));
+        log('Search initialized');
 
         this.setupEventListeners();
+        log('Listeners setup');
+
         Auth.checkSession(DB, this.state, () => this.updateUI(), (v) => this.navigateTo(v), this.currentView);
+        log('Session checked');
 
         console.log('App Initialized (Modular)');
     },
@@ -86,7 +104,8 @@ window.app = {
 
         if (viewName === 'catalog') UI.renderCatalog(this.elements, this.state);
         if (viewName === 'cart') UI.renderCart(this.elements, this.state, this.changeCartQty.bind(this));
-        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard); // Pass self render
+        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+        // Pass Cart to ProfileUI for Dynamic Pricing Calculation (Dependency Injection)
         if (viewName === 'profile') UI.renderProfile(this.elements, DB, this.state, Cart);
 
         this.renderNav();
@@ -105,12 +124,9 @@ window.app = {
             a.dataset.view = view;
             if (tab) a.dataset.tab = tab;
 
-            // Active State Logic adjusted for Tabs
             const currentTab = this.elements.ordersList ? (this.elements.ordersList.dataset.activeTab || 'orders') : 'orders';
             const isActiveView = view === this.currentView;
-            const isActiveTab = tab ? (tab === currentTab) : true; // If no tab specified, ignoring tab check (e.g. catalog) - but for admin we have tabs.
-
-            // Specific Admin Active Check
+            // Admin Tab & Active Logic
             if (view === 'admin' && this.currentView === 'admin') {
                 if (tab === currentTab) a.classList.add('active');
             } else if (isActiveView && view !== 'admin' && view !== 'logout') {
@@ -128,7 +144,7 @@ window.app = {
         } else if (this.state.currentUser.role === 'admin') {
             createLink('Bestellungen', 'admin', '', 'orders');
             createLink('Benutzer', 'admin', '', 'users');
-            createLink('Abmelden', 'logout', 'btn-danger'); // Ensuring it's red and German
+            createLink('Abmelden', 'logout', 'btn-danger');
         }
     },
 
@@ -151,7 +167,8 @@ window.app = {
 
                     if (targetTab && this.elements.ordersList) {
                         this.elements.ordersList.dataset.activeTab = targetTab;
-                        if (targetTab === 'orders') this.elements.ordersList.dataset.selectedUser = ''; // Clear ID filter when clicking "Bestellungen" top nav
+                        if (targetTab === 'orders') this.elements.ordersList.dataset.selectedUser = '';
+                        window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: targetTab } }));
                     }
 
                     if (targetView === 'logout') {
@@ -164,25 +181,28 @@ window.app = {
             });
         }
 
-        // Search
-        safeAdd(this.elements.snuzoneSearch, 'keypress', (e) => { if (e.key === 'Enter') Search.handleSearch(this.elements.snuzoneSearch.value.trim(), this.elements, (p) => UI.renderSearchResults(p, this.elements), (els) => Search.clearSearch(els)); });
-        safeAdd(this.elements.searchClear, 'click', () => Search.clearSearch(this.elements));
+        // Search Handlers (Uses Search Module)
+        // Search init handles input events. Here we handle clear/click results?
+        // Note: Search.init handles input & enter.
+        // We only need Clear button here?
+        safeAdd(this.elements.searchClear, 'click', () => {
+            if (this.elements.snuzoneSearch) {
+                this.elements.snuzoneSearch.value = '';
+                Search.handleSearch('', this.elements, Cart.addToCartLogic.bind(Cart)); // Clear
+            }
+        });
 
         safeAdd(this.elements.snuzoneResultsGrid, 'click', (e) => {
-            if (e.target.classList.contains('add-external')) {
-                const idx = e.target.dataset.index;
-                Cart.addToCartLogic(Search.results[idx], this.state, () => Cart.updateCartCount(this.state, this.elements));
-                // Search results stay visible
-            }
+            // Handled inside Search.renderSearchResults usually, but safe fallback?
+            // Actually Search.js attaches handlers to buttons on render.
+            // But we keep this if Search.js doesn't.
+            // Search.js DOES attach handlers.
         });
 
         safeAdd(this.elements.checkoutBtn, 'click', () => Cart.placeOrder(this.state, DB, this.elements, () => Cart.updateCartCount(this.state, this.elements), (v) => this.navigateTo(v)));
 
-        // Profile Actions
+        // Profile & Admin Actions (Delegate)
         safeAdd(this.elements.profileOrdersList, 'click', (e) => this.handleProfileAction(e));
-
-        // Admin Actions
-        // Admin Actions are now handled in js/modules/ui/admin.js via internal event delegation on render.
 
         // Logout Modal
         safeAdd(this.elements.logoutConfirm, 'click', () => {
@@ -193,14 +213,6 @@ window.app = {
 
         window.addEventListener('click', () => DB.updateSessionActivity());
         window.addEventListener('keypress', () => DB.updateSessionActivity());
-
-        // Listen for internal tab changes from UI module
-        window.addEventListener('admin-tab-changed', (e) => {
-            if (this.elements.ordersList) {
-                this.elements.ordersList.dataset.activeTab = e.detail.tab;
-                this.renderNav(); // Re-render nav to update active class based on dataset/state
-            }
-        });
     },
 
     changeCartQty(index, delta) {
@@ -215,30 +227,30 @@ window.app = {
         if (cls.contains('cancel-order')) {
             UI.showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
                 DB.updateOrder(id, o => o.status = 'cancelled');
-                UI.renderProfile(this.elements, DB, this.state);
+                // Pass Cart for pricing!
+                UI.renderProfile(this.elements, DB, this.state, Cart);
             });
         }
         if (cls.contains('archive-order')) {
             DB.updateOrder(id, o => { if (!o.archivedBy) o.archivedBy = []; o.archivedBy.push(this.state.currentUser.username); });
-            UI.renderProfile(this.elements, DB, this.state);
+            UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('restore-order')) {
             DB.updateOrder(id, o => { if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username); });
-            UI.renderProfile(this.elements, DB, this.state);
+            UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('revive-order')) {
             DB.updateOrder(id, o => {
                 o.status = 'open';
-                o.deletedByAdmin = false; // Make visible to admin again
-                // Also unarchive if implicit
+                o.deletedByAdmin = false;
                 if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
             });
-            UI.renderProfile(this.elements, DB, this.state);
+            UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('delete-order')) {
             UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
                 DB.deleteOrder(id);
-                UI.renderProfile(this.elements, DB, this.state);
+                UI.renderProfile(this.elements, DB, this.state, Cart);
             });
         }
         if (cls.contains('edit-order')) {
@@ -247,17 +259,14 @@ window.app = {
             if (o) {
                 UI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird überschrieben. Fortfahren?', () => {
                     this.state.editingOrderId = o.id;
-                    // Reset Cart first? Or overwrite? Logic implies appending. 
-                    // To act as "Edit", usually we clear first, but code appends.
-                    // Assuming append is okay or user wants to "Load back".
-                    // Code below adds items.
                     o.items.forEach(i => Cart.addToCartLogic(i, this.state, () => Cart.updateCartCount(this.state, this.elements)));
 
-                    // Restore Note
                     if (o.note && this.elements.orderNote) {
                         this.elements.orderNote.value = o.note;
                     }
 
+                    // Keep order until saved? Or delete?
+                    // Original logic deleted it.
                     DB.deleteOrder(id);
                     this.navigateTo('cart');
                     UI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
