@@ -192,11 +192,11 @@ export const UI = {
                                 
                                 <!-- Accordion for Roles -->
                                 <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; border-left: 3px solid var(--primary-color);">
-                                    <div style="margin-bottom:5px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
-                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:5px;">
+                                    <div style="margin-bottom:8px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
+                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer; padding:5px;">
                                         <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
                                         <span class="checkmark"></span>
-                                        <span style="color:white;">Administrator</span>
+                                        <span style="color:white; font-size:1rem;">Administrator</span>
                                     </label>
                                 </div>
                             </div>
@@ -242,7 +242,19 @@ export const UI = {
             content.querySelectorAll('.manage-role-btn').forEach(btn => {
                 btn.onclick = () => {
                     const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
+                    const isHidden = accordion.classList.contains('hidden');
+
+                    // Toggle Visibility
                     accordion.classList.toggle('hidden');
+
+                    // Toggle Button Style (Secondary (Outline-ish) <-> Primary (Filled))
+                    if (isHidden) {
+                        btn.classList.remove('btn-secondary');
+                        btn.classList.add('btn-primary');
+                    } else {
+                        btn.classList.add('btn-secondary');
+                        btn.classList.remove('btn-primary');
+                    }
                 };
             });
 

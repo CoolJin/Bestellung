@@ -549,14 +549,14 @@ input:focus {
     left: 0;
     height: 22px;
     width: 22px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: 6px;
     transition: all 0.2s;
 }
 
 .custom-checkbox-label:hover input~.checkmark {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.15);
 }
 
 .custom-checkbox-label input:checked~.checkmark {
