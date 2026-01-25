@@ -5,8 +5,9 @@
     padding: 40px 20px;
 }
 
-.view.hidden {
-    display: none;
+.view.hidden,
+.hidden {
+    display: none !important;
     opacity: 0;
 }
 
