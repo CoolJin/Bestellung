@@ -162,7 +162,7 @@ export const UI = {
                 </div>
             `;
 
-            // Handlers
+            // Handlers (Create/Delete/View)
             content.querySelector('#create-user-btn').onclick = () => {
                 const nameIn = content.querySelector('#new-user-name');
                 const passIn = content.querySelector('#new-user-pass');
@@ -202,6 +202,9 @@ export const UI = {
             orders = orders.filter(o => o.user === selectedUserFilter);
             // Visual Filter Indicator removed as per request ("Unten musst du da gar nichts mehr haben")
         }
+
+        // Render Header for Orders View? User says "Bei Bestellungen sollen nur Bestellungen sein". 
+        // No "Dashboard" title, no "Bestellungen" title if redundant. Just the cards.
 
         if (orders.length === 0) {
             const msg = document.createElement('p');
