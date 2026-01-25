@@ -524,6 +524,66 @@ input:focus {
     }
 }
 
+/* Custom Checkbox Styling */
+.custom-checkbox-label {
+    position: relative;
+    padding-left: 35px;
+    cursor: pointer;
+    font-size: 1rem;
+    user-select: none;
+    color: white;
+}
+
+.custom-checkbox-label input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    height: 22px;
+    width: 22px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.custom-checkbox-label:hover input~.checkmark {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.custom-checkbox-label input:checked~.checkmark {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.custom-checkbox-label input:checked~.checkmark:after {
+    display: block;
+}
+
+.custom-checkbox-label .checkmark:after {
+    left: 7px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid #0f172a;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
 .status-paid {
     color: #22c55e;
     background: rgba(34, 197, 94, 0.15);

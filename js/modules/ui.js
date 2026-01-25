@@ -187,20 +187,17 @@ export const UI = {
                                         <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen verwalten</button>
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort bearbeiten</button>
                                         ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : ''}
-                                        <!-- Hide orders button for admin as requested -->
                                     </div>
                                 </div>
-                                <div class="role-edit-section hidden" id="role-edit-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
-                                    <label style="display:inline-flex; align-items:center; gap:8px; color:white; margin-right:10px;">
-                                        <input type="checkbox" class="admin-role-check" ${u.role === 'admin' ? 'checked' : ''}> Admin
+                                
+                                <!-- Accordion for Roles -->
+                                <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; border-left: 3px solid var(--primary-color);">
+                                    <div style="margin-bottom:5px; color:var(--text-muted); font-size:0.9em;">Rollen zuweisen:</div>
+                                    <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:5px;">
+                                        <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
+                                        <span class="checkmark"></span>
+                                        <span style="color:white;">Administrator</span>
                                     </label>
-                                    <button class="btn btn-primary btn-sm save-role-confirm" data-user="${u.username}">Bestätigen</button>
-                                </div>
-                                <div class="pw-edit-section hidden" id="pw-edit-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
-                                    <div style="display:flex; gap:10px;">
-                                        <input type="text" class="new-pw-input" placeholder="Neues Passwort" value="${u.password}" style="flex:1;">
-                                        <button class="btn btn-primary btn-sm save-pw-confirm" data-user="${u.username}">Speichern</button>
-                                    </div>
                                 </div>
                             </div>
                         `).join('')}
@@ -241,26 +238,31 @@ export const UI = {
                 };
             });
 
-            // New Handlers for Role/PW (Modals)
+            // New Handlers for Role (Accordion + Modal Confirm)
             content.querySelectorAll('.manage-role-btn').forEach(btn => {
                 btn.onclick = () => {
-                    const username = btn.dataset.user;
-                    const u = DB.getUsers().find(user => user.username === username);
-                    const is目前Admin = u.role === 'admin';
+                    const accordion = content.querySelector(`#role-accordion-${btn.dataset.user}`);
+                    accordion.classList.toggle('hidden');
+                };
+            });
 
-                    showAdminModal('Rollen verwalten', `
-                       <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                           <input type="checkbox" id="modal-role-check" ${is目前Admin ? 'checked' : ''} style="width:20px; height:20px;"> 
-                           <span style="font-size:1.1rem;">Administrator Berechtigung</span>
-                       </label>
-                   `, (modal) => {
-                        const isAdmin = modal.querySelector('#modal-role-check').checked;
-                        DB.updateUser(username, { role: isAdmin ? 'admin' : 'user' });
+            content.querySelectorAll('.role-checkbox').forEach(chk => {
+                chk.onchange = (e) => {
+                    const isChecked = e.target.checked;
+                    const username = e.target.dataset.user;
+                    // Revert immediately to wait for confirmation
+                    e.target.checked = !isChecked;
+
+                    showAdminModal('Rolle ändern?', `
+                        Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?
+                    `, (modal) => {
+                        DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
                         renderAdminDashboard(elements, DB, showConfirm, renderAdminDashboard);
                     });
                 };
             });
 
+            // Password Modal (Handler exists, ensuring old code is gone)
             content.querySelectorAll('.edit-pw-btn').forEach(btn => {
                 btn.onclick = () => {
                     const username = btn.dataset.user;
