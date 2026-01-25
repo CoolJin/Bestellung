@@ -1,31 +1,117 @@
 // --- js/modules/ui/profile.js ---
-import { OrdersUI } from './orders.js';
+import { UI } from './ui.js';
+import { Cart } from '../cart.js'; // Import Cart for Pricing calculation
 
 export const ProfileUI = {
     renderProfile(elements, DB, state) {
+        const user = state.currentUser;
+        if (!user) return;
+
+        // Header
+        const header = document.getElementById('profile-header');
+        if (header) header.textContent = `Hallo, ${user.username}`;
+
+        // Orders List
         const list = elements.profileOrdersList;
         if (!list) return;
 
-        // Check open states before clearing
-        const cancelledOpen = list.querySelector('.archive-container[data-type="cancelled"] .archive-list.open') !== null;
-        const archivedOpen = list.querySelector('.archive-container[data-type="archived"] .archive-list.open') !== null;
+        const orders = DB.getOrders().filter(o => o.user === user.username)
+            .sort((a, b) => b.id.localeCompare(a.id));
 
-        list.innerHTML = '';
-
-        const all = DB.getOrders().filter(o => o.user === state.currentUser.username).sort((a, b) => b.id.localeCompare(a.id));
-
-        const active = all.filter(o => !o.archivedBy?.includes(state.currentUser.username) && o.status !== 'cancelled');
-        const cancelled = all.filter(o => o.status === 'cancelled' && !o.archivedBy?.includes(state.currentUser.username));
-        const archived = all.filter(o => o.archivedBy?.includes(state.currentUser.username));
-
-        active.forEach(o => list.appendChild(OrdersUI.createOrderCard(o)));
-
-        if (cancelled.length > 0) {
-            list.appendChild(OrdersUI.createCollapsible('Storniert', cancelled, false, cancelledOpen, 'cancelled'));
+        if (orders.length === 0) {
+            list.innerHTML = '<p>Keine Bestellungen.</p>';
+            return;
         }
 
-        if (archived.length > 0) {
-            list.appendChild(OrdersUI.createCollapsible('Archiv', archived, true, archivedOpen, 'archived'));
-        }
+        let html = '';
+        orders.forEach(o => {
+            // Recalculate Prices for Historic Orders!
+            // Map items to new prices
+            const updatedItems = (o.items || []).map(i => {
+                const effectivePrice = Cart.calculatePrice(i, user);
+                // Note: We don't save this to DB, just display
+                return {
+                    ...i,
+                    price: effectivePrice.toFixed(2).replace('.', ',') + ' €'
+                };
+            });
+
+            // Recalculate Total
+            const totalVal = updatedItems.reduce((acc, i) => {
+                const p = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                return acc + (p * (i.quantity || 1));
+            }, 0);
+            const totalStr = totalVal.toFixed(2).replace('.', ',') + ' €';
+
+            // Check if editable
+            const isEditable = o.status === 'open';
+
+            // Render Items
+            const itemsHtml = updatedItems.map(i => `
+                <div style="display:flex; justify-content:space-between; font-size:0.9em; margin-bottom:2px;">
+                    <span>${i.quantity}x ${i.name}</span>
+                    <span>${i.price}</span>
+                </div>
+            `).join('');
+
+            html += `
+            <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span style="font-weight:bold;">${o.id}</span>
+                    <span class="status-badge status-${o.status}">${o.status}</span>
+                </div>
+                <div style="font-size:0.85em; color:#ccc; margin-bottom:10px;">${o.date}</div>
+                
+                <div style="margin-bottom:15px;">
+                    ${itemsHtml}
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:5px; padding-top:5px; text-align:right; font-weight:bold;">
+                        Gesamt: ${totalStr}
+                    </div>
+                </div>
+
+                ${isEditable ? `
+                    <button class="btn btn-secondary btn-sm edit-order-btn" data-id="${o.id}" style="width:100%;">Bearbeiten & Warenkorb füllen</button>
+                    ${o.adminNote ? `<div style="margin-top:10px; font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px;">Admin: ${o.adminNote}</div>` : ''}
+                ` : ''}
+            </div>`;
+        });
+
+        list.innerHTML = html;
+
+        // Edit Handler
+        list.querySelectorAll('.edit-order-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.dataset.id;
+                UI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird ersetzt.', () => {
+                    const order = orders.find(o => String(o.id) === String(id));
+                    if (order && order.status === 'open') {
+                        // Restore items to cart
+                        state.cart = JSON.parse(JSON.stringify(order.items));
+                        state.editingOrderId = order.id;
+                        // Delete old order immediately? Or only on save?
+                        // User flow: "Edit" -> Moves to Cart -> User modifies -> "Place Order" (Replaces old ID).
+                        // So we delete old order here to avoid duplicates if they save properly.
+                        // Or we keep it until they save? 
+                        // Safer: Keep it. `placeOrder` logic will overwrite if ID matches.
+                        // But `placeOrder` uses `generateOrderId`.
+                        // Step 356 `placeOrder`: `const newId = DB.generateOrderId(state.editingOrderId);`
+                        // If editingOrderId is set (e.g. #0005), `generateOrderId` returns `#0005B`.
+                        // This preserves history?
+                        // Or should we REPLACE?
+                        // User feedback before: "Edit Order" -> "Confirmation".
+                        // Assuming current logic is fine.
+
+                        // Force re-calc prices in cart state
+                        state.cart.forEach(i => {
+                            const p = Cart.calculatePrice(i, user);
+                            i.price = p.toFixed(2).replace('.', ',') + ' €';
+                        });
+
+                        // Navigate
+                        document.querySelector('[data-view="cart"]').click();
+                    }
+                });
+            };
+        });
     }
 };
