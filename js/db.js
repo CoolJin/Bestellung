@@ -1,5 +1,5 @@
 /**
- * Database Module (db.js) - Refactored for Supabase & Cloud Cart & ID Logic v2
+ * Database Module (db.js) - Refactored for Supabase & Cloud Cart & ID Logic v2 & Pricing
  */
 
 import { supabaseClient } from './supabase-client.js';
@@ -23,7 +23,15 @@ const DB = {
         // Users
         const { data: users, error: userError } = await supabaseClient.from('users').select('*');
         if (userError) console.error('DB: Error fetching users', userError);
-        else this.state.users = users || [];
+        else {
+            this.state.users = (users || []).map(u => ({
+                username: u.username,
+                password: u.password,
+                role: u.role,
+                cart: u.cart,
+                isPablo: u.is_pablo // Map is_pablo -> isPablo
+            }));
+        }
 
         // Orders - Map DB snake_case to App camelCase
         const { data: orders, error: orderError } = await supabaseClient.from('orders').select('*');
@@ -31,17 +39,17 @@ const DB = {
         else {
             this.state.orders = (orders || []).map(o => ({
                 id: o.id,
-                user: o.user_id, // Map user_id -> user
+                user: o.user_id,
                 total: o.total,
                 status: o.status,
-                items: o.items, // jsonb
+                items: o.items,
                 date: o.date,
                 paid: o.paid,
-                adminNote: o.admin_note, // Map admin_note -> adminNote
+                adminNote: o.admin_note,
                 note: o.note,
                 archivedBy: o.archived_by || [],
                 deletedByAdmin: o.deleted_by_admin,
-                adminArchived: o.admin_archived // Map admin_archived -> adminArchived
+                adminArchived: o.admin_archived
             }));
         }
     },
@@ -56,28 +64,25 @@ const DB = {
             throw new Error('Benutzer existiert bereits');
         }
 
-        const newUser = { username, password, role: 'user', cart: [] };
+        const newUser = { username, password, role: 'user', cart: [], is_pablo: false };
 
-        // Optimistic Update
-        this.state.users.push(newUser);
+        // Optimistic
+        this.state.users.push({ ...newUser, isPablo: false });
 
         const { error } = await supabaseClient.from('users').insert([newUser]);
         if (error) {
             console.error('DB: Create User Error', error);
-            // Rollback
-            this.state.users = this.state.users.filter(u => u.username !== username);
+            await this.refreshData(); // Revert
             throw new Error('Fehler beim Erstellen des Benutzers: ' + error.message);
         }
     },
 
     async deleteUser(username) {
-        // Optimistic
         this.state.users = this.state.users.filter(u => u.username !== username);
-
         const { error } = await supabaseClient.from('users').delete().eq('username', username);
         if (error) {
             console.error('DB: Delete User Error', error);
-            await this.refreshData(); // Rollback by refresh
+            await this.refreshData();
         }
     },
 
@@ -86,7 +91,13 @@ const DB = {
         if (!user) throw new Error('User not found');
         Object.assign(user, updates);
 
-        const { error } = await supabaseClient.from('users').update(updates).eq('username', username);
+        const dbUpdates = {};
+        if (updates.role) dbUpdates.role = updates.role;
+        if (updates.password) dbUpdates.password = updates.password;
+        if (updates.cart) dbUpdates.cart = updates.cart;
+        if (updates.isPablo !== undefined) dbUpdates.is_pablo = updates.isPablo;
+
+        const { error } = await supabaseClient.from('users').update(dbUpdates).eq('username', username);
         if (error) {
             console.error('DB: Update User Error', error);
             await this.refreshData();
@@ -96,7 +107,6 @@ const DB = {
     // --- Cart Cloud Sync ---
     async saveCart(username, cart) {
         if (!username) return;
-        // Find local user and update state immediately (Optimistic UI for session consistency)
         const user = this.state.users.find(u => u.username === username);
         if (user) user.cart = cart;
 
@@ -108,10 +118,15 @@ const DB = {
         let user = this.state.users.find(u => u.username === username && u.password === password);
 
         if (!user) {
-            // Try fetching fresh just in case
             const { data } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).single();
             if (data) {
-                user = data;
+                user = {
+                    username: data.username,
+                    password: data.password,
+                    role: data.role,
+                    cart: data.cart,
+                    isPablo: data.is_pablo
+                };
                 if (!this.state.users.find(u => u.username === user.username)) {
                     this.state.users.push(user);
                 }
@@ -120,8 +135,7 @@ const DB = {
 
         if (user) {
             console.log('DB: Auth successful', user);
-            // Return full user object including cart
-            return { username: user.username, role: user.role, cart: user.cart || [] };
+            return { username: user.username, role: user.role, cart: user.cart || [], isPablo: user.isPablo };
         }
         return null;
     },
@@ -129,7 +143,7 @@ const DB = {
     // --- Session ---
     saveSession(user) {
         localStorage.setItem('session_v2', JSON.stringify({
-            user, // This snapshot might have old cart, so we prefer refreshing from state on load
+            user,
             lastActive: Date.now()
         }));
     },
@@ -140,18 +154,14 @@ const DB = {
             if (!data) return null;
             const session = JSON.parse(data);
             const now = Date.now();
-            if (now - session.lastActive > 900000) { // 15 min
+            if (now - session.lastActive > 900000) {
                 this.clearSession();
                 return null;
             }
             session.lastActive = now;
             localStorage.setItem('session_v2', JSON.stringify(session));
 
-            // Refresh User Data (Cart) from State (which is fresh from Cloud)
             const freshUser = this.state.users.find(u => u.username === session.user.username);
-
-            // If user found in fresh state, return THAT (contains syncd cart)
-            // If not found (rare race condition if init failed?), return session user backup
             return freshUser || session.user;
         } catch (e) {
             return null;
@@ -186,13 +196,13 @@ const DB = {
             date: order.date,
             paid: order.paid || false,
             admin_note: order.adminNote || '',
-            note: order.note || '', // Mapped from order.note
+            note: order.note || '',
             archived_by: order.archivedBy || [],
             deleted_by_admin: order.deletedByAdmin || false,
-            admin_archived: order.adminArchived || false // New Field
+            admin_archived: order.adminArchived || false
         };
 
-        this.state.orders.push(order); // Optimistic
+        this.state.orders.push(order);
 
         const { error } = await supabaseClient.from('orders').insert([dbOrder]);
         if (error) {
@@ -205,7 +215,7 @@ const DB = {
     async updateOrder(id, mutator) {
         const order = this.state.orders.find(o => String(o.id) === String(id));
         if (order) {
-            mutator(order); // Update local object in place
+            mutator(order);
 
             const dbUpdate = {};
             if (order.status !== undefined) dbUpdate.status = order.status;
@@ -219,7 +229,7 @@ const DB = {
 
             if (error) {
                 console.error('DB: Update Order Error', error);
-                await this.refreshData(); // Revert
+                await this.refreshData();
             }
             return true;
         }
@@ -227,10 +237,6 @@ const DB = {
     },
 
     async deleteOrder(id) {
-        // Soft delete (or Admin Archive) maps to 'deleted' status?
-        // User asked for "Trash" folder.
-        // If we "Delete" permanently from the "Archive" folder -> Real Delete.
-
         this.state.orders = this.state.orders.filter(o => String(o.id) !== String(id));
 
         const { error } = await supabaseClient.from('orders').delete().eq('id', id);
@@ -243,24 +249,19 @@ const DB = {
     // --- ID Generation ---
     generateOrderId(editingId = null) {
         if (editingId) {
-            // Logic for edits: Append B, but if already ends in B, keep it (don't stack B's)
             const strId = String(editingId);
             if (strId.endsWith('B')) return strId;
             return strId + 'B';
         }
 
-        // Logic for New Orders: Scan MAX ID and Increment
-        // Start at 1 (0001)
         let maxId = 0;
         this.state.orders.forEach(o => {
-            // Strip non-digits (remove #, B, C...)
             const numPart = parseInt(String(o.id).replace(/\D/g, ''), 10);
             if (!isNaN(numPart) && numPart > maxId && numPart < 90000) {
                 maxId = numPart;
             }
         });
 
-        // If no orders, maxId is 0. Next is 1.
         const newIdNum = maxId + 1;
         return '#' + String(newIdNum).padStart(4, '0');
     }

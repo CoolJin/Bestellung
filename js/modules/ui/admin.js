@@ -11,7 +11,6 @@ export const AdminUI = {
         let selectedUserFilter = list.dataset.selectedUser || null;
 
         // Capture Open State
-        // We use a specific ID to track if archive is open
         const isArchiveOpen = list.dataset.archiveOpen === 'true';
 
         // Clear list
@@ -50,7 +49,6 @@ export const AdminUI = {
 
         // --- USERS TAB ---
         if (activeTab === 'users') {
-            // ... Users Logic (unchanged for brevity, keeping it robust) ...
             const users = DB.getUsers();
             content.innerHTML = `
                 <div class="user-management-panel">
@@ -65,7 +63,6 @@ export const AdminUI = {
                     </div>
                     <div class="user-list" style="display:grid; gap:10px;">
                         ${users.map(u => {
-                // User Card Render
                 const showOrdersBtn = u.role !== 'admin' ?
                     `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : '';
                 const showDeleteBtn = u.role !== 'admin' ?
@@ -75,20 +72,30 @@ export const AdminUI = {
                 <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <div style="font-weight:bold;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span></div>
+                            <div style="font-weight:bold;">
+                                ${u.username} 
+                                <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>
+                                ${u.isPablo ? '<span style="font-size:0.8em; color:var(--primary-color); margin-left:5px;">(Pablo-Flat)</span>' : ''}
+                            </div>
                         </div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap;">
                             ${showOrdersBtn}
-                            <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort</button>
+                            <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
                             <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
                             ${showDeleteBtn}
                         </div>
                     </div>
-                    <!-- Role Accordion hidden by default, managed by handlers below -->
-                    <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2);">
-                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:15px; cursor:pointer;">
+                    <!-- Role Accordion -->
+                    <div class="role-accordion hidden" id="role-accordion-${u.username}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px; animate: fadeIn 0.2s;">
+                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:8px;">
                             <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
+                            <span class="checkmark"></span>
                             <span style="color:white;">Administrator</span>
+                        </label>
+                        <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                            <input type="checkbox" class="pablo-checkbox" data-user="${u.username}" ${u.isPablo ? 'checked' : ''}>
+                            <span class="checkmark"></span>
+                            <span style="color:white;">Pablo Flatrate</span>
                         </label>
                     </div>
                 </div>`;
@@ -105,11 +112,9 @@ export const AdminUI = {
             .filter(o => !o.deletedByAdmin)
             .sort((a, b) => b.id.localeCompare(a.id));
 
-        // Filter Lists
         const activeOrders = allOrders.filter(o => !o.adminArchived);
         const archivedOrders = allOrders.filter(o => o.adminArchived);
 
-        // Apply User Filter to ACTIVE orders mainly
         let displayOrders = activeOrders;
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
@@ -130,7 +135,6 @@ export const AdminUI = {
         }
 
         const renderOrderCard = (o, isArchiveView) => {
-            // ... Formatting ...
             let displayTotal = o.total;
             if (!displayTotal || displayTotal === '0' || displayTotal === '0,00 €') {
                 let sum = (o.items || []).reduce((acc, i) => {
@@ -206,14 +210,13 @@ export const AdminUI = {
         mainOrdersDiv.innerHTML = activeHtml;
         content.appendChild(mainOrdersDiv);
 
-        // --- Archive Section (Improved Styling) ---
+        // --- Archive Section ---
         if (archivedOrders.length > 0) {
             const archiveSection = document.createElement('div');
             archiveSection.className = `admin-archive-section`;
             archiveSection.style.marginTop = '40px';
             archiveSection.style.borderTop = '1px solid var(--glass-border)';
 
-            // Header
             const header = document.createElement('div');
             header.className = 'archive-header';
             header.style.cssText = `
@@ -234,7 +237,6 @@ export const AdminUI = {
                 <span style="transform: ${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.3s;">▼</span>
             `;
 
-            // Body
             const body = document.createElement('div');
             body.className = 'archive-list';
             body.style.display = isArchiveOpen ? 'grid' : 'none';
@@ -242,17 +244,12 @@ export const AdminUI = {
             body.style.marginTop = '15px';
             body.innerHTML = archivedOrders.map(o => renderOrderCard(o, true)).join('');
 
-            // Click Handler
             header.onclick = () => {
                 const nowOpen = body.style.display === 'none';
                 body.style.display = nowOpen ? 'grid' : 'none';
-                list.dataset.archiveOpen = nowOpen; // Persist state in dataset
-                // Update Arrow
+                list.dataset.archiveOpen = nowOpen;
                 header.querySelector('span:last-child').style.transform = nowOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-                selfRender(elements, DB, showConfirm, selfRender); // Re-render to ensure state is clean? No, actually just toggle. 
-                // Using re-render might close it if dataset isn't read back correctly.
-                // Since we update dataset, re-render reads it.
-                // BUT simple visual toggle is smoother.
+                selfRender(elements, DB, showConfirm, selfRender);
             };
 
             archiveSection.appendChild(header);
@@ -263,13 +260,8 @@ export const AdminUI = {
         // Delegate (Async) Actions
         list.onclick = async (e) => {
             const trg = e.target;
-            // Handle Archive Header click prevention? No, we use separate onclick handler for header.
-            // But if header contains buttons? No.
-
             const id = trg.dataset.id;
             if (!id) return;
-
-            // Stop bubbling if hitting buttons inside archive header? There are none.
 
             if (trg.classList.contains('archive-order-btn')) {
                 await DB.updateOrder(id, o => o.adminArchived = true);
@@ -285,8 +277,6 @@ export const AdminUI = {
                     selfRender(elements, DB, showConfirm, selfRender);
                 });
             }
-
-            // Existing Actions
             if (trg.classList.contains('reject-order')) {
                 const currentStatus = trg.dataset.status;
                 const newStatus = currentStatus === 'abgelehnt' ? 'open' : 'abgelehnt';
@@ -294,7 +284,7 @@ export const AdminUI = {
                 selfRender(elements, DB, showConfirm, selfRender);
             }
             if (trg.classList.contains('confirm-order')) {
-                const currentStatus = e.target.dataset.status;
+                const currentStatus = trg.dataset.status;
                 const newStatus = currentStatus === 'bestellt' ? 'open' : 'bestellt';
                 await DB.updateOrder(id, o => o.status = newStatus);
                 selfRender(elements, DB, showConfirm, selfRender);
@@ -364,17 +354,33 @@ export const AdminUI = {
                 }
             };
         });
+
+        // --- CHECKBOX LOGIC (Updated to handle both Admin and Pablo) ---
+        const handleRoleChange = (e, roleType) => {
+            const isChecked = e.target.checked;
+            const username = e.target.dataset.user;
+            e.target.checked = !isChecked; // Revert via UI first (wait for confirm)
+
+            const label = roleType === 'admin' ? 'Administrator' : 'Pablo Flatrate';
+            const action = isChecked ? 'geben' : 'entziehen';
+
+            showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Rolle "${label}" ${action}?`, async (modal) => {
+                const updates = {};
+                if (roleType === 'admin') updates.role = isChecked ? 'admin' : 'user';
+                if (roleType === 'pablo') updates.isPablo = isChecked;
+
+                await DB.updateUser(username, updates);
+                selfRender(elements, DB, showConfirm, selfRender);
+            });
+        };
+
         content.querySelectorAll('.role-checkbox').forEach(chk => {
-            chk.onchange = (e) => {
-                const isChecked = e.target.checked;
-                const username = e.target.dataset.user;
-                e.target.checked = !isChecked; // Revert
-                showAdminModal('Rolle ändern?', `Möchten Sie dem Benutzer <strong>${username}</strong> die Administrator-Rechte ${isChecked ? 'geben' : 'entziehen'}?`, async (modal) => {
-                    await DB.updateUser(username, { role: isChecked ? 'admin' : 'user' });
-                    selfRender(elements, DB, showConfirm, selfRender);
-                });
-            };
+            chk.onchange = (e) => handleRoleChange(e, 'admin');
         });
+        content.querySelectorAll('.pablo-checkbox').forEach(chk => {
+            chk.onchange = (e) => handleRoleChange(e, 'pablo');
+        });
+
         content.querySelectorAll('.edit-pw-btn').forEach(btn => {
             btn.onclick = () => {
                 const username = btn.dataset.user;
