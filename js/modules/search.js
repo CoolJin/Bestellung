@@ -1,5 +1,5 @@
 // --- js/modules/search.js ---
-import { UI } from './ui/ui.js';
+import { UI } from './ui.js';
 import { ProductsUI } from './ui/products.js'; // Might move render logic here
 import { Cart } from './cart.js'; // Import Cart for Pricing calculation
 
