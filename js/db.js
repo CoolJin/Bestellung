@@ -20,13 +20,30 @@ const DB = {
     },
 
     async refreshData() {
+        // Users
         const { data: users, error: userError } = await supabaseClient.from('users').select('*');
         if (userError) console.error('DB: Error fetching users', userError);
         else this.state.users = users || [];
 
+        // Orders - Map DB snake_case to App camelCase
         const { data: orders, error: orderError } = await supabaseClient.from('orders').select('*');
         if (orderError) console.error('DB: Error fetching orders', orderError);
-        else this.state.orders = orders || [];
+        else {
+            this.state.orders = (orders || []).map(o => ({
+                id: o.id,
+                user: o.user_id, // Map user_id -> user
+                total: o.total,
+                status: o.status,
+                items: o.items, // jsonb
+                date: o.date,
+                paid: o.paid,
+                adminNote: o.admin_note, // Map admin_note -> adminNote
+                note: o.note,
+                archivedBy: o.archived_by || [],
+                deletedByAdmin: o.deleted_by_admin,
+                adminArchived: o.admin_archived // Map admin_archived -> adminArchived
+            }));
+        }
     },
 
     // --- Users ---
