@@ -196,11 +196,13 @@ export const UI = {
         }
 
         // --- ORDERS TAB ---
-        let orders = DB.getOrders().sort((a, b) => b.id.localeCompare(a.id));
+        let orders = DB.getOrders()
+            .filter(o => !o.deletedByAdmin) // Filter out orders deleted by admin
+            .sort((a, b) => b.id.localeCompare(a.id));
 
         if (selectedUserFilter && selectedUserFilter !== 'null' && selectedUserFilter !== '') {
             orders = orders.filter(o => o.user === selectedUserFilter);
-            // Visual Filter Indicator removed as per request ("Unten musst du da gar nichts mehr haben")
+            // Visual Filter Indicator removed
         }
 
         // Render Header for Orders View? User says "Bei Bestellungen sollen nur Bestellungen sein". 

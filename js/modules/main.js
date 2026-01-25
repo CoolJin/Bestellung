@@ -191,6 +191,16 @@ window.app = {
                 DB.updateOrder(id, o => o.paid = !o.paid);
                 UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
             }
+            if (e.target.classList.contains('toggle-paid')) {
+                DB.updateOrder(id, o => o.paid = !o.paid);
+                UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+            }
+            if (e.target.classList.contains('admin-delete-order')) {
+                UI.showConfirm('Bestellung löschen?', 'Soll diese Bestellung aus Ihrer Ansicht entfernt werden?', () => {
+                    DB.updateOrder(id, o => o.deletedByAdmin = true);
+                    UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+                });
+            }
             if (e.target.classList.contains('save-note-btn')) {
                 const noteInput = this.elements.ordersList.querySelector(`.admin-note-input[data-id="${id}"]`);
                 if (noteInput) {
@@ -242,6 +252,7 @@ window.app = {
         if (cls.contains('revive-order')) {
             DB.updateOrder(id, o => {
                 o.status = 'open';
+                o.deletedByAdmin = false; // Make visible to admin again
                 // Also unarchive if implicit
                 if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
             });
