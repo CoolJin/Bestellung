@@ -233,7 +233,7 @@ export const AdminUI = {
                     <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
                     ${!isArchive ? `
                     <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
-                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:vertical; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
+                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:none; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
                     </div>` : ''}
                 </div>
