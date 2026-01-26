@@ -276,4 +276,15 @@ window.app = {
     }
 };
 
-window.onload = () => window.app.init();
+// ... (end of handleProfileAction)
+    }
+};
+
+// Immediate Execution (Module is deferred automatically)
+console.log('Main Module Loaded');
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.app.init());
+} else {
+    window.app.init();
+}
