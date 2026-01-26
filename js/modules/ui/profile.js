@@ -1,5 +1,5 @@
 // --- js/modules/ui/profile.js ---
-import { UI } from './ui.js';
+import { CoreUI } from './core.js';
 // REMOVED Import Cart - Circular Dependency Fix
 // import { Cart } from '../cart.js'; 
 
@@ -84,7 +84,7 @@ export const ProfileUI = {
         list.querySelectorAll('.edit-order-btn').forEach(btn => {
             btn.onclick = () => {
                 const id = btn.dataset.id;
-                UI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird ersetzt.', () => {
+                CoreUI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird ersetzt.', () => {
                     const order = orders.find(o => String(o.id) === String(id));
                     if (order && order.status === 'open') {
                         // Restore items to cart
@@ -105,12 +105,13 @@ export const ProfileUI = {
 
                         // Force re-calc prices in cart state
                         state.cart.forEach(i => {
-                            const p = Cart.calculatePrice(i, user);
+                            const p = cartHelper ? cartHelper.calculatePrice(i, user) : 0;
                             i.price = p.toFixed(2).replace('.', ',') + ' €';
                         });
 
                         // Navigate
                         document.querySelector('[data-view="cart"]').click();
+                        CoreUI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
                     }
                 });
             };
