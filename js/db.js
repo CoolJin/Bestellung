@@ -7,7 +7,8 @@ import { supabaseClient } from './supabase-client.js';
 const DB = {
     state: {
         users: [],
-        orders: []
+        orders: [],
+        products: []
     },
 
     async init() {
@@ -51,6 +52,20 @@ const DB = {
                 deletedByAdmin: o.deleted_by_admin,
                 adminArchived: o.admin_archived
             }));
+        }
+
+        // PRODUCTS (Missing Logic Fix)
+        const { data: products, error: prodError } = await supabaseClient.from('products').select('*');
+        if (prodError) {
+            console.error('DB: Error fetching products', prodError);
+        } else {
+            console.log("DB: Products Loaded", products ? products.length : 0);
+            this.state.products = products || [];
+            // Update global state if linked (Main.js does this manually? No, it expects DB to have it)
+            // But Main.js has its own state.products...
+            // We need to ensure Main.js syncs with DB.state.products.
+            // Main.js DB.init() is called, but Main.js state is separate.
+            // We need to inject products into Main state in init?
         }
     },
 
@@ -211,7 +226,8 @@ const DB = {
         if (error) {
             console.error('DB: Save Order Error', error);
             this.state.orders = this.state.orders.filter(o => o.id !== order.id);
-            throw new Error('Fehler beim Speichern der Bestellung');
+            // Throw the REAL error message to the UI
+            throw new Error('Speichern fehlgeschlagen: ' + (error.message || error.details || JSON.stringify(error)));
         }
     },
 

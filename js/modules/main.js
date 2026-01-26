@@ -25,6 +25,9 @@ window.app = {
 
             await Promise.race([DB.init(), timeoutPromise]);
 
+            // SYNC PRODUCTS from DB to App State
+            this.state.products = DB.state.products || [];
+
             log('DB Init Done');
         } catch (e) {
             console.error('Startup Error:', e);
