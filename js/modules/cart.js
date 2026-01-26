@@ -139,6 +139,14 @@ export const Cart = {
 
         try {
             await DB.saveOrder(order);
+
+            // DELETE OLD ORDER Logic (If editing)
+            if (state.editingOrderId && state.editingOrderId !== newId) {
+                // If we generated a NEW ID (e.g. #1005 -> #1005B), allow deleting the old one (#1005)
+                await DB.deleteOrder(state.editingOrderId);
+                console.log('Old order deleted:', state.editingOrderId);
+            }
+
             state.cart = [];
             state.editingOrderId = null;
             if (elements.orderNote) elements.orderNote.value = '';
