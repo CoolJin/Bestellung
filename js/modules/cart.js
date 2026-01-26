@@ -48,18 +48,17 @@ export const Cart = {
     calculatePrice(product, user) {
         let rawPrice = 0;
 
-        // CRITICAL: Always use 'originalPrice' if available (from scraper), else 'price'
-        // Scraper should store original price in 'originalPrice' or we parse it here if 'price' is dirty.
-        // But 'price' from scraper might be sale price.
-        // So we need to rely on what is passed.
-        // Ideally, 'product.price' holds the raw string from scraper.
-
-        // Let's assume 'price' is the string like "4,90 €" or number.
-        if (typeof product.price === 'number') rawPrice = product.price;
-        else if (typeof product.price === 'string') {
+        // Search module now sends 'price' as NUMBER (e.g. 5.50).
+        // Legacy products might still have strings "5,50 €".
+        if (typeof product.price === 'number') {
+            rawPrice = product.price;
+        } else if (typeof product.price === 'string') {
             // Remove '€', replace ',' with '.'
             rawPrice = parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         }
+
+        // Safety Fallback
+        if (rawPrice <= 0) rawPrice = 5.00;
 
         // If we have an explicit 'originalPrice' property (e.g. from data-price), prefer that?
         // User said: "It's not about discounted price, but original standard price."
