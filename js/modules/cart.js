@@ -70,18 +70,37 @@ export const Cart = {
         if (user && user.isPablo) {
             const name = (product.name || '').toLowerCase();
             if (name.includes('pablo')) {
-                // Rule: If < 4.00 -> 4.00
-                // If > 4.00 -> Round Up
+                // Rule: Sales Price must be > Purchase Price (Raw).
+                // "Kleiner gleich" comment likely meant usage of thresholds, but goal is MARGIN > 0.
+                // If Raw = 3.99 -> 4.00 (OK)
+                // If Raw = 4.00 -> Must be > 4.00 -> 5.00 (via Round Up)
+                // So if Raw < 4.00 -> 4.00
+                // If Raw >= 4.00 -> Round Up (e.g. 4.00 -> 4, wait. Math.ceil(4) is 4. We need > 4.)
+
+                // Safe Logic:
+                // If raw < 3.99 (or < 4.00 strictly), Flat 4.
                 if (rawPrice < 4.00) return 4.00;
-                return Math.ceil(rawPrice);
+
+                // If raw >= 4.00:
+                // We want to round up, but ensure it's > raw.
+                // Math.ceil(4.00) = 4.00 (Margin 0). User wants > 0.
+                // So if ceil == raw, add 1? 
+                // Or just Math.floor(raw) + 1? -> 4.00 -> 5.00. 4.01 -> 5.00.
+                // Yes. Math.floor(raw) + 1 covers both 4.00 and 4.01 -> 5.00.
+                return Math.floor(rawPrice) + 1;
             }
         }
 
-        // Logic 2: Standard Rule (Everyone else OR Non-Pablo products for Pablo users)
-        // Rule: If < 5.00 -> 5.00
-        // If > 5.00 -> Round Up
+        // Logic 2: Standard Rule
+        // If Raw < 5.00 -> 5.00
+        // If Raw >= 5.00 -> Must be > Raw.
         if (rawPrice < 5.00) return 5.00;
-        return Math.ceil(rawPrice);
+
+        // If Raw >= 5.00 (e.g. 5.00, 5.50)
+        // 5.00 -> 6.00 (Floor+1)
+        // 5.50 -> 6.00 (Floor+1)
+        // 6.00 -> 7.00
+        return Math.floor(rawPrice) + 1;
     },
 
     updateCartCount(state, elements) {
