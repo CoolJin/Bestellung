@@ -192,10 +192,28 @@ export const AdminUI = {
                  `;
             } else {
                 btns = `
-                    <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" style="${o.status === 'abgelehnt' ? 'background:#ef4444;border-color:#ef4444' : ''}">Ablehnen</button>
-                    <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" style="${btnStyle}">Bestellt</button>
-                    ${o.status === 'bestellt' ? `<button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" style="${o.paid ? 'color:#22c55e;border-color:#22c55e' : 'color:#ef4444;border-color:#ef4444'}">${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}</button>` : ''}
-                    <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="margin-top:5px;width:100%">Archivieren</button>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
+                            style="background-color: ${o.status === 'abgelehnt' ? '#ef4444' : 'transparent'}; 
+                                   border: 1px solid #ef4444; color: ${o.status === 'abgelehnt' ? 'white' : '#ef4444'}; width:100%;">
+                            ${o.status === 'abgelehnt' ? 'Abgelehnt (Wiederherstellen)' : 'Ablehnen'}
+                        </button>
+                        
+                        <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
+                             style="background-color: ${o.status === 'bestellt' ? '#22c55e' : 'transparent'}; 
+                                    border: 1px solid #22c55e; color: ${o.status === 'bestellt' ? 'white' : '#22c55e'}; width:100%;">
+                            ${o.status === 'bestellt' ? 'Bestätigt (Rückgängig)' : 'Bestätigen'}
+                        </button>
+
+                        ${o.status === 'bestellt' ? `
+                            <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
+                                style="${o.paid ? 'background-color:#22c55e; color:black; border-color:#22c55e;' : 'background-color:transparent; color:#ef4444; border-color:#ef4444;'} width:100%;">
+                                ${o.paid ? 'Bezahlt ✓' : 'Nicht bezahlt ✕'}
+                            </button>
+                        ` : ''}
+
+                        <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</button>
+                    </div>
                  `;
             }
 
@@ -210,7 +228,7 @@ export const AdminUI = {
                     <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
                     ${!isArchive ? `
                     <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
-                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="1" placeholder="Notiz..." style="width:100%; margin-bottom:5px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:none;">${o.adminNote || ''}</textarea>
+                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:vertical; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
                     </div>` : ''}
                 </div>
@@ -225,14 +243,14 @@ export const AdminUI = {
 
         if (archivedOrders.length > 0) {
             const archDiv = document.createElement('div');
-            archDiv.style.cssText = 'margin-top:30px; border-top:1px solid rgba(255,255,255,0.1);';
+            archDiv.style.cssText = 'margin-top:40px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;';
             // IMPORTANT: Render the list container ALWAYS, just toggle display
             archDiv.innerHTML = `
-                <div class="archive-header" style="padding:15px 0; cursor:pointer; display:flex; justify-content:space-between; color:#ccc;">
-                    <span>Archiv (${archivedOrders.length})</span>
-                    <span style="transform:${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">▼</span>
+                <div class="archive-header" style="padding:15px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; color:var(--text-color); background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:10px;">
+                    <span style="font-weight:bold;">Archiv (${archivedOrders.length})</span>
+                    <span style="transition:transform 0.3s; transform:${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">▼</span>
                 </div>
-                <div class="archive-list" style="display:${isArchiveOpen ? 'grid' : 'none'}; gap:10px;">
+                <div class="archive-list" style="display:${isArchiveOpen ? 'grid' : 'none'}; gap:15px;">
                     ${archivedOrders.map(o => renderOrderCard(o, true)).join('')}
                 </div>
             `;
@@ -243,7 +261,7 @@ export const AdminUI = {
                 const isOpen = body.style.display !== 'none';
                 body.style.display = isOpen ? 'none' : 'grid';
                 arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-                list.dataset.archiveOpen = !isOpen; // Update data attribute silently
+                list.dataset.archiveOpen = !isOpen;
             };
             content.appendChild(archDiv);
         }
@@ -289,27 +307,26 @@ export const AdminUI = {
 
         // ROBUST ROLE HANDLER
         const roleHandler = (e, type) => {
-            // Prevent default to stop checkbox form changing state visually before confirmation
             e.preventDefault();
             e.stopPropagation();
 
             const chk = e.target;
             const username = chk.dataset.user;
-            // "Ghost" state: If logic implies checked, but we prevented default, checking !checked gives us intent?
-            // Wait. e.preventDefault() stops the change. So 'checked' property remains OLD value.
-            // If it WAS unchecked, it stays unchecked. User WANTED to check it.
-            const userWantsCheck = !chk.checked;
+            // Current state (before click) is in 'checked'. 
+            // If user clicks, they want to FLIP it.
+            // But we prevented default, so 'checked' is still the OLD value.
+            const targetState = !chk.checked;
 
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
-            const action = userWantsCheck ? 'geben' : 'entziehen';
+            const action = targetState ? 'geben' : 'entziehen';
 
-            // Show modal
             showAdminModal('Rolle ändern', `Soll <strong>${username}</strong> ${label} ${action}?`, async () => {
                 const updates = {};
-                if (type === 'admin') updates.role = userWantsCheck ? 'admin' : 'user';
-                if (type === 'pablo') updates.isPablo = userWantsCheck;
+                if (type === 'admin') updates.role = targetState ? 'admin' : 'user';
+                if (type === 'pablo') updates.isPablo = targetState;
 
                 await DB.updateUser(username, updates);
+                // Force strict re-render to reflect DB state
                 selfRender(elements, DB, showConfirm, selfRender);
             });
         };
@@ -324,10 +341,22 @@ export const AdminUI = {
         });
         content.querySelectorAll('.edit-pw-btn').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
-            showAdminModal('PW Ändern', '<input id="pw1" placeholder="Neu"><input id="pw2" placeholder="Confirm">', async (m) => {
-                const p1 = m.querySelector('#pw1').value;
-                if (p1) { await DB.updateUser(u, { password: p1 }); selfRender(elements, DB, showConfirm, selfRender); }
-            });
+            showAdminModal('Passwort Ändern',
+                '<div style="display:flex; flex-direction:column; gap:10px;">' +
+                '<label style="text-align:left; font-size:0.9em; color:#ccc;">Neues Passwort</label>' +
+                '<input id="pw1" type="password" placeholder="Neues Passwort" class="form-input" style="padding:8px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
+                '<input id="pw2" type="password" placeholder="Bestätigen" class="form-input" style="padding:8px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
+                '</div>', async (m) => {
+                    const p1 = m.querySelector('#pw1').value;
+                    const p2 = m.querySelector('#pw2').value;
+                    if (p1 && p1 === p2) {
+                        await DB.updateUser(u, { password: p1 });
+                        CoreUI.showModal('Erfolg', 'Passwort wurde geändert.');
+                        selfRender(elements, DB, showConfirm, selfRender);
+                    } else if (p1 !== p2) {
+                        CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein.');
+                    }
+                });
         });
     }
 };
