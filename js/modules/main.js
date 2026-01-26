@@ -106,7 +106,7 @@ window.app = {
 
         if (viewName === 'catalog') UI.renderCatalog(this.elements, this.state);
         if (viewName === 'cart') UI.renderCart(this.elements, this.state, this.changeCartQty.bind(this));
-        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard);
+        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard, Cart);
         // Pass Cart to ProfileUI for Dynamic Pricing Calculation (Dependency Injection)
         if (viewName === 'profile') UI.renderProfile(this.elements, DB, this.state, Cart);
 

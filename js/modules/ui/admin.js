@@ -2,7 +2,7 @@
 import { CoreUI } from './core.js';
 
 export const AdminUI = {
-    renderAdminDashboard(elements, DB, showConfirm, selfRender) {
+    renderAdminDashboard(elements, DB, showConfirm, selfRender, cartHelper) {
         const list = elements.ordersList;
         if (!list) return;
 
@@ -112,7 +112,7 @@ export const AdminUI = {
                     </div>
                 </div>
             `;
-            this.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal);
+            this.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper);
             return;
         }
 
@@ -134,7 +134,7 @@ export const AdminUI = {
                 const cfBtn = content.querySelector('#clear-filter-btn');
                 if (cfBtn) cfBtn.onclick = () => {
                     list.dataset.selectedUser = '';
-                    selfRender(elements, DB, showConfirm, selfRender);
+                    selfRender(elements, DB, showConfirm, selfRender, cartHelper);
                 };
             }, 0);
         }
@@ -170,8 +170,20 @@ export const AdminUI = {
                 }
 
                 let userPrice = 0;
-                if (i.price && typeof i.price === 'string')
-                    userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+
+                // Fetch User from DB to check for Pablo/Flatrate status
+                const orderUser = DB.getUsers().find(u => u.username === o.user);
+
+                // Use Central Pricing Logic if available
+                if (cartHelper && orderUser) {
+                    // We must use the original item data but apply current user context
+                    const calculated = cartHelper.calculatePrice(i, orderUser);
+                    userPrice = calculated;
+                } else {
+                    // Fallback to stored string
+                    if (i.price && typeof i.price === 'string')
+                        userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                }
 
                 const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
                 const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
@@ -277,7 +289,7 @@ export const AdminUI = {
             const id = t.dataset.id;
             if (t.closest('.archive-header')) return; // Header handled separately
 
-            const reload = () => selfRender(elements, DB, showConfirm, selfRender);
+            const reload = () => selfRender(elements, DB, showConfirm, selfRender, cartHelper);
 
             if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
             if (t.classList.contains('unarchive-order')) { await DB.updateOrder(id, o => o.adminArchived = false); reload(); }
@@ -312,20 +324,20 @@ export const AdminUI = {
                 list.dataset.activeTab = 'orders'; // Switch tab
                 window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
                 // Trigger re-render of this component
-                selfRender(elements, DB, showConfirm, selfRender);
+                selfRender(elements, DB, showConfirm, selfRender, cartHelper);
             };
         });
 
     },
 
-    setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal) {
+    setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper) {
         // User creation logic...
         const createBtn = content.querySelector('#create-user-btn');
         if (createBtn) createBtn.onclick = async () => {
             const u = content.querySelector('#new-user-name').value.trim();
             const p = content.querySelector('#new-user-pass').value.trim();
             if (u && p) {
-                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender); }
+                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender, cartHelper); }
                 catch (e) { CoreUI.showModal('Fehler', e.message); }
             }
         };
@@ -355,7 +367,7 @@ export const AdminUI = {
                 try {
                     await DB.updateUser(username, updates);
                     // Force refresh
-                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 50);
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, cartHelper), 50);
                 } catch (e) {
                     console.error("Role Update Failed", e);
                     chk.checked = !targetState; // Revert visually
@@ -367,6 +379,7 @@ export const AdminUI = {
             // The modal implementation above handles "Confirm", but "Cancel" just closes.
             // We need to hook into Cancel/Close to revert the checkbox if not confirmed.
             // But for now, let's just re-render the whole list on Cancel to be safe?
+            // Or better: prevent default INTITIALLY, then manually toggle on confirm.
             // Or better: prevent default INTITIALLY, then manually toggle on confirm.
 
             // Actually, preventing default is safer for "Cancel" flow.
@@ -399,7 +412,7 @@ export const AdminUI = {
 
                 try {
                     await DB.updateUser(username, updates);
-                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 50);
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, cartHelper), 50);
                 } catch (e) {
                     CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.');
                 }
@@ -412,7 +425,7 @@ export const AdminUI = {
         // Handlers for Delete/PW...
         content.querySelectorAll('.delete-user').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
-            showConfirm('Löschen?', u, async () => { await DB.deleteUser(u); selfRender(elements, DB, showConfirm, selfRender); });
+            showConfirm('Löschen?', u, async () => { await DB.deleteUser(u); selfRender(elements, DB, showConfirm, selfRender, cartHelper); });
         });
         content.querySelectorAll('.edit-pw-btn').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
@@ -426,7 +439,7 @@ export const AdminUI = {
                     if (p1 && p1 === p2) {
                         await DB.updateUser(u, { password: p1 });
                         CoreUI.showModal('Erfolg', 'Passwort wurde geändert.');
-                        selfRender(elements, DB, showConfirm, selfRender);
+                        selfRender(elements, DB, showConfirm, selfRender, cartHelper);
                     } else if (p1 !== p2) {
                         CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein.');
                     }
