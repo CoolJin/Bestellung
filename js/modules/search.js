@@ -30,8 +30,23 @@ export const Search = {
     },
 
     async handleSearch(query) {
-        if (!query || query.length < 2) return;
+        // Elements (Lazy load or passed?)
+        const searchContainer = document.getElementById('search-results');
+        const defaultGrid = document.getElementById('product-grid');
+
+        if (!query || query.length < 2) {
+            // Reset / Show Default
+            if (this.elements.snuzoneResultsGrid) this.elements.snuzoneResultsGrid.innerHTML = '';
+            if (searchContainer) searchContainer.classList.add('hidden');
+            if (defaultGrid) defaultGrid.classList.remove('hidden');
+            return;
+        }
+
         query = query.toLowerCase();
+
+        // Show Search Container, Hide Default
+        if (searchContainer) searchContainer.classList.remove('hidden');
+        if (defaultGrid) defaultGrid.classList.add('hidden');
 
         // Show loading state
         if (this.elements.snuzoneResultsGrid) {
