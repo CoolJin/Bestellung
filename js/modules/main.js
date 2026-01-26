@@ -276,9 +276,7 @@ window.app = {
     }
 };
 
-// ... (end of handleProfileAction)
-    }
-};
+
 
 // Immediate Execution (Module is deferred automatically)
 console.log('Main Module Loaded');
