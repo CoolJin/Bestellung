@@ -181,13 +181,18 @@ window.app = {
         }
 
         // Search Handlers (Uses Search Module)
-        // Search init handles input events. Here we handle clear/click results?
-        // Note: Search.init handles input & enter.
-        // We only need Clear button here?
         safeAdd(this.elements.searchClear, 'click', () => {
             if (this.elements.snuzoneSearch) {
                 this.elements.snuzoneSearch.value = '';
-                Search.handleSearch('', this.elements, Cart.addToCartLogic.bind(Cart)); // Clear
+                // Must explicitly call handleSearch with empty string to reset the grid
+                Search.handleSearch('', this.elements, Cart.addToCartLogic.bind(Cart));
+            }
+        });
+
+        // Ensure Enter Key works manually if the module missed it?
+        safeAdd(this.elements.snuzoneSearch, 'keypress', (e) => {
+            if (e.key === 'Enter') {
+                Search.handleSearch(e.target.value.trim(), this.elements, Cart.addToCartLogic.bind(Cart));
             }
         });
 

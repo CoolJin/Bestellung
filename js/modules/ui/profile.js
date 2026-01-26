@@ -57,23 +57,25 @@ export const ProfileUI = {
             `).join('');
 
             html += `
-            <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="font-weight:bold;">${o.id}</span>
+            <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:bold; font-size:1.1em;">${o.id}</span>
                     <span class="status-badge status-${o.status}">${o.status}</span>
                 </div>
-                <div style="font-size:0.85em; color:#ccc; margin-bottom:10px;">${o.date}</div>
+                <div style="font-size:0.85em; color:#ccc;">${o.date}</div>
                 
-                <div style="margin-bottom:15px;">
+                <div style="margin-top:5px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
                     ${itemsHtml}
-                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:5px; padding-top:5px; text-align:right; font-weight:bold;">
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:8px; text-align:right; font-weight:bold; font-size:1.1em; color:var(--primary-color);">
                         Gesamt: ${totalStr}
                     </div>
                 </div>
 
                 ${isEditable ? `
-                    <button class="btn btn-secondary btn-sm edit-order-btn" data-id="${o.id}" style="width:100%;">Bearbeiten & Warenkorb füllen</button>
-                    ${o.adminNote ? `<div style="margin-top:10px; font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px;">Admin: ${o.adminNote}</div>` : ''}
+                    <div style="margin-top:auto;">
+                        ${o.adminNote ? `<div style="margin-bottom:10px; font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px;">Admin: ${o.adminNote}</div>` : ''}
+                        <button class="btn btn-secondary btn-sm edit-order-btn" data-id="${o.id}" style="width:100%; padding:10px;">Bearbeiten & Warenkorb füllen</button>
+                    </div>
                 ` : ''}
             </div>`;
         });
