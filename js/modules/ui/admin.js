@@ -144,6 +144,11 @@ export const AdminUI = {
             const statusClass = `status-${o.status}`;
             const btnStyle = o.status === 'bestellt' ? 'border-color:var(--primary-color); color:var(--primary-color)' : '';
 
+            // Layout fix for Archive: Ensure TEXT is white and visible. 
+            // The issue might be opacity or stacking context. 
+            const cardBg = isArchive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+            const cardOpacity = isArchive ? '1' : '1'; // Force full opacity to debug visibility
+
             // Formatting Time (HH:MM)
             let dateStr = o.date;
             try {
@@ -196,13 +201,13 @@ export const AdminUI = {
                         <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
                             style="background-color: ${o.status === 'abgelehnt' ? '#ef4444' : 'transparent'}; 
                                    border: 1px solid #ef4444; color: ${o.status === 'abgelehnt' ? 'white' : '#ef4444'}; width:100%;">
-                            ${o.status === 'abgelehnt' ? 'Abgelehnt (Wiederherstellen)' : 'Ablehnen'}
+                            ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
                         </button>
                         
                         <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
                              style="background-color: ${o.status === 'bestellt' ? '#22c55e' : 'transparent'}; 
                                     border: 1px solid #22c55e; color: ${o.status === 'bestellt' ? 'white' : '#22c55e'}; width:100%;">
-                            ${o.status === 'bestellt' ? 'Bestätigt (Rückgängig)' : 'Bestätigen'}
+                            ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
                         </button>
 
                         ${o.status === 'bestellt' ? `
@@ -218,7 +223,7 @@ export const AdminUI = {
             }
 
             return `
-            <div class="order-card" style="opacity:${isArchive ? 0.7 : 1}; background:${isArchive ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.03)'}; border:1px solid var(--glass-border); border-radius:8px; padding:10px; margin-bottom:10px; display:flex;">
+            <div class="order-card" style="opacity:${cardOpacity}; background:${cardBg}; border:1px solid var(--glass-border); border-radius:8px; padding:10px; margin-bottom:10px; display:flex;">
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between;">
                         <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span class="status-badge status-${o.status}">${o.status}</span></div>
@@ -325,9 +330,14 @@ export const AdminUI = {
                 if (type === 'admin') updates.role = targetState ? 'admin' : 'user';
                 if (type === 'pablo') updates.isPablo = targetState;
 
-                await DB.updateUser(username, updates);
-                // Force strict re-render to reflect DB state
-                selfRender(elements, DB, showConfirm, selfRender);
+                try {
+                    await DB.updateUser(username, updates);
+                    // Force small delay for DB propagation if needed
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 100);
+                } catch (e) {
+                    console.error("Role Update Failed", e);
+                    CoreUI.showModal('Fehler', 'Rolle konnte nicht gespeichert werden.');
+                }
             });
         };
 

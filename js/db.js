@@ -101,6 +101,9 @@ const DB = {
         if (error) {
             console.error('DB: Update User Error', error);
             await this.refreshData();
+        } else {
+            // SUCCESS: Refresh local state from DB to be sure!
+            await this.refreshData();
         }
     },
 
