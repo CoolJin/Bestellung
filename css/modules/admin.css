@@ -41,6 +41,8 @@
     margin-left: 5px;
 }
 
+.status-unpaid {
+    color: #ef4444;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
     margin-left: 5px;

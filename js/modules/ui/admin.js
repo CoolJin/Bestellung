@@ -419,7 +419,7 @@ export const AdminUI = {
             showAdminModal('Passwort Ändern',
                 '<div style="display:flex; flex-direction:column; gap:10px;">' +
                 '<input id="pw1" type="password" placeholder="Neues Passwort" class="form-input" style="padding:10px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
-                '<input id="pw2" type="password" placeholder="Passwort bestätigen" class="form-input" style="padding:10px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
+                '<input id="pw2" type="password" placeholder="Bestätigen" class="form-input" style="padding:10px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
                 '</div>', async (m) => {
                     const p1 = m.querySelector('#pw1').value;
                     const p2 = m.querySelector('#pw2').value;
