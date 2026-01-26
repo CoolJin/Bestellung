@@ -213,7 +213,7 @@ export const AdminUI = {
                         ${o.status === 'bestellt' ? `
                             <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
                                 style="${o.paid ? 'background-color:#22c55e; color:black; border-color:#22c55e;' : 'background-color:transparent; color:#ef4444; border-color:#ef4444;'} width:100%;">
-                                ${o.paid ? 'Bezahlt ✓' : 'Nicht bezahlt ✕'}
+                                ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
                             </button>
                         ` : ''}
 
@@ -281,17 +281,41 @@ export const AdminUI = {
 
             if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
             if (t.classList.contains('unarchive-order')) { await DB.updateOrder(id, o => o.adminArchived = false); reload(); }
-            if (t.classList.contains('delete-permanent')) { showConfirm('Löschen?', 'Endgültig?', async () => { await DB.deleteOrder(id); reload(); }); }
 
-            if (t.classList.contains('reject-order')) { await DB.updateOrder(id, o => o.status = o.status === 'abgelehnt' ? 'open' : 'abgelehnt'); reload(); }
-            if (t.classList.contains('confirm-order')) { await DB.updateOrder(id, o => o.status = o.status === 'bestellt' ? 'open' : 'bestellt'); reload(); }
-            if (t.classList.contains('toggle-paid')) { await DB.updateOrder(id, o => o.paid = !o.paid); reload(); }
+            // Simplified Button Logic (Toggle)
+            if (t.classList.contains('reject-order')) {
+                const newStatus = t.dataset.status === 'abgelehnt' ? 'open' : 'abgelehnt';
+                await DB.updateOrder(id, o => o.status = newStatus);
+                reload();
+            }
+            if (t.classList.contains('confirm-order')) {
+                const newStatus = t.dataset.status === 'bestellt' ? 'open' : 'bestellt';
+                await DB.updateOrder(id, o => o.status = newStatus);
+                reload();
+            }
+            if (t.classList.contains('toggle-paid')) {
+                await DB.updateOrder(id, o => o.paid = !o.paid);
+                reload();
+            }
             if (t.classList.contains('save-note-btn')) {
                 const val = list.querySelector(`.admin-note-input[data-id="${id}"]`).value;
                 await DB.updateOrder(id, o => o.adminNote = val);
                 CoreUI.showModal('Gespeichert', 'OK');
             }
         };
+
+        // --- Filter Logic Check ---
+        // Ensure "BEstellungen" button sets the dataset correctly
+        content.querySelectorAll('.view-user-orders').forEach(b => {
+            b.onclick = () => {
+                list.dataset.selectedUser = b.dataset.user;
+                list.dataset.activeTab = 'orders'; // Switch tab
+                window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
+                // Trigger re-render of this component
+                selfRender(elements, DB, showConfirm, selfRender);
+            };
+        });
+
     },
 
     setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal) {
@@ -312,15 +336,13 @@ export const AdminUI = {
 
         // ROBUST ROLE HANDLER
         const roleHandler = (e, type) => {
-            e.preventDefault();
-            e.stopPropagation();
-
+            // Do NOT prevent default here. Let the checkbox toggle visually first.
+            // We will revert if user cancels.
             const chk = e.target;
             const username = chk.dataset.user;
-            // Current state (before click) is in 'checked'. 
-            // If user clicks, they want to FLIP it.
-            // But we prevented default, so 'checked' is still the OLD value.
-            const targetState = !chk.checked;
+
+            // The "new" state is what the checkbox currently is (after click)
+            const targetState = chk.checked;
 
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = targetState ? 'geben' : 'entziehen';
@@ -332,17 +354,60 @@ export const AdminUI = {
 
                 try {
                     await DB.updateUser(username, updates);
-                    // Force small delay for DB propagation if needed
-                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 100);
+                    // Force refresh
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 50);
                 } catch (e) {
                     console.error("Role Update Failed", e);
+                    chk.checked = !targetState; // Revert visually
                     CoreUI.showModal('Fehler', 'Rolle konnte nicht gespeichert werden.');
+                }
+            });
+
+            // If user cancels modal (click X or Cancel), we need to revert the checkbox?
+            // The modal implementation above handles "Confirm", but "Cancel" just closes.
+            // We need to hook into Cancel/Close to revert the checkbox if not confirmed.
+            // But for now, let's just re-render the whole list on Cancel to be safe?
+            // Or better: prevent default INTITIALLY, then manually toggle on confirm.
+
+            // Actually, preventing default is safer for "Cancel" flow.
+            // Let's go back to Prevent Default, but fix the logic.
+            e.preventDefault();
+            const intendedState = !chk.checked; // If it was false, we want true.
+
+            // Re-run modal with INTENDED state
+            // (Note: The above logic block ran with 'targetState = checked', which was assuming no preventDefault)
+            // Let's correct it:
+        };
+
+        // Corrected Handler with PreventDefault
+        const safeRoleHandler = (e, type) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const chk = e.target;
+            const username = chk.dataset.user;
+            const currentState = chk.checked; // This is the OLD state because of preventDefault
+            const intendedState = !currentState;
+
+            const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
+            const action = intendedState ? 'geben' : 'entziehen';
+
+            showAdminModal('Rolle ändern', `Soll <strong>${username}</strong> ${label} ${action}?`, async () => {
+                const updates = {};
+                if (type === 'admin') updates.role = intendedState ? 'admin' : 'user';
+                if (type === 'pablo') updates.isPablo = intendedState;
+
+                try {
+                    await DB.updateUser(username, updates);
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender), 50);
+                } catch (e) {
+                    CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.');
                 }
             });
         };
 
-        content.querySelectorAll('.role-checkbox').forEach(c => c.onclick = (e) => roleHandler(e, 'admin'));
-        content.querySelectorAll('.pablo-checkbox').forEach(c => c.onclick = (e) => roleHandler(e, 'pablo'));
+        content.querySelectorAll('.role-checkbox').forEach(c => c.onclick = (e) => safeRoleHandler(e, 'admin'));
+        content.querySelectorAll('.pablo-checkbox').forEach(c => c.onclick = (e) => safeRoleHandler(e, 'pablo'));
 
         // Handlers for Delete/PW...
         content.querySelectorAll('.delete-user').forEach(b => b.onclick = () => {
@@ -353,9 +418,8 @@ export const AdminUI = {
             const u = b.dataset.user;
             showAdminModal('Passwort Ändern',
                 '<div style="display:flex; flex-direction:column; gap:10px;">' +
-                '<label style="text-align:left; font-size:0.9em; color:#ccc;">Neues Passwort</label>' +
-                '<input id="pw1" type="password" placeholder="Neues Passwort" class="form-input" style="padding:8px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
-                '<input id="pw2" type="password" placeholder="Bestätigen" class="form-input" style="padding:8px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
+                '<input id="pw1" type="password" placeholder="Neues Passwort" class="form-input" style="padding:10px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
+                '<input id="pw2" type="password" placeholder="Passwort bestätigen" class="form-input" style="padding:10px; border-radius:4px; border:1px solid #555; background:#333; color:white;">' +
                 '</div>', async (m) => {
                     const p1 = m.querySelector('#pw1').value;
                     const p2 = m.querySelector('#pw2').value;

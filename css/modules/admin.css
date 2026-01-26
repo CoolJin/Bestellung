@@ -41,9 +41,18 @@
     margin-left: 5px;
 }
 
-.status-unpaid {
-    color: #ef4444;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
     margin-left: 5px;
+}
+
+/* Archive Specific Fixes */
+.archive-list .order-card {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #ccc !important;
+}
+
+.archive-list .order-card span {
+    color: #fff !important;
 }
