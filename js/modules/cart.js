@@ -45,62 +45,50 @@ export const Cart = {
 
     // --- Pricing Algorithm (Updated Step 375) ---
     // --- Pricing Algorithm (Updated for precise rules) ---
+    // --- Pricing Algorithm (MPF/OPF Logic) ---
     calculatePrice(product, user) {
-        let rawPrice = 0;
+        let EP = 0; // Echt Preis
 
-        // Search module now sends 'price' as NUMBER (e.g. 5.50).
-        // Legacy products might still have strings "5,50 €".
         if (typeof product.price === 'number') {
-            rawPrice = product.price;
+            EP = product.price;
         } else if (typeof product.price === 'string') {
-            // Remove '€', replace ',' with '.'
-            rawPrice = parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            EP = parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         }
 
-        // Safety Fallback
-        if (rawPrice <= 0) rawPrice = 5.00;
+        // Safety
+        if (EP <= 0) EP = 5.00;
 
-        // If we have an explicit 'originalPrice' property (e.g. from data-price), prefer that?
-        // User said: "It's not about discounted price, but original standard price."
-        // We will assume 'product.price' IS the standard price unless we have 'originalPrice'.
-        // If scraper finds sale price, we might be in trouble.
-        // But let's apply the math rules first.
+        const isMPF = user && user.isPablo; // Mit Pablo Flatrate
+        const isWP = (product.name || '').toLowerCase().includes('pablo'); // Wenn Pablo
 
-        // Logic 1: Pablo User
-        if (user && user.isPablo) {
-            const name = (product.name || '').toLowerCase();
-            if (name.includes('pablo')) {
-                // Rule: Sales Price must be > Purchase Price (Raw).
-                // "Kleiner gleich" comment likely meant usage of thresholds, but goal is MARGIN > 0.
-                // If Raw = 3.99 -> 4.00 (OK)
-                // If Raw = 4.00 -> Must be > 4.00 -> 5.00 (via Round Up)
-                // So if Raw < 4.00 -> 4.00
-                // If Raw >= 4.00 -> Round Up (e.g. 4.00 -> 4, wait. Math.ceil(4) is 4. We need > 4.)
+        // Helper: "Aufgerundet auf nächste volle Zahl"
+        // Context: User previously stated "Margin > 0".
+        // If EP=4.00, Selling=4.00 is 0 margin.
+        // Thus "Next Full Number" implies Math.floor(EP) + 1.
+        // Example: 4.00 -> 5.00. 4.01 -> 5.00. 4.99 -> 5.00.
+        const roundNextFull = (val) => Math.floor(val) + 1;
 
-                // Safe Logic:
-                // If raw < 3.99 (or < 4.00 strictly), Flat 4.
-                if (rawPrice < 4.00) return 4.00;
-
-                // If raw >= 4.00:
-                // We want to round up, but ensure it's > raw.
-                // Math.ceil(4.00) = 4.00 (Margin 0). User wants > 0.
-                // So if ceil == raw, add 1? 
-                // Or just Math.floor(raw) + 1? -> 4.00 -> 5.00. 4.01 -> 5.00.
-                // Yes. Math.floor(raw) + 1 covers both 4.00 and 4.01 -> 5.00.
-                return Math.floor(rawPrice) + 1;
+        if (isMPF) {
+            // --- MPF Rules ---
+            if (EP < 4.00) {
+                // MPF EP < 4.00€
+                if (isWP) return 4.00; // AP 4.00€ (WP)
+                return 5.00;           // AP 5.00€ (WNP)
+            } else {
+                // MPF EP >= 4.00€
+                // "AP aufgerundet auf nächste volle Zahl (WP & WNP)"
+                return roundNextFull(EP);
+            }
+        } else {
+            // --- OPF Rules (Standard User) ---
+            if (EP < 5.00) {
+                // OPF EP < 5.00€ --> AP 5.00€
+                return 5.00;
+            } else {
+                // OPF EP >= 5.00€ --> AP aufgerundet
+                return roundNextFull(EP);
             }
         }
-
-        // Logic 2: Standard Rule
-        // If Raw < 5.00 -> 5.00
-        // If Raw >= 5.00 -> Must be > Raw.
-        if (rawPrice < 5.00) return 5.00;
-
-        // If Raw >= 5.00 (e.g. 5.00, 5.50)
-        // 5.00 -> 6.00 (Floor+1)
-        // 5.50 -> 6.00 (Floor+1)
-        // 6.00 -> 7.00
-        return Math.floor(rawPrice) + 1;
     },
 
     updateCartCount(state, elements) {
