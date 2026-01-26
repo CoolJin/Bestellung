@@ -90,19 +90,47 @@ export const Search = {
                     const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
 
                     // Image: try specific class or fallback to first img
+                    // Fix: Snuzone heavily uses lazy loading (data-src, srcset). We must check those.
                     let img = 'https://via.placeholder.com/150';
                     const imgEl = node.querySelector('.grid-product__image') || node.querySelector('img');
                     if (imgEl) {
-                        img = imgEl.src || imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || img;
-                        // Handle relative URLs if any (though usually absolute on Shopify)
-                        if (img.startsWith('//')) img = 'https:' + img;
+                        // Priority: data-src -> srcset -> src
+                        // Often data-src is the high-res one before load.
+                        let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
+
+                        // If srcset, take the first one (comma separated)
+                        if (rawSrc && rawSrc.includes(',')) {
+                            rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
+                        }
+
+                        // If data-src has {width}, replace it (Shopify pattern)
+                        if (rawSrc && rawSrc.includes('{width}')) {
+                            rawSrc = rawSrc.replace('{width}', '300'); // Standard size
+                        }
+
+                        if (rawSrc) {
+                            img = rawSrc;
+                            // Handle relative URLs
+                            if (img.startsWith('//')) img = 'https:' + img;
+                        }
                     }
 
                     // Price: Can contain ranges or "sale" prices. Just grab text.
+                    // Important: Grab 'data-price' if available? CSS inspection showed .grid-product__price
                     const priceEl = node.querySelector('.grid-product__price');
                     let price = priceEl ? priceEl.innerText.trim() : 'N/A';
+
                     // Cleanup price (remove "Ab", "from", newlines)
                     price = price.replace(/\s+/g, ' ').trim();
+
+                    // EXTRACT RAW PRICE FOR CALCULATION (e.g. "4,90 €" -> 4.90)
+                    // We need this for the cart logic to work correctly
+                    // We store it back in price string, but Cart.calculatePrice parses it.
+                    // Check if we can find a better source like <span class="money">
+                    const moneyEl = node.querySelector('.money');
+                    if (moneyEl) price = moneyEl.innerText.trim();
+
+                    // Filter valid items
 
                     // Filter valid items
                     if (title && title !== 'Unknown') {

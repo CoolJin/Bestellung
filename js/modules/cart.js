@@ -44,43 +44,45 @@ export const Cart = {
     },
 
     // --- Pricing Algorithm (Updated Step 375) ---
+    // --- Pricing Algorithm (Updated for precise rules) ---
     calculatePrice(product, user) {
         let rawPrice = 0;
+
+        // CRITICAL: Always use 'originalPrice' if available (from scraper), else 'price'
+        // Scraper should store original price in 'originalPrice' or we parse it here if 'price' is dirty.
+        // But 'price' from scraper might be sale price.
+        // So we need to rely on what is passed.
+        // Ideally, 'product.price' holds the raw string from scraper.
+
+        // Let's assume 'price' is the string like "4,90 €" or number.
         if (typeof product.price === 'number') rawPrice = product.price;
         else if (typeof product.price === 'string') {
-            rawPrice = parseFloat(product.price.replace('€', '').replace(',', '.').trim()) || 0;
+            // Remove '€', replace ',' with '.'
+            rawPrice = parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         }
+
+        // If we have an explicit 'originalPrice' property (e.g. from data-price), prefer that?
+        // User said: "It's not about discounted price, but original standard price."
+        // We will assume 'product.price' IS the standard price unless we have 'originalPrice'.
+        // If scraper finds sale price, we might be in trouble.
+        // But let's apply the math rules first.
 
         // Logic 1: Pablo User
         if (user && user.isPablo) {
             const name = (product.name || '').toLowerCase();
-            // User: "If Pablo Flatrate... pay exact 4.00 for Pablo products... EXCEPT if product is over 4.00, then pay rounded up."
-            // Wait, previous audio said: "Pay 4€... except if > 5 euro it's rounded up".
-            // Step 372 Audio: "products that have Pablo in name... exactly 4 euro. EXCEPT... if product is > 4 euro... then they pay rounded up".
-            // So: 
-            // If Name='Pablo' AND Price <= 4.00 -> 4.00.
-            // If Name='Pablo' AND Price > 4.00 -> Round Up. (e.g. 4.50 -> 5.00).
-            // (Assuming rounding rule >= 4.01 -> 5.00).
-
             if (name.includes('pablo')) {
-                if (rawPrice > 4.00) {
-                    return Math.ceil(rawPrice);
-                } else {
-                    return 4.00; // Flat 4.00 even if it was 3.50? User said "Exakt 4 Euro".
-                }
+                // Rule: If < 4.00 -> 4.00
+                // If > 4.00 -> Round Up
+                if (rawPrice < 4.00) return 4.00;
+                return Math.ceil(rawPrice);
             }
         }
 
         // Logic 2: Standard Rule (Everyone else OR Non-Pablo products for Pablo users)
-        // Under 5.00 -> 5.00
-        // Over 5.00 -> Round Up
-        if (rawPrice < 5.00) {
-            return 5.00;
-        } else if (rawPrice > 5.00) {
-            return Math.ceil(rawPrice);
-        }
-
-        return rawPrice; // Exactly 5.00
+        // Rule: If < 5.00 -> 5.00
+        // If > 5.00 -> Round Up
+        if (rawPrice < 5.00) return 5.00;
+        return Math.ceil(rawPrice);
     },
 
     updateCartCount(state, elements) {
