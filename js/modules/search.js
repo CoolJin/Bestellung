@@ -11,8 +11,8 @@ export const Search = {
 
         const input = elements.snuzoneSearch || elements.searchInput;
         if (input) {
-            // Live Search
-            input.addEventListener('input', (e) => this.handleSearch(e.target.value));
+            // Live Search REMOVED as per user request (only Enter/Send)
+            // input.addEventListener('input', (e) => this.handleSearch(e.target.value));
 
             // Enter Key
             input.addEventListener('keydown', (e) => {
