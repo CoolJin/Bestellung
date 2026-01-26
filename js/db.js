@@ -56,20 +56,12 @@ const DB = {
 
         // PRODUCTS (Missing Logic Fix)
         const { data: products, error: prodError } = await supabaseClient.from('products').select('*');
-        if (prodError || !products || products.length === 0) {
-            console.warn('DB: Products table missing or empty. Using FALLBACK data.');
-            this.state.products = [
-                { id: 101, name: 'Cuba Black', price: 5.50, image: 'https://via.placeholder.com/150?text=Cuba' },
-                { id: 102, name: 'Cuba White', price: 5.50, image: 'https://via.placeholder.com/150?text=Cuba+White' },
-                { id: 103, name: 'Pablo Ice Cold', price: 4.00, image: 'https://via.placeholder.com/150?text=Pablo' },
-                { id: 104, name: 'Pablo Red', price: 4.00, image: 'https://via.placeholder.com/150?text=Pablo+Red' },
-                { id: 105, name: 'Killa Cola', price: 4.50, image: 'https://via.placeholder.com/150?text=Killa' },
-                { id: 106, name: 'Velo Freeze', price: 6.00, image: 'https://via.placeholder.com/150?text=Velo' },
-                { id: 107, name: 'Siberia Red', price: 7.00, image: 'https://via.placeholder.com/150?text=Siberia' }
-            ];
+        // User requested REAL search, not fallback.
+        // If DB is empty, we will rely on External Search (Search Module).
+        if (prodError) {
+            console.error('DB: Error fetching products', prodError);
         } else {
-            console.log("DB: Products Loaded", products ? products.length : 0);
-            this.state.products = products;
+            this.state.products = products || [];
         }
     },
 
