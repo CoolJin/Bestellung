@@ -16,12 +16,7 @@ window.app = {
     currentView: 'login',
 
     async init() {
-        console.log('App: Init started');
-        const debugDiv = document.createElement('div');
-        debugDiv.id = 'debug-log';
-        debugDiv.style.cssText = 'position:fixed; bottom:0; right:0; background:black; color:lime; padding:10px; z-index:99999; font-size:12px; pointer-events:none; opacity:0.7;';
-        document.body.appendChild(debugDiv);
-        const log = (msg) => { console.log(msg); debugDiv.innerHTML += msg + '<br>'; };
+        const log = (msg) => { console.log(msg); };
 
         log('Loading DB...');
         try {
@@ -33,23 +28,11 @@ window.app = {
             log('DB Init Done');
         } catch (e) {
             console.error('Startup Error:', e);
-            const loader = document.getElementById('app-loader');
-            if (loader) {
-                // Show Error inside loader div
-                loader.innerHTML = `
-                <div style="text-align:center; padding:20px;">
-                    <h2 style="color:#ef4444; margin-bottom:10px;">Fehler beim Starten</h2>
-                    <p>${e.message}</p>
-                    <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#38bdf8; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Neu laden</button>
-                </div>
-                `;
-            } else {
-                document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center; background:#0b1120; height:100vh;">
-                    <h1>Fehler beim Starten</h1>
-                    <p>${e.message}</p>
-                    <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
-                </div>`;
-            }
+            document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center;">
+                <h1>Fehler beim Starten</h1>
+                <p>Verbindung fehlgeschlagen. Bitte neu laden.</p>
+                <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
+            </div>`;
             return;
         }
 
@@ -103,10 +86,6 @@ window.app = {
 
         Auth.checkSession(DB, this.state, () => this.updateUI(), (v) => this.navigateTo(v), this.currentView);
         log('Session checked');
-
-        // Remove Loader
-        const loader = document.getElementById('app-loader');
-        if (loader) loader.remove();
 
         console.log('App Initialized (Modular)');
     },
