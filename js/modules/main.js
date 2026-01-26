@@ -25,15 +25,31 @@ window.app = {
 
         log('Loading DB...');
         try {
-            await DB.init();
+            // Timeout Logic for DB Init (5 seconds)
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Datenbank-Verbindung Zeitüberschreitung. Prüfen Sie Internet/Adblocker.')), 5000));
+
+            await Promise.race([DB.init(), timeoutPromise]);
+
             log('DB Init Done');
         } catch (e) {
             console.error('Startup Error:', e);
-            document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center;">
-                <h1>Fehler beim Starten</h1>
-                <p>${e.message}</p>
-                <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
-            </div>`;
+            const loader = document.getElementById('app-loader');
+            if (loader) {
+                // Show Error inside loader div
+                loader.innerHTML = `
+                <div style="text-align:center; padding:20px;">
+                    <h2 style="color:#ef4444; margin-bottom:10px;">Fehler beim Starten</h2>
+                    <p>${e.message}</p>
+                    <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#38bdf8; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Neu laden</button>
+                </div>
+                `;
+            } else {
+                document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center; background:#0b1120; height:100vh;">
+                    <h1>Fehler beim Starten</h1>
+                    <p>${e.message}</p>
+                    <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
+                </div>`;
+            }
             return;
         }
 
@@ -87,6 +103,10 @@ window.app = {
 
         Auth.checkSession(DB, this.state, () => this.updateUI(), (v) => this.navigateTo(v), this.currentView);
         log('Session checked');
+
+        // Remove Loader
+        const loader = document.getElementById('app-loader');
+        if (loader) loader.remove();
 
         console.log('App Initialized (Modular)');
     },

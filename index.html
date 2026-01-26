@@ -17,6 +17,22 @@
 
 <body>
 
+    <!-- Loader -->
+    <div id="app-loader"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#0b1120; z-index:99999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white;">
+        <div style="font-size: 2rem; font-weight: bold; margin-bottom: 20px;">Lade App...</div>
+        <div
+            style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s linear infinite;">
+        </div>
+        <style>
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+        </style>
+    </div>
+
     <!-- Floating Glass Navigation -->
     <nav class="floating-nav" id="main-nav">
         <!-- Injected via JS -->
@@ -127,6 +143,23 @@
 
     <!-- Removed legacy db.js script tag -->
     <script type="module" src="js/modules/main.js"></script>
+
+    <!-- Safety Loader Timeout -->
+    <script>
+        setTimeout(() => {
+            const loader = document.getElementById('app-loader');
+            if (loader) {
+                loader.innerHTML = `
+                    <div style="text-align:center; padding:20px;">
+                        <h2 style="color:#ef4444; margin-bottom:10px;">Zeitüberschreitung</h2>
+                        <p>Die Anwendung konnte nicht geladen werden.</p>
+                        <p style="font-size:0.9em; color:#ccc; margin-top:5px;">Bitte überprüfen Sie Ihre Internetverbindung oder deaktivieren Sie Adblocker (Supabase).</p>
+                        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:#38bdf8; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Neu laden</button>
+                    </div>
+                `;
+            }
+        }, 10000); // 10 seconds safety timeout
+    </script>
 </body>
 
 </html>
