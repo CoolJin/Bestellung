@@ -233,30 +233,60 @@ window.app = {
 
         if (cls.contains('cancel-order')) {
             UI.showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
-                DB.updateOrder(id, o => o.status = 'cancelled');
+                DB.updateOrder(id, o => {
+                    o.status = 'cancelled';
+                    // Clear archive/deleted flags if any
+                    if (o.archivedBy) {
+                        o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username && u !== 'DELETED:' + this.state.currentUser.username);
+                    }
+                });
                 // Pass Cart for pricing!
                 UI.renderProfile(this.elements, DB, this.state, Cart);
             });
         }
         if (cls.contains('archive-order')) {
-            DB.updateOrder(id, o => { if (!o.archivedBy) o.archivedBy = []; o.archivedBy.push(this.state.currentUser.username); });
+            DB.updateOrder(id, o => {
+                if (!o.archivedBy) o.archivedBy = [];
+                // Ensure no duplicate
+                if (!o.archivedBy.includes(this.state.currentUser.username)) {
+                    o.archivedBy.push(this.state.currentUser.username);
+                }
+            });
             UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('restore-order')) {
-            DB.updateOrder(id, o => { if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username); });
+            DB.updateOrder(id, o => {
+                if (o.archivedBy) {
+                    // Remove both Archive AND Deleted flags for this user
+                    o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username && u !== 'DELETED:' + this.state.currentUser.username);
+                }
+            });
             UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('revive-order')) {
             DB.updateOrder(id, o => {
                 o.status = 'open';
                 o.deletedByAdmin = false;
-                if (o.archivedBy) o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
+                if (o.archivedBy) {
+                    // Remove both Archive AND Deleted flags for this user
+                    o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username && u !== 'DELETED:' + this.state.currentUser.username);
+                }
             });
             UI.renderProfile(this.elements, DB, this.state, Cart);
         }
         if (cls.contains('delete-order')) {
-            UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag endgültig entfernen?', () => {
-                DB.deleteOrder(id);
+            UI.showConfirm('Bestellung löschen?', 'Möchten Sie den Eintrag aus Ihrer Ansicht entfernen? (Admin sieht ihn weiterhin)', () => {
+                // Soft Delete via Prefix
+                DB.updateOrder(id, o => {
+                    if (!o.archivedBy) o.archivedBy = [];
+                    // Remove standard archive tag if present
+                    o.archivedBy = o.archivedBy.filter(u => u !== this.state.currentUser.username);
+                    // Add DELETED tag
+                    const delTag = 'DELETED:' + this.state.currentUser.username;
+                    if (!o.archivedBy.includes(delTag)) {
+                        o.archivedBy.push(delTag);
+                    }
+                });
                 UI.renderProfile(this.elements, DB, this.state, Cart);
             });
         }

@@ -1,10 +1,8 @@
 // --- js/modules/ui/profile.js ---
 import { CoreUI } from './core.js';
-// REMOVED Import Cart - Circular Dependency Fix
-// import { Cart } from '../cart.js'; 
 
 export const ProfileUI = {
-    renderProfile(elements, DB, state, cartHelper) { // Accept cartHelper (Cart)
+    renderProfile(elements, DB, state, cartHelper) {
         const user = state.currentUser;
         if (!user) return;
 
@@ -12,43 +10,72 @@ export const ProfileUI = {
         const header = document.getElementById('profile-header');
         if (header) header.textContent = `Hallo, ${user.username}`;
 
-        // Orders List
+        // Container
         const list = elements.profileOrdersList;
         if (!list) return;
 
-        const orders = DB.getOrders().filter(o => o.user === user.username)
+        const allOrders = DB.getOrders().filter(o => o.user === user.username)
             .sort((a, b) => b.id.localeCompare(a.id));
 
-        if (orders.length === 0) {
+        if (allOrders.length === 0) {
             list.innerHTML = '<p>Keine Bestellungen.</p>';
             return;
         }
 
-        let html = '';
-        orders.forEach(o => {
-            // Recalculate Prices for Historic Orders!
-            // Map items to new prices
+        // Segregate Orders
+        const activeOrders = [];
+        const archivedOrders = [];
+        const cancelledOrders = [];
+
+        allOrders.forEach(o => {
+            const archivedList = o.archivedBy || [];
+
+            // Logic:
+            // "DELETED:username" -> Deleted (Hidden)
+            // "username" -> Archived
+
+            const isDeleted = archivedList.includes('DELETED:' + user.username);
+            const isArchived = archivedList.includes(user.username);
+            const isCancelled = o.status === 'cancelled';
+
+            if (isDeleted) return; // Skip deleted
+
+            if (isCancelled) {
+                // If cancelled AND archived? 
+                // Priority: Cancelled -> Cancelled List.
+                // But if User Archived it, maybe they want it in Archive?
+                // Let's assume Cancelled > Archive for list placement, 
+                // OR we can check isArchived flags.
+                // User Flow: "Cancel" -> Cancelled List.
+                // If I Archive a Cancelled order?
+                // Let's put in Cancelled List for now.
+                cancelledOrders.push(o);
+            } else if (isArchived) {
+                archivedOrders.push(o);
+            } else {
+                activeOrders.push(o);
+            }
+        });
+
+        // Helper to Render Order Card
+        const renderCard = (o, type) => {
+            // Recalculate Prices
             const updatedItems = (o.items || []).map(i => {
-                // Dependency Injection: Use cartHelper
                 const effectivePrice = cartHelper ? cartHelper.calculatePrice(i, user) : 0;
-                // Note: We don't save this to DB, just display
                 return {
                     ...i,
                     price: effectivePrice.toFixed(2).replace('.', ',') + ' €'
                 };
             });
 
-            // Recalculate Total
+            // Total
             const totalVal = updatedItems.reduce((acc, i) => {
                 const p = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
                 return acc + (p * (i.quantity || 1));
             }, 0);
             const totalStr = totalVal.toFixed(2).replace('.', ',') + ' €';
 
-            // Check if editable
-            const isEditable = o.status === 'open';
-
-            // Render Items
+            // Items HTML
             const itemsHtml = updatedItems.map(i => `
                 <div style="display:flex; justify-content:space-between; font-size:0.9em; margin-bottom:2px;">
                     <span>${i.quantity}x ${i.name}</span>
@@ -56,67 +83,80 @@ export const ProfileUI = {
                 </div>
             `).join('');
 
-            html += `
+            // Buttons based on Type
+            let buttonsHtml = '';
+            if (type === 'active') {
+                buttonsHtml = `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                        <button class="btn btn-secondary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
+                        <button class="btn btn-secondary btn-sm archive-order" data-id="${o.id}">Archivieren</button>
+                    </div>
+                    <button class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</button>
+                `;
+            } else if (type === 'archived') {
+                buttonsHtml = `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                        <button class="btn btn-primary btn-sm restore-order" data-id="${o.id}">Wiederherstellen</button>
+                        <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</button>
+                    </div>
+                `;
+            } else if (type === 'cancelled') {
+                buttonsHtml = `
+                    <button class="btn btn-primary btn-sm revive-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Erneut bestellen</button>
+                `;
+            }
+
+            return `
             <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-weight:bold; font-size:1.1em;">${o.id}</span>
                     <span class="status-badge status-${o.status}">${o.status}</span>
                 </div>
                 <div style="font-size:0.85em; color:#ccc;">${o.date}</div>
-                
-                <div style="margin-top:5px; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                ${o.adminNote ? `<div style="font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px; margin:5px 0;">Admin: ${o.adminNote}</div>` : ''}
+
+                <div style="padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
                     ${itemsHtml}
                     <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:8px; text-align:right; font-weight:bold; font-size:1.1em; color:var(--primary-color);">
                         Gesamt: ${totalStr}
                     </div>
                 </div>
 
-                ${isEditable ? `
-                    <div style="margin-top:auto;">
-                        ${o.adminNote ? `<div style="margin-bottom:10px; font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px;">Admin: ${o.adminNote}</div>` : ''}
-                        <button class="btn btn-secondary btn-sm edit-order-btn" data-id="${o.id}" style="width:100%; padding:10px;">Bearbeiten & Warenkorb füllen</button>
-                    </div>
-                ` : ''}
+                <div style="margin-top:auto;">
+                    ${buttonsHtml}
+                </div>
             </div>`;
-        });
+        };
 
-        list.innerHTML = html;
+        // Construct Full HTML
+        let fullHtml = '';
 
-        // Edit Handler
-        list.querySelectorAll('.edit-order-btn').forEach(btn => {
-            btn.onclick = () => {
-                const id = btn.dataset.id;
-                CoreUI.showConfirm('Bestellung bearbeiten?', 'Der aktuelle Warenkorb wird ersetzt.', () => {
-                    const order = orders.find(o => String(o.id) === String(id));
-                    if (order && order.status === 'open') {
-                        // Restore items to cart
-                        state.cart = JSON.parse(JSON.stringify(order.items));
-                        state.editingOrderId = order.id;
-                        // Delete old order immediately? Or only on save?
-                        // User flow: "Edit" -> Moves to Cart -> User modifies -> "Place Order" (Replaces old ID).
-                        // So we delete old order here to avoid duplicates if they save properly.
-                        // Or we keep it until they save? 
-                        // Safer: Keep it. `placeOrder` logic will overwrite if ID matches.
-                        // But `placeOrder` uses `generateOrderId`.
-                        // Step 356 `placeOrder`: `const newId = DB.generateOrderId(state.editingOrderId);`
-                        // If editingOrderId is set (e.g. #0005), `generateOrderId` returns `#0005B`.
-                        // This preserves history?
-                        // Or should we REPLACE?
-                        // User feedback before: "Edit Order" -> "Confirmation".
-                        // Assuming current logic is fine.
+        // 1. Active Orders
+        if (activeOrders.length > 0) {
+            fullHtml += `<h3>Aktuelle Bestellungen</h3>`;
+            activeOrders.forEach(o => fullHtml += renderCard(o, 'active'));
+        } else {
+            fullHtml += `<h3>Aktuelle Bestellungen</h3><p style="color:#888;">Keine aktiven Bestellungen.</p>`;
+        }
 
-                        // Force re-calc prices in cart state
-                        state.cart.forEach(i => {
-                            const p = cartHelper ? cartHelper.calculatePrice(i, user) : 0;
-                            i.price = p.toFixed(2).replace('.', ',') + ' €';
-                        });
+        // 2. Archived Orders (Accordion)
+        fullHtml += `
+        <details style="margin-top:20px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;">
+            <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05);">Archivierte Bestellungen (${archivedOrders.length})</summary>
+            <div style="padding:15px;">
+                ${archivedOrders.length > 0 ? archivedOrders.map(o => renderCard(o, 'archived')).join('') : '<p style="color:#888;">Keine archivierten Bestellungen.</p>'}
+            </div>
+        </details>`;
 
-                        // Navigate
-                        document.querySelector('[data-view="cart"]').click();
-                        CoreUI.showModal('Bestellung bearbeitet', 'Inhalte geladen');
-                    }
-                });
-            };
-        });
+        // 3. Cancelled Orders (Accordion)
+        fullHtml += `
+        <details style="margin-top:10px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;">
+            <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05);">Stornierte Bestellungen (${cancelledOrders.length})</summary>
+            <div style="padding:15px;">
+                ${cancelledOrders.length > 0 ? cancelledOrders.map(o => renderCard(o, 'cancelled')).join('') : '<p style="color:#888;">Keine stornierten Bestellungen.</p>'}
+            </div>
+        </details>`;
+
+        list.innerHTML = fullHtml;
     }
 };
