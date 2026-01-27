@@ -77,7 +77,7 @@ export const AdminUI = {
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                     <div>
                                         <div style="font-weight:bold; color:${nameColor};">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>${pabloLabel}</div>
-                                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">PW: ${u.password}</div>
+                                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">Passwort: ${u.password}</div>
                                     </div>
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
                                         ${showOrdersBtn}
@@ -102,7 +102,7 @@ export const AdminUI = {
             }).join('')}
                     </div>
                 </div>`;
-            this.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper);
+            AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper);
             return;
         }
 
