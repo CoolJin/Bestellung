@@ -167,7 +167,11 @@ export const AdminUI = {
                 let origPrice = 0;
 
                 // Catalog Item Lookup
-                const catItem = products.find(p => String(p.id) === String(i.id));
+                let catItem = products.find(p => String(p.id) === String(i.id));
+                // Fallback: Match by Name if ID fails (recovers profit/links for old orders)
+                if (!catItem) {
+                    catItem = products.find(p => p.title === i.name || p.name === i.name);
+                }
 
                 // Buying Price Logic
                 if (i.originalPrice) {
