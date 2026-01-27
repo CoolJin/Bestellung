@@ -2,7 +2,7 @@
 import { CoreUI } from './core.js';
 
 export const AdminUI = {
-    renderAdminDashboard(elements, DB, showConfirm, selfRender, cartHelper) {
+    renderAdminDashboard(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper) {
         const list = elements.ordersList;
         if (!list) return;
 
@@ -20,8 +20,17 @@ export const AdminUI = {
         list.appendChild(content);
 
         // --- Improved Modal ---
-        const showAdminModal = (title, contentHTML, onConfirm) => {
-            // ... Modal Logic (Keeping Same) ...
+        // Ensure showAdminModal is available or redefine it (It is passed as argument usually, but fallback needed?)
+        // The argument name in signature is 'showAdminModal'. But in main.js iteration it might be different.
+        // Wait, line 5 has 'showAdminModal' MISSING in the view!
+        // View Line 5: renderAdminDashboard(elements, DB, showConfirm, selfRender, cartHelper)
+        // IT WAS MISSING 'showAdminModal' in the signature in previous file!
+        // But Line 105 calls setupUserHandlers with showAdminModal.
+        // Where does it come from?
+        // Ah, Line 23 re-defines `showAdminModal = ...`. It is a local function.
+        // So I don't need to add it to signature.
+
+        const localShowAdminModal = (title, contentHTML, onConfirm) => {
             const modalId = 'admin-dynamic-modal';
             let modal = document.getElementById(modalId);
             if (modal) modal.remove();
@@ -47,7 +56,7 @@ export const AdminUI = {
             modal.querySelector('.confirm-modal').onclick = () => { onConfirm(modal); close(); };
         };
 
-        // --- USERS TAB (Unchanged logic, re-pasted for completeness) ---
+        // --- USERS TAB ---
         if (activeTab === 'users') {
             const users = DB.getUsers();
             content.innerHTML = `
@@ -102,7 +111,7 @@ export const AdminUI = {
             }).join('')}
                     </div>
                 </div>`;
-            AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper);
+            AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, localShowAdminModal, cartHelper);
             return;
         }
 
@@ -130,21 +139,22 @@ export const AdminUI = {
         }
 
         const renderOrderCard = (o, isArchive) => {
-            let total = o.total;
-            const statusClass = `status-${o.status}`;
-            const btnStyle = o.status === 'bestellt' ? 'border-color:var(--primary-color); color:var(--primary-color)' : '';
+            let total = o.total; // We calculate Selling Price manually below, but keep total var for reference if needed
 
             // Layout fix for Archive
             const cardBg = isArchive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
             const cardOpacity = isArchive ? '0.75' : '1';
 
-            // Formatting Time (HH:MM)
+            // Formatting Time (Force DD.MM.YYYY, HH:MM)
             let dateStr = o.date;
             try {
-                const p = dateStr.split(', ');
-                if (p.length > 1) {
-                    const t = p[1].split(':');
-                    if (t.length >= 2) dateStr = `${p[0]}, ${t[0]}:${t[1]}`;
+                const d = new Date(o.date);
+                if (!isNaN(d.getTime())) {
+                    dateStr = d.toLocaleDateString('de-DE', {
+                        day: '2-digit', month: '2-digit', year: 'numeric'
+                    }) + ', ' + d.toLocaleTimeString('de-DE', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
                 }
             } catch (e) { }
 
@@ -154,22 +164,22 @@ export const AdminUI = {
 
             const itemsHtml = (o.items || []).map(i => {
                 const orderUser = DB.getUsers().find(u => u.username === o.user);
-
-                // Buying Price (Original)
                 let origPrice = 0;
+
+                // Catalog Item Lookup
+                const catItem = products.find(p => String(p.id) === String(i.id));
+
+                // Buying Price Logic
                 if (i.originalPrice) {
                     origPrice = parseFloat(String(i.originalPrice).replace(',', '.'));
                 } else {
-                    // Start of fallback logic
-                    const catItem = products.find(p => String(p.id) === String(i.id));
                     if (catItem) {
                         if (catItem.originalPrice) origPrice = parseFloat(String(catItem.originalPrice).replace(',', '.'));
-                        else if (typeof catItem.price === 'number') origPrice = catItem.price; // Fallback to current price (unsafe but better than 0)
+                        else if (typeof catItem.price === 'number') origPrice = catItem.price;
                     }
                     if (origPrice === 0) {
-                        // Fallback to stored price string if no original
                         let storedP = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                        origPrice = storedP; // Assume stored was original if nothing else
+                        origPrice = storedP;
                     }
                 }
 
@@ -181,7 +191,6 @@ export const AdminUI = {
                     userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
                 }
 
-                // Accumulate Totals
                 const q = i.quantity || 1;
                 calcSelling += userPrice * q;
                 calcBuying += origPrice * q;
@@ -190,12 +199,23 @@ export const AdminUI = {
                 const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
 
                 let priceDisplay = `<span>${userPriceStr}</span>`;
-                // Compare for Individual Item (Optional, keeping visual hint)
+                // Compare for Individual Item (Grey, No Strikethrough)
                 if (Math.abs(origPrice - userPrice) > 0.01 && origPrice > 0) {
-                    priceDisplay = `<span style="text-decoration:line-through; color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
+                    priceDisplay = `<span style="color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
                 }
 
-                return `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${q}x ${i.name}</span><div>${priceDisplay}</div></div>`;
+                // Product Link Logic
+                let nameDisplay = i.name;
+                if (catItem && catItem.handle) {
+                    const url = `https://snuzone.com/products/${catItem.handle}`;
+                    nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${i.name}</a>`;
+                }
+
+                // Row with Gap Spacing
+                return `<div style="display:flex; justify-content:space-between; align-items:flex-end; gap:25px; margin-bottom:5px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
+                            <span style="flex:1;">${q}x ${nameDisplay}</span>
+                            <div style="flex-shrink:0;">${priceDisplay}</div>
+                        </div>`;
             }).join('');
 
             // Totals Formatting
@@ -205,8 +225,21 @@ export const AdminUI = {
             const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
             const profitColor = profitVal >= 0 ? '#22c55e' : '#ef4444';
 
+            // Status Display
+            let displayStatus = o.status.toUpperCase();
+            if (displayStatus === 'OPEN') displayStatus = 'OFFEN';
+
+            let statusBadge = `<span class="status-badge status-${o.status}">${displayStatus}</span>`;
+
+            // Paid Badge for Header (Visual Only)
+            if (o.status === 'bestellt') {
+                const pTxt = o.paid ? 'BEZAHLT' : 'NICHT BEZAHLT';
+                const pCol = o.paid ? '#22c55e' : '#ef4444';
+                const pBg = o.paid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+                statusBadge += `<span style="margin-left:8px; border:1px solid ${pCol}; color:${pCol}; background:${pBg}; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">${pTxt}</span>`;
+            }
+
             let btns = '';
-            // CANCELLED LOGIC: If cancelled, RESTRICT actions
             const isCancelled = o.status === 'cancelled';
 
             if (isArchive) {
@@ -215,13 +248,25 @@ export const AdminUI = {
                     <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</button>
                  `;
             } else if (isCancelled) {
-                // Cancelled: ONLY Show Archive
                 btns = `
                     <div style="font-weight:bold; color:#ef4444; margin-bottom:5px; text-align:center;">STORNIERT</div>
                     <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
                 `;
             } else {
-                // Normal Active logic
+                // Confirm & Paid Side-by-Side
+                const confirmBtn = `
+                        <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
+                             style="background-color: ${o.status === 'bestellt' ? '#22c55e' : 'transparent'}; 
+                                    border: 1px solid #22c55e; color: ${o.status === 'bestellt' ? 'white' : '#22c55e'}; flex:1;">
+                            ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
+                        </button>`;
+
+                const paidBtn = o.status === 'bestellt' ? `
+                            <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
+                                style="${o.paid ? 'background-color:#22c55e; color:black; border-color:#22c55e;' : 'background-color:transparent; color:#ef4444; border-color:#ef4444;'} flex:1;">
+                                ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
+                            </button>` : '';
+
                 btns = `
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
@@ -230,18 +275,10 @@ export const AdminUI = {
                             ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
                         </button>
                         
-                        <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
-                             style="background-color: ${o.status === 'bestellt' ? '#22c55e' : 'transparent'}; 
-                                    border: 1px solid #22c55e; color: ${o.status === 'bestellt' ? 'white' : '#22c55e'}; width:100%;">
-                            ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
-                        </button>
-
-                        ${o.status === 'bestellt' ? `
-                            <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background-color:#22c55e; color:black; border-color:#22c55e;' : 'background-color:transparent; color:#ef4444; border-color:#ef4444;'} width:100%;">
-                                ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
-                            </button>
-                        ` : ''}
+                        <div style="display:flex; gap:5px; width:100%;">
+                            ${confirmBtn}
+                            ${paidBtn}
+                        </div>
 
                         <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</button>
                     </div>
@@ -252,11 +289,11 @@ export const AdminUI = {
             <div class="order-card" style="opacity:${cardOpacity}; background:${cardBg}; border:1px solid var(--glass-border); border-radius:8px; padding:10px; margin-bottom:10px; display:flex;">
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between;">
-                        <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span class="status-badge status-${o.status}">${o.status}</span></div>
+                        <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span style="margin-left:8px;">${statusBadge}</span></div>
                         <div style="text-align:right;">
                             <div style="font-weight:bold; font-size:1.1em;">${sellingStr}</div>
-                            <div style="font-size:0.8em; color:#888;">EK: ${buyingStr}</div>
-                            <div style="font-size:0.8em; color:${profitColor};">G: ${profitStr}</div>
+                            <div style="font-size:0.8em; color:#888;">Einkaufspreis: ${buyingStr}</div>
+                            <div style="font-size:0.8em; color:${profitColor};">Gewinn: ${profitStr}</div>
                         </div>
                     </div>
                     <div style="font-size:0.8em; color:#888; margin:2px 0 8px 0;">${dateStr}</div>
@@ -305,7 +342,7 @@ export const AdminUI = {
             const id = t.dataset.id;
             // if (t.closest('summary')) return; // Summary handles toggle natively
 
-            const reload = () => selfRender(elements, DB, showConfirm, selfRender, cartHelper);
+            const reload = () => selfRender(elements, DB, showConfirm, selfRender, localShowAdminModal, cartHelper);
 
             if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
             if (t.classList.contains('unarchive-order')) { await DB.updateOrder(id, o => o.adminArchived = false); reload(); }
@@ -337,19 +374,14 @@ export const AdminUI = {
             }
         };
 
-        // ... (User handlers same as before) ...
     },
     setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper) {
-        // ... (Logic for users tab, unchanged from previous read, just ensuring it's kept in rewriting) ...
-        // Since I am rewriting the file, I must include this method.
-        // Copied from Step 618 output.
-        // ...
         const createBtn = content.querySelector('#create-user-btn');
         if (createBtn) createBtn.onclick = async () => {
             const u = content.querySelector('#new-user-name').value.trim();
             const p = content.querySelector('#new-user-pass').value.trim();
             if (u && p) {
-                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender, cartHelper); }
+                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper); }
                 catch (e) { CoreUI.showModal('Fehler', e.message); }
             }
         };
@@ -377,7 +409,7 @@ export const AdminUI = {
 
                 try {
                     await DB.updateUser(username, updates);
-                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, cartHelper), 50);
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper), 50);
                 } catch (e) {
                     CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.');
                 }
@@ -389,7 +421,7 @@ export const AdminUI = {
 
         content.querySelectorAll('.delete-user').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
-            showConfirm('Löschen?', u, async () => { await DB.deleteUser(u); selfRender(elements, DB, showConfirm, selfRender, cartHelper); });
+            showConfirm('Löschen?', u, async () => { await DB.deleteUser(u); selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper); });
         });
         content.querySelectorAll('.edit-pw-btn').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
@@ -403,7 +435,7 @@ export const AdminUI = {
                     if (p1 && p1 === p2) {
                         await DB.updateUser(u, { password: p1 });
                         CoreUI.showModal('Erfolg', 'Passwort wurde geändert.');
-                        selfRender(elements, DB, showConfirm, selfRender, cartHelper);
+                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
                     } else if (p1 !== p2) {
                         CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein.');
                     }
@@ -419,7 +451,7 @@ export const AdminUI = {
                 // Dispatch event for Main UI updates (Nav highlight)
                 window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
                 // Trigger re-render
-                selfRender(elements, DB, showConfirm, selfRender, cartHelper);
+                selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
             };
         });
     }
