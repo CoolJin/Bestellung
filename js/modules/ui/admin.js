@@ -326,9 +326,9 @@ export const AdminUI = {
             const archDiv = document.createElement('div');
             // MATCHING PROFILE LOGIC EXACTLY
             archDiv.innerHTML = `
-                <details id="admin-archive-details" style="margin-top:40px; background:rgba(255,255,255,0.02); border-radius:8px;" ${isArchiveOpen ? 'open' : ''}>
+                <details id="admin-archive-details" style="margin-top:40px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;" ${isArchiveOpen ? 'open' : ''}>
                     <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05); color:var(--text-color);">Archiv (${archivedOrders.length})</summary>
-                    <div class="archive-list" style="padding:15px; display:grid; gap:15px; min-height:50px;">
+                    <div class="archive-list" style="padding:15px; display:grid; gap:15px; min-height:50px; opacity:1 !important; transform:none !important; animation:none !important;">
                         ${archivedOrders.map(o => {
                 try { return renderOrderCard(o, true); }
                 catch (e) { console.error('Archive Render Error', o, e); return `<div style="color:red; padding:10px; border:1px solid red;">Error rendering order ${o.id}</div>`; }
