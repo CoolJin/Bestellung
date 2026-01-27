@@ -111,6 +111,7 @@ export const ProfileUI = {
                 </div>
                 <div style="font-size:0.85em; color:#ccc;">${o.date}</div>
                 ${o.adminNote ? `<div style="font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px; margin:5px 0;">Admin: ${o.adminNote}</div>` : ''}
+                ${o.note ? `<div style="font-size:0.9em; color:#ccc; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin:5px 0 10px 0; font-style:italic;">"${o.note}"</div>` : ''}
 
                 <div style="padding:10px; background:rgba(0,0,0,0.2); border-radius:8px;">
                     ${itemsHtml}

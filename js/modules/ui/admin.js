@@ -303,6 +303,7 @@ export const AdminUI = {
                         </div>
                     </div>
                     <div style="font-size:0.8em; color:#888; margin:2px 0 8px 0;">${dateStr}</div>
+                    ${o.note ? `<div style="font-size:0.9em; color:#ddd; background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin:0 0 8px 0; font-style:italic;">"${o.note}"</div>` : ''}
                     <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
                     
                     ${(!isArchive && !isCancelled) ? `
