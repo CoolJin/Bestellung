@@ -90,54 +90,40 @@ export const Search = {
                     const titleEl = node.querySelector('.grid-product__title');
                     const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
 
-                    // Image: try specific class or fallback to first img
-                    // Fix: Snuzone heavily uses lazy loading (data-src, srcset). We must check those.
+                    // Image: try specific class or fallback to ANY img in the card
                     let img = 'https://via.placeholder.com/150';
                     const imgEl = node.querySelector('.grid-product__image') || node.querySelector('img');
                     if (imgEl) {
                         // Priority: data-src -> srcset -> src
-                        // Often data-src is the high-res one before load.
                         let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
 
-                        // If srcset, take the first one (comma separated)
+                        // Cleaning logic
                         if (rawSrc && rawSrc.includes(',')) {
                             rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
                         }
-
-                        // If data-src has {width}, replace it (Shopify pattern)
                         if (rawSrc && rawSrc.includes('{width}')) {
-                            rawSrc = rawSrc.replace('{width}', '300'); // Standard size
+                            rawSrc = rawSrc.replace('{width}', '300');
                         }
-
                         if (rawSrc) {
                             img = rawSrc;
-                            // Handle relative URLs
                             if (img.startsWith('//')) img = 'https:' + img;
                         }
                     }
 
-                    // Price: Can contain ranges or "sale" prices. Just grab text.
-                    const priceEl = node.querySelector('.grid-product__price');
-                    let priceStr = priceEl ? priceEl.innerText.trim() : 'N/A';
+                    // Price: Scan the ENTIRE card text for prices (Robust Fallback)
+                    // This catches prices even if class names change
+                    let priceStr = node.innerText;
 
-                    // EXTRACT RAW PRICE FOR CALCULATION
+                    // Specific price element check (Priority)
+                    const priceEl = node.querySelector('.grid-product__price') || node.querySelector('.price') || node.querySelector('.product-price');
+                    if (priceEl) priceStr = priceEl.innerText;
+
                     // UPDATED: Logic to find Original Price (Maximum Value found)
-
                     const priceMatches = priceStr.match(/(\d+[,.]\d{2})/g);
                     let rawPrice = 0;
                     if (priceMatches && priceMatches.length > 0) {
-                        // Extract all found prices as floats
                         const validPrices = priceMatches.map(p => parseFloat(p.replace(',', '.')));
-                        // Take the MAXIMUM to get the Original Price (ignoring discounted lower prices)
-                        // Example: "10,00 € 8,00 €" -> 10.00
                         rawPrice = Math.max(...validPrices);
-                    }
-
-                    // Check for .money element as backup
-                    const moneyEl = node.querySelector('.money');
-                    if (moneyEl) {
-                        const mVal = moneyEl.innerText.trim().replace(',', '.').replace(/[^\d.]/g, '');
-                        if (!isNaN(parseFloat(mVal))) rawPrice = parseFloat(mVal);
                     }
 
                     // Store the CLEAN Raw Price in the object so Cart doesn't have to guess
