@@ -30,10 +30,12 @@ export const Search = {
     },
 
     async handleSearch(query) {
+        // Elements (Lazy load or passed?)
         const searchContainer = document.getElementById('search-results');
         const defaultGrid = document.getElementById('product-grid');
 
         if (!query || query.length < 2) {
+            // Reset / Show Default
             if (this.elements.snuzoneResultsGrid) this.elements.snuzoneResultsGrid.innerHTML = '';
             if (searchContainer) searchContainer.classList.add('hidden');
             if (defaultGrid) defaultGrid.classList.remove('hidden');
@@ -42,15 +44,19 @@ export const Search = {
 
         query = query.toLowerCase();
 
+        // Show Search Container, Hide Default
         if (searchContainer) searchContainer.classList.remove('hidden');
         if (defaultGrid) defaultGrid.classList.add('hidden');
 
+        // Show loading state
         if (this.elements.snuzoneResultsGrid) {
             this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center; padding:20px; color:white;">Lade Ergebnisse...</div>';
         }
 
         try {
+            // Use External Search Proxy (Snuzone)
             console.log(`Searching for: ${query}`);
+            // Added timestamp to force fresh fetch (cache busting)
             const searchUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
 
             const response = await fetch(searchUrl);
@@ -62,178 +68,182 @@ export const Search = {
 
             let products = [];
 
-            // Strategy 1: DOM Scraping (Prioritized for Meta Data like Nicotine)
-            const productNodes = doc.querySelectorAll('.grid-product');
-            const resultItems = doc.querySelectorAll('.snuzone-result-item'); // Hypothetical class
+            // Scraping Strategy 1: Analytics Data (Robust JSON)
+            // This is preferred because Class Names change, but Analytics data is usually stable.
+            // Target: "events":"((?:\\.|[^"\\])*)" inside webPixelsManager init
+            const pixelMatch = html.match(/"events":"((?:\\.|[^"\\])*)"/);
+            if (pixelMatch) {
+                try {
+                    // Unescape stringified JSON inside stringified JSON
+                    const rawEvents = JSON.parse(`"${pixelMatch[1]}"`);
+                    const events = JSON.parse(rawEvents);
 
-            // Nicotine Regex
-            // Matches "16 mg/g" or "16mg/g"
-            const nicRegexG = /(\d+(?:[.,]\d+)?)\s*mg\/g/i;
-            // Matches "10,4 mg/Beutel" or "mg/Pouch"
-            const nicRegexP = /(\d+(?:[.,]\d+)?)\s*mg\/(?:Beutel|Pouch)/i;
+                    // Find 'search_submitted' event which contains the results
+                    const searchEvent = events.find(e => Array.isArray(e) && e[0] === 'search_submitted');
 
-            const nodesToScan = productNodes.length > 0 ? productNodes : resultItems;
+                    if (searchEvent && searchEvent[1].searchResult && searchEvent[1].searchResult.productVariants) {
+                        const variants = searchEvent[1].searchResult.productVariants;
+                        if (variants.length > 0) {
+                            products = variants.map((v, idx) => {
+                                // Image URL cleaning
+                                let img = 'https://via.placeholder.com/150';
+                                if (v.image && v.image.src) {
+                                    img = v.image.src;
+                                    if (img.startsWith('//')) img = 'https:' + img;
+                                }
 
-            if (nodesToScan.length > 0) {
-                nodesToScan.forEach((node, index) => {
-                    const fullText = node.innerText;
-
-                    // Extract Nicotine Info
-                    const mgPerG = fullText.match(nicRegexG);
-                    const mgPerPouch = fullText.match(nicRegexP);
-
-                    let nicInfo = [];
-                    if (mgPerG) nicInfo.push(`${mgPerG[1]} mg/g`);
-                    if (mgPerPouch) nicInfo.push(`${mgPerPouch[1]} mg/Btl.`);
-
-                    // Title
-                    const titleEl = node.querySelector('.grid-product__title') || node.querySelector('.title');
-                    const title = titleEl ? titleEl.innerText.trim() : 'Unbekannt';
-
-                    // Price
-                    const priceEl = node.querySelector('.grid-product__price') || node.querySelector('.price');
-                    let priceVal = 0;
-                    let priceStr = '0,00 €';
-
-                    if (priceEl) {
-                        const rawPrice = priceEl.innerText.replace(/[^\d.,]/g, '').replace(',', '.');
-                        priceVal = parseFloat(rawPrice);
-                    } else {
-                        // Fallback
-                        const pMatch = fullText.match(/(\d+[.,]\d+)\s*€/);
-                        if (pMatch) {
-                            priceVal = parseFloat(pMatch[1].replace(',', '.'));
+                                return {
+                                    id: 'ext-' + idx + '-' + Date.now(),
+                                    name: v.product.title,
+                                    price: v.price.amount, // Float from JSON
+                                    originalPrice: v.price.amount, // Persist Original Price
+                                    formattedPrice: v.price.amount.toFixed(2).replace('.', ',') + ' €',
+                                    image: img,
+                                    external: true,
+                                    soldOut: false,
+                                    // Store extra data if needed
+                                    handle: v.product.url ? v.product.url.split('?')[0].replace('/products/', '') : ''
+                                };
+                            });
+                            console.log(`[Search] Extracted ${products.length} products from Analytics JSON`);
                         }
                     }
-                    if (priceVal) priceStr = priceVal.toFixed(2).replace('.', ',') + ' €';
-
-                    // Image
-                    let img = 'https://via.placeholder.com/150';
-                    const imgEl = node.querySelector('img');
-                    if (imgEl) {
-                        let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
-                        if (rawSrc) {
-                            if (rawSrc.includes(',')) rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
-                            if (rawSrc.includes('{width}')) rawSrc = rawSrc.replace('{width}', '300');
-                            if (rawSrc.startsWith('//')) rawSrc = 'https:' + rawSrc;
-                            img = rawSrc;
-                        }
-                    }
-
-                    // Handle / Link
-                    let handle = '';
-                    const linkEl = node.querySelector('a');
-                    if (linkEl && linkEl.href) {
-                        const parts = linkEl.href.split('/products/');
-                        if (parts.length > 1) {
-                            handle = parts[1].split('?')[0];
-                        }
-                    }
-
-                    if (title !== 'Unbekannt') {
-                        products.push({
-                            id: 'dom-' + index + '-' + Date.now(),
-                            name: title,
-                            price: priceVal,
-                            formattedPrice: priceStr,
-                            image: img,
-                            handle: handle,
-                            nicotine: nicInfo.length > 0 ? nicInfo : null,
-                            external: true
-                        });
-                    }
-                });
-                console.log(`[Search] Scraped ${products.length} products via DOM.`);
-            }
-
-            // Fallback: Analytics JSON (Only if DOM returns nothing)
-            if (products.length === 0) {
-                console.log('[Search] DOM returned 0 items. Checking Analytics...');
-                const pixelMatch = html.match(/"events":"((?:\\.|[^"\\])*)"/);
-                if (pixelMatch) {
-                    try {
-                        const rawEvents = JSON.parse(`"${pixelMatch[1]}"`);
-                        const events = JSON.parse(rawEvents);
-                        const searchEvent = events.find(e => Array.isArray(e) && e[0] === 'search_submitted');
-                        if (searchEvent && searchEvent[1].searchResult && searchEvent[1].searchResult.productVariants) {
-                            products = searchEvent[1].searchResult.productVariants.map((v, i) => ({
-                                id: 'ext-' + i,
-                                name: v.product.title,
-                                price: v.price.amount,
-                                formattedPrice: v.price.amount.toFixed(2).replace('.', ',') + ' €',
-                                image: v.image ? (v.image.src.startsWith('//') ? 'https:' + v.image.src : v.image.src) : 'https://via.placeholder.com/150',
-                                handle: v.product.url ? v.product.url.split('?')[0].replace('/products/', '') : '',
-                                external: true,
-                                nicotine: null // No Nicotine in JSON
-                            }));
-                        }
-                    } catch (e) { console.warn('JSON Parse Error', e); }
+                } catch (e) {
+                    console.warn("[Search] JSON Analytics Parse Failed", e);
                 }
             }
 
-            this.displayResults(products);
+            // Scraping Strategy 2: DOM Parsing (Fallback)
+            // Only run if JSON strategy found nothing
+            if (products.length === 0) {
+                console.log("[Search] Fallback to DOM Scraping");
+                const productNodes = doc.querySelectorAll('.grid-product');
 
-        } catch (error) {
-            console.error('Search error:', error);
+                if (productNodes.length > 0) {
+                    productNodes.forEach((node, index) => {
+                        // Extract Data
+                        const titleEl = node.querySelector('.grid-product__title');
+                        const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
+
+                        // Image: try specific class or fallback to ANY img in the card
+                        let img = 'https://via.placeholder.com/150';
+                        const imgEl = node.querySelector('.grid-product__image') || node.querySelector('img');
+                        if (imgEl) {
+                            // Priority: data-src -> srcset -> src
+                            let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
+
+                            // Cleaning logic
+                            if (rawSrc && rawSrc.includes(',')) {
+                                rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
+                            }
+                            if (rawSrc && rawSrc.includes('{width}')) {
+                                rawSrc = rawSrc.replace('{width}', '300');
+                            }
+                            if (rawSrc) {
+                                img = rawSrc;
+                                if (img.startsWith('//')) img = 'https:' + img;
+                            }
+                        }
+
+                        // Price: Scan the ENTIRE card text for prices (Robust Fallback)
+                        // This catches prices even if class names change
+                        let priceStr = node.innerText;
+
+                        // Specific price element check (Priority)
+                        const priceEl = node.querySelector('.grid-product__price') || node.querySelector('.price') || node.querySelector('.product-price');
+                        if (priceEl) priceStr = priceEl.innerText;
+
+                        // UPDATED: Logic to find Original Price (Maximum Value found)
+                        const priceMatches = priceStr.match(/(\d+[,.]\d{2})/g);
+                        let rawPrice = 0;
+                        if (priceMatches && priceMatches.length > 0) {
+                            const validPrices = priceMatches.map(p => parseFloat(p.replace(',', '.')));
+                            rawPrice = Math.max(...validPrices);
+                        }
+
+                        if (title && title !== 'Unknown') {
+                            products.push({
+                                id: 'ext-' + index + '-' + Date.now(),
+                                name: title,
+                                price: rawPrice > 0 ? rawPrice : 5.00, // Store RAW number. Fallback 5.00 if parsing fails.
+                                originalPrice: rawPrice > 0 ? rawPrice : 5.00, // Persist Original Price
+                                formattedPrice: rawPrice.toFixed(2).replace('.', ',') + ' €', // For UI display if needed directly
+                                image: img,
+                                external: true,
+                                soldOut: false
+                            });
+                        }
+                    });
+                } else {
+                    console.warn("Snuzone: No products found with selectors (.grid-product)");
+                }
+            }
+
+            this.renderSearchResults(products);
+
+        } catch (e) {
+            console.error("Search Error", e);
             if (this.elements.snuzoneResultsGrid) {
-                this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center; padding:20px; color:#ef4444;">Fehler bei der Suche.</div>';
+                this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center;color:#ff5555">Fehler bei der Suche</div>';
             }
         }
     },
 
-    displayResults(products) {
-        if (!this.elements.snuzoneResultsGrid) return;
+    renderSearchResults(products) {
+        const processedProducts = products.map(p => {
+            // Clone
+            const item = { ...p };
+            // Calculate Dynamic Price
+            const price = Cart.calculatePrice(item, this.state.currentUser);
+            item.price = price.toFixed(2).replace('.', ',') + ' €';
+            return item;
+        });
 
-        if (products.length === 0) {
-            this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center; padding:20px; color:#aaa;">Keine Ergebnisse gefunden.</div>';
-            return;
-        }
+        ProductsUI.renderSearchResults(processedProducts, this.elements);
 
-        this.elements.snuzoneResultsGrid.innerHTML = products.map(p => {
-            // Nicotine HTML
-            let nicHtml = '';
-            if (p.nicotine && p.nicotine.length > 0) {
-                // Style: Small Row under Title
-                nicHtml = `
-                    <div style="display:flex; justify-content:center; gap:6px; margin:5px 0; flex-wrap:wrap;">
-                        ${p.nicotine.map(n => `
-                            <span style="font-size:0.75em; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px; color:#ccc;">
-                                ${n}
-                            </span>
-                        `).join('')}
-                    </div>
-                `;
+        // Handlers: Event Delegation (Fix for Lost Listeners)
+        const grid = this.elements.snuzoneResultsGrid;
+        if (grid) {
+            // Remove old listener to avoid duplicates if re-init (though handleSearch is instance method)
+            if (this._gridClickListener) {
+                grid.removeEventListener('click', this._gridClickListener);
             }
 
-            return `
-            <div class="card product-card" onclick="window.addToCartWrapper('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, '${p.image}', '${p.handle}')">
-                <div class="card-img-container">
-                    <img src="${p.image}" alt="${p.name}">
-                </div>
-                <div class="card-content">
-                    <h3 class="card-title">${p.name}</h3>
-                    ${nicHtml}
-                    <div class="card-price">${p.formattedPrice}</div>
-                    <button class="btn btn-primary add-to-cart-btn" style="width:100%; margin-top:10px;">
-                        Hinzufügen
-                    </button>
-                </div>
-            </div>
-            `;
-        }).join('');
+            this._gridClickListener = (e) => {
+                const btn = e.target.closest('.add-external');
+                if (btn) {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-        // Expose wrapper for onclick
-        window.addToCartWrapper = (id, title, price, image, handle) => {
-            // Create a standardized product object
-            const product = {
-                id: String(id),
-                title: title, // Map to title for Cart
-                price: price,
-                images: [{ src: image }],
-                handle: handle
+                    // Visual Feedback
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '...';
+                    btn.disabled = true;
+
+                    const index = btn.dataset.index;
+                    const product = processedProducts[index];
+
+                    if (product) {
+                        this.addToCart(product, 1, this.state, () => {
+                            // Update Cart Count UI
+                            const count = this.state.cart.reduce((a, b) => a + (b.quantity || 1), 0);
+                            if (this.elements.cartCount) this.elements.cartCount.textContent = count;
+
+                            // Restore Button
+                            btn.innerHTML = '&#10003;'; // Checkmark
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.disabled = false;
+                            }, 1000);
+                        });
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                }
             };
-            // Call the main addToCart
-            this.addToCart(product);
-        };
+
+            grid.addEventListener('click', this._gridClickListener);
+        }
     }
 };
