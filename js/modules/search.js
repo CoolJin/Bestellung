@@ -56,7 +56,8 @@ export const Search = {
         try {
             // Use External Search Proxy (Snuzone)
             console.log(`Searching for: ${query}`);
-            const searchUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}`;
+            // Added timestamp to force fresh fetch (cache busting)
+            const searchUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
 
             const response = await fetch(searchUrl);
             if (!response.ok) throw new Error("Search failed");
@@ -121,7 +122,7 @@ export const Search = {
 
                     // EXTRACT RAW PRICE FOR CALCULATION
                     // UPDATED: Logic to find Original Price (Maximum Value found)
-                    
+
                     const priceMatches = priceStr.match(/(\d+[,.]\d{2})/g);
                     let rawPrice = 0;
                     if (priceMatches && priceMatches.length > 0) {
