@@ -137,21 +137,30 @@ export const Search = {
 
                         // Image: try specific class or fallback to ANY img in the card
                         let img = 'https://via.placeholder.com/150';
-                        const imgEl = node.querySelector('.grid-product__image') || node.querySelector('img');
+                        const imgEl = node.querySelector('.grid-product__image-mask img') || node.querySelector('img');
+
                         if (imgEl) {
-                            // Priority: data-src -> srcset -> src
-                            let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
+                            // Priority: data-src -> data-srcset -> srcset -> src
+                            let rawSrc = imgEl.getAttribute('data-src') ||
+                                imgEl.getAttribute('data-srcset') ||
+                                imgEl.getAttribute('srcset') ||
+                                imgEl.src;
 
                             // Cleaning logic
-                            if (rawSrc && rawSrc.includes(',')) {
-                                rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
-                            }
-                            if (rawSrc && rawSrc.includes('{width}')) {
-                                rawSrc = rawSrc.replace('{width}', '300');
-                            }
                             if (rawSrc) {
-                                img = rawSrc;
-                                if (img.startsWith('//')) img = 'https:' + img;
+                                if (rawSrc.includes(',')) {
+                                    rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
+                                }
+                                if (rawSrc.includes('{width}')) {
+                                    rawSrc = rawSrc.replace('{width}', '300');
+                                }
+                                if (rawSrc.startsWith('//')) {
+                                    img = 'https:' + rawSrc;
+                                } else if (rawSrc.startsWith('http')) {
+                                    img = rawSrc;
+                                } else {
+                                    img = rawSrc;
+                                }
                             }
                         }
 
