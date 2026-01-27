@@ -81,7 +81,7 @@ window.app = {
         log('Elements captured');
 
         // Initialize Search
-        Search.init(this.state, this.elements, Cart.addToCartLogic.bind(Cart));
+        Search.init(this.state, this.elements, Cart.addToCart.bind(Cart));
         log('Search initialized');
 
         this.setupEventListeners();
