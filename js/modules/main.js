@@ -188,14 +188,14 @@ window.app = {
             if (this.elements.snuzoneSearch) {
                 this.elements.snuzoneSearch.value = '';
                 // Must explicitly call handleSearch with empty string to reset the grid
-                Search.handleSearch('', this.elements, Cart.addToCartLogic.bind(Cart));
+                Search.handleSearch('', this.elements, Cart.addToCart.bind(Cart));
             }
         });
 
         // Ensure Enter Key works manually if the module missed it?
         safeAdd(this.elements.snuzoneSearch, 'keypress', (e) => {
             if (e.key === 'Enter') {
-                Search.handleSearch(e.target.value.trim(), this.elements, Cart.addToCartLogic.bind(Cart));
+                Search.handleSearch(e.target.value.trim(), this.elements, Cart.addToCart.bind(Cart));
             }
         });
 
