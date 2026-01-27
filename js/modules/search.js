@@ -135,32 +135,46 @@ export const Search = {
                             if (lis.length > 1) strength_p = lis[1].innerText.trim();
                         }
 
-                        // Image: try specific class or fallback to ANY img in the card
+                        // Image: Find ANY image that looks like a product image
                         let img = 'https://via.placeholder.com/150';
-                        const imgEl = node.querySelector('.grid-product__image-mask img') || node.querySelector('img');
+                        const allImgs = node.querySelectorAll('img');
+                        let bestImgSrc = null;
 
-                        if (imgEl) {
-                            // Priority: data-src -> data-srcset -> srcset -> src
-                            let rawSrc = imgEl.getAttribute('data-src') ||
-                                imgEl.getAttribute('data-srcset') ||
-                                imgEl.getAttribute('srcset') ||
-                                imgEl.src;
+                        for (const iEl of allImgs) {
+                            // Check candidate sources
+                            const candidateSrc = iEl.getAttribute('data-src') ||
+                                iEl.getAttribute('data-srcset') ||
+                                iEl.getAttribute('srcset') ||
+                                iEl.src;
 
+                            if (candidateSrc && (candidateSrc.includes('shopify') || candidateSrc.includes('snuzone'))) {
+                                bestImgSrc = candidateSrc;
+                                break; // Found a likely product image
+                            }
+                        }
+
+                        // Fallback to first image if no "shopify" image found
+                        if (!bestImgSrc && allImgs.length > 0) {
+                            const iEl = allImgs[0];
+                            bestImgSrc = iEl.getAttribute('data-src') || iEl.getAttribute('srcset') || iEl.src;
+                        }
+
+                        if (bestImgSrc) {
+                            let rawSrc = bestImgSrc;
                             // Cleaning logic
-                            if (rawSrc) {
-                                if (rawSrc.includes(',')) {
-                                    rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
-                                }
-                                if (rawSrc.includes('{width}')) {
-                                    rawSrc = rawSrc.replace('{width}', '300');
-                                }
-                                if (rawSrc.startsWith('//')) {
-                                    img = 'https:' + rawSrc;
-                                } else if (rawSrc.startsWith('http')) {
-                                    img = rawSrc;
-                                } else {
-                                    img = rawSrc;
-                                }
+                            if (rawSrc.includes(',')) {
+                                rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
+                            }
+                            if (rawSrc.includes('{width}')) {
+                                rawSrc = rawSrc.replace('{width}', '300');
+                            }
+
+                            if (rawSrc.startsWith('//')) {
+                                img = 'https:' + rawSrc;
+                            } else if (rawSrc.startsWith('http')) {
+                                img = rawSrc;
+                            } else {
+                                img = rawSrc;
                             }
                         }
 
