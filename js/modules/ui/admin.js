@@ -148,32 +148,62 @@ export const AdminUI = {
                 }
             } catch (e) { }
 
-            // Items with Admin Price Comparison (Using cartHelper)
+            // PROFIT CALCULATION & Item Rendering
+            let calcSelling = 0;
+            let calcBuying = 0;
+
             const itemsHtml = (o.items || []).map(i => {
-                // ... (Price comparison logic same as before) ...
-                let origPrice = 0;
-                const catItem = products.find(p => String(p.id) === String(i.id));
-                if (catItem) {
-                    if (typeof catItem.price === 'number') origPrice = catItem.price;
-                    else if (typeof catItem.price === 'string')
-                        origPrice = parseFloat(catItem.price.replace('ue', '').replace(',', '.').trim()) || 0;
-                }
                 const orderUser = DB.getUsers().find(u => u.username === o.user);
+
+                // Buying Price (Original)
+                let origPrice = 0;
+                if (i.originalPrice) {
+                    origPrice = parseFloat(String(i.originalPrice).replace(',', '.'));
+                } else {
+                    // Start of fallback logic
+                    const catItem = products.find(p => String(p.id) === String(i.id));
+                    if (catItem) {
+                        if (catItem.originalPrice) origPrice = parseFloat(String(catItem.originalPrice).replace(',', '.'));
+                        else if (typeof catItem.price === 'number') origPrice = catItem.price; // Fallback to current price (unsafe but better than 0)
+                    }
+                    if (origPrice === 0) {
+                        // Fallback to stored price string if no original
+                        let storedP = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                        origPrice = storedP; // Assume stored was original if nothing else
+                    }
+                }
+
+                // Selling Price (Calculated)
                 let userPrice = 0;
                 if (cartHelper && orderUser) {
                     userPrice = cartHelper.calculatePrice(i, orderUser);
                 } else {
-                    if (i.price && typeof i.price === 'string')
-                        userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                    userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
                 }
+
+                // Accumulate Totals
+                const q = i.quantity || 1;
+                calcSelling += userPrice * q;
+                calcBuying += origPrice * q;
+
                 const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
                 const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
+
                 let priceDisplay = `<span>${userPriceStr}</span>`;
+                // Compare for Individual Item (Optional, keeping visual hint)
                 if (Math.abs(origPrice - userPrice) > 0.01 && origPrice > 0) {
-                    priceDisplay = `<span style="text-decoration:line-through; color:#888; margin-right:8px;">${origPriceStr}</span><span style="color:var(--primary-color); font-weight:bold;">${userPriceStr}</span>`;
+                    priceDisplay = `<span style="text-decoration:line-through; color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
                 }
-                return `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.quantity}x ${i.name}</span><div>${priceDisplay}</div></div>`;
+
+                return `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${q}x ${i.name}</span><div>${priceDisplay}</div></div>`;
             }).join('');
+
+            // Totals Formatting
+            const sellingStr = calcSelling.toFixed(2).replace('.', ',') + ' €';
+            const buyingStr = calcBuying.toFixed(2).replace('.', ',') + ' €';
+            const profitVal = calcSelling - calcBuying;
+            const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
+            const profitColor = profitVal >= 0 ? '#22c55e' : '#ef4444';
 
             let btns = '';
             // CANCELLED LOGIC: If cancelled, RESTRICT actions
@@ -223,7 +253,11 @@ export const AdminUI = {
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between;">
                         <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span class="status-badge status-${o.status}">${o.status}</span></div>
-                        <div style="font-weight:bold;">${total}</div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:bold; font-size:1.1em;">${sellingStr}</div>
+                            <div style="font-size:0.8em; color:#888;">EK: ${buyingStr}</div>
+                            <div style="font-size:0.8em; color:${profitColor};">G: ${profitStr}</div>
+                        </div>
                     </div>
                     <div style="font-size:0.8em; color:#888; margin:2px 0 8px 0;">${dateStr}</div>
                     <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
