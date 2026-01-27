@@ -42,6 +42,10 @@ export const ProductsUI = {
                 <img src="${p.image}" class="product-image" alt="${p.name}">
                 <div class="product-info">
                     <h3>${p.name}</h3>
+                    <div style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:5px;">
+                        ${p.strength_g ? `<span style="background:rgba(255,255,255,0.1); color:#ccc; font-size:0.7em; padding:2px 6px; border-radius:4px; white-space:nowrap;">${p.strength_g}</span>` : ''}
+                        ${p.strength_p ? `<span style="background:rgba(255,255,255,0.1); color:#ccc; font-size:0.7em; padding:2px 6px; border-radius:4px; white-space:nowrap;">${p.strength_p}</span>` : ''}
+                    </div>
                     <div class="product-footer">
                          <div class="product-price">${p.price}</div>
                         ${!p.soldOut ? `<button class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</button>` : '<button disabled class="btn btn-secondary btn-sm">N/A</button>'}

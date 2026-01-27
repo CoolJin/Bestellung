@@ -68,9 +68,8 @@ export const Search = {
 
             let products = [];
 
-            // Scraping Strategy 1: Analytics Data (Robust JSON)
-            // This is preferred because Class Names change, but Analytics data is usually stable.
-            // Target: "events":"((?:\\.|[^"\\])*)" inside webPixelsManager init
+            // Scraping Strategy 1: Analytics Data (Robust JSON) - DISABLED TO FORCE DOM SCRAPING (Better Metadata)
+            /*
             const pixelMatch = html.match(/"events":"((?:\\.|[^"\\])*)"/);
             if (pixelMatch) {
                 try {
@@ -112,11 +111,12 @@ export const Search = {
                     console.warn("[Search] JSON Analytics Parse Failed", e);
                 }
             }
+            */
 
-            // Scraping Strategy 2: DOM Parsing (Fallback)
-            // Only run if JSON strategy found nothing
+            // Scraping Strategy 2: DOM Parsing (Primary)
+            // products array is empty because Strategy 1 is disabled/skipped
             if (products.length === 0) {
-                console.log("[Search] Fallback to DOM Scraping");
+                console.log("[Search] Using DOM Scraping for Rich Metadata");
                 const productNodes = doc.querySelectorAll('.grid-product');
 
                 if (productNodes.length > 0) {
@@ -124,6 +124,16 @@ export const Search = {
                         // Extract Data
                         const titleEl = node.querySelector('.grid-product__title');
                         const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
+
+                        // Strength Info Extraction
+                        let strength_g = '';
+                        let strength_p = '';
+                        const propsUl = node.querySelector('.grid-product__properties');
+                        if (propsUl) {
+                            const lis = propsUl.querySelectorAll('li');
+                            if (lis.length > 0) strength_g = lis[0].innerText.trim();
+                            if (lis.length > 1) strength_p = lis[1].innerText.trim();
+                        }
 
                         // Image: try specific class or fallback to ANY img in the card
                         let img = 'https://via.placeholder.com/150';
@@ -170,7 +180,9 @@ export const Search = {
                                 formattedPrice: rawPrice.toFixed(2).replace('.', ',') + ' €', // For UI display if needed directly
                                 image: img,
                                 external: true,
-                                soldOut: false
+                                soldOut: false,
+                                strength_g: strength_g, // New field for mg/g
+                                strength_p: strength_p  // New field for mg/pouch
                             });
                         }
                     });
