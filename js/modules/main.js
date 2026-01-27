@@ -218,6 +218,14 @@ window.app = {
         });
         safeAdd(this.elements.logoutCancel, 'click', () => this.elements.logoutModal.classList.add('hidden'));
 
+        // Listen for internal admin tab changes (from admin.js) to update Nav
+        window.addEventListener('admin-tab-changed', (e) => {
+            if (this.elements.ordersList) {
+                this.elements.ordersList.dataset.activeTab = e.detail.tab;
+                this.renderNav(); // Re-render nav to update active class
+            }
+        });
+
         window.addEventListener('click', () => DB.updateSessionActivity());
         window.addEventListener('keypress', () => DB.updateSessionActivity());
     },

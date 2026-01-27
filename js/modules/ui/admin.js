@@ -247,8 +247,9 @@ export const AdminUI = {
             // Using <details> with dataset Persistence
             archDiv.innerHTML = `
                 <details id="admin-archive-details" style="margin-top:40px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;" ${isArchiveOpen ? 'open' : ''}>
-                    <summary style="padding:15px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; color:var(--text-color); background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:10px; font-weight:bold;">
+                    <summary style="padding:15px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; color:var(--text-color); background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:10px; font-weight:bold; list-style:none;">
                         <span>Archiv (${archivedOrders.length})</span>
+                        <span id="archive-arrow" style="transition:transform 0.3s; transform:${isArchiveOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">▼</span>
                     </summary>
                     <div class="archive-list" style="display:grid; gap:15px; padding-top:10px;">
                         ${archivedOrders.map(o => renderOrderCard(o, true)).join('')}
@@ -257,10 +258,14 @@ export const AdminUI = {
             `;
             content.appendChild(archDiv);
 
-            // Persistence Listener
+            // Persistence Listener & Visual Arrow Toggle
             setTimeout(() => {
                 const det = content.querySelector('#admin-archive-details');
-                if (det) det.ontoggle = () => list.dataset.archiveOpen = det.open;
+                const arrow = content.querySelector('#archive-arrow');
+                if (det) det.ontoggle = () => {
+                    list.dataset.archiveOpen = det.open;
+                    if (arrow) arrow.style.transform = det.open ? 'rotate(180deg)' : 'rotate(0deg)';
+                };
             }, 0);
         }
 
