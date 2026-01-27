@@ -96,6 +96,7 @@ export const Search = {
                                     id: 'ext-' + idx + '-' + Date.now(),
                                     name: v.product.title,
                                     price: v.price.amount, // Float from JSON
+                                    originalPrice: v.price.amount, // Persist Original Price
                                     formattedPrice: v.price.amount.toFixed(2).replace('.', ',') + ' €',
                                     image: img,
                                     external: true,
@@ -165,6 +166,7 @@ export const Search = {
                                 id: 'ext-' + index + '-' + Date.now(),
                                 name: title,
                                 price: rawPrice > 0 ? rawPrice : 5.00, // Store RAW number. Fallback 5.00 if parsing fails.
+                                originalPrice: rawPrice > 0 ? rawPrice : 5.00, // Persist Original Price
                                 formattedPrice: rawPrice.toFixed(2).replace('.', ',') + ' €', // For UI display if needed directly
                                 image: img,
                                 external: true,

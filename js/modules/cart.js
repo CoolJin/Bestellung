@@ -49,7 +49,9 @@ export const Cart = {
     calculatePrice(product, user) {
         let EP = 0; // Echt Preis
 
-        if (typeof product.price === 'number') {
+        if (product.originalPrice !== undefined && product.originalPrice !== null) {
+            EP = parseFloat(product.originalPrice);
+        } else if (typeof product.price === 'number') {
             EP = product.price;
         } else if (typeof product.price === 'string') {
             EP = parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
