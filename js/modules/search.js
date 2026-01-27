@@ -68,8 +68,9 @@ export const Search = {
 
             let products = [];
 
-            // Scraping Strategy 1: Analytics Data (Robust JSON) - DISABLED TO FORCE DOM SCRAPING (Better Metadata)
-            /*
+            // Scraping Strategy 1: Analytics Data (Robust JSON)
+            // This is preferred because Class Names change, but Analytics data is usually stable.
+            // Target: "events":"((?:\\.|[^"\\])*)" inside webPixelsManager init
             const pixelMatch = html.match(/"events":"((?:\\.|[^"\\])*)"/);
             if (pixelMatch) {
                 try {
@@ -111,12 +112,11 @@ export const Search = {
                     console.warn("[Search] JSON Analytics Parse Failed", e);
                 }
             }
-            */
 
-            // Scraping Strategy 2: DOM Parsing (Primary)
-            // products array is empty because Strategy 1 is disabled/skipped
+            // Scraping Strategy 2: DOM Parsing (Fallback)
+            // Only run if JSON strategy found nothing
             if (products.length === 0) {
-                console.log("[Search] Using DOM Scraping for Rich Metadata");
+                console.log("[Search] Fallback to DOM Scraping");
                 const productNodes = doc.querySelectorAll('.grid-product');
 
                 if (productNodes.length > 0) {
@@ -125,56 +125,23 @@ export const Search = {
                         const titleEl = node.querySelector('.grid-product__title');
                         const title = titleEl ? titleEl.innerText.trim() : 'Unknown';
 
-                        // Strength Info Extraction
-                        let strength_g = '';
-                        let strength_p = '';
-                        const propsUl = node.querySelector('.grid-product__properties');
-                        if (propsUl) {
-                            const lis = propsUl.querySelectorAll('li');
-                            if (lis.length > 0) strength_g = lis[0].innerText.trim();
-                            if (lis.length > 1) strength_p = lis[1].innerText.trim();
-                        }
-
-                        // Image: Find ANY image that looks like a product image
+                        // Image: try specific class or fallback to ANY img in the card
                         let img = 'https://via.placeholder.com/150';
-                        const allImgs = node.querySelectorAll('img');
-                        let bestImgSrc = null;
+                        const imgEl = node.querySelector('.grid-product__image') || node.querySelector('img');
+                        if (imgEl) {
+                            // Priority: data-src -> srcset -> src
+                            let rawSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('srcset') || imgEl.src;
 
-                        for (const iEl of allImgs) {
-                            // Check candidate sources
-                            const candidateSrc = iEl.getAttribute('data-src') ||
-                                iEl.getAttribute('data-srcset') ||
-                                iEl.getAttribute('srcset') ||
-                                iEl.src;
-
-                            if (candidateSrc && (candidateSrc.includes('shopify') || candidateSrc.includes('snuzone'))) {
-                                bestImgSrc = candidateSrc;
-                                break; // Found a likely product image
-                            }
-                        }
-
-                        // Fallback to first image if no "shopify" image found
-                        if (!bestImgSrc && allImgs.length > 0) {
-                            const iEl = allImgs[0];
-                            bestImgSrc = iEl.getAttribute('data-src') || iEl.getAttribute('srcset') || iEl.src;
-                        }
-
-                        if (bestImgSrc) {
-                            let rawSrc = bestImgSrc;
                             // Cleaning logic
-                            if (rawSrc.includes(',')) {
+                            if (rawSrc && rawSrc.includes(',')) {
                                 rawSrc = rawSrc.split(',')[0].trim().split(' ')[0];
                             }
-                            if (rawSrc.includes('{width}')) {
+                            if (rawSrc && rawSrc.includes('{width}')) {
                                 rawSrc = rawSrc.replace('{width}', '300');
                             }
-
-                            if (rawSrc.startsWith('//')) {
-                                img = 'https:' + rawSrc;
-                            } else if (rawSrc.startsWith('http')) {
+                            if (rawSrc) {
                                 img = rawSrc;
-                            } else {
-                                img = rawSrc;
+                                if (img.startsWith('//')) img = 'https:' + img;
                             }
                         }
 
@@ -203,9 +170,7 @@ export const Search = {
                                 formattedPrice: rawPrice.toFixed(2).replace('.', ',') + ' €', // For UI display if needed directly
                                 image: img,
                                 external: true,
-                                soldOut: false,
-                                strength_g: strength_g, // New field for mg/g
-                                strength_p: strength_p  // New field for mg/pouch
+                                soldOut: false
                             });
                         }
                     });
