@@ -206,8 +206,10 @@ export const AdminUI = {
 
                 // Product Link Logic
                 let nameDisplay = i.name;
-                if (catItem && catItem.handle) {
-                    const url = `https://snuzone.com/products/${catItem.handle}`;
+                const handle = i.handle || (catItem ? catItem.handle : null);
+
+                if (handle) {
+                    const url = `https://snuzone.com/products/${handle}`;
                     nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${i.name}</a>`;
                 }
 
