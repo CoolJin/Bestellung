@@ -119,18 +119,17 @@ export const Search = {
                     const priceEl = node.querySelector('.grid-product__price');
                     let priceStr = priceEl ? priceEl.innerText.trim() : 'N/A';
 
-                    // EXTRACT RAW PRICE FOR CALCULATION (e.g. "4,90 €" -> 4.90)
-                    // Remove "Ab", "from", newlines, and non-numeric chars except comma/dot
-                    // Example: "Regular Price 5,50 €" -> "5,50"
-
-                    // Regex to find the LAST valid number sequence (often the actual price)
-                    // Matches "5,50" or "5.50"
-                    const priceMatch = priceStr.match(/(\d+[.,]\d{2})/g);
+                    // EXTRACT RAW PRICE FOR CALCULATION
+                    // UPDATED: Logic to find Original Price (Maximum Value found)
+                    
+                    const priceMatches = priceStr.match(/(\d+[,.]\d{2})/g);
                     let rawPrice = 0;
-                    if (priceMatch) {
-                        // Take the last match (often sale price is last, or just the number)
-                        // Replace comma with dot
-                        rawPrice = parseFloat(priceMatch[priceMatch.length - 1].replace(',', '.'));
+                    if (priceMatches && priceMatches.length > 0) {
+                        // Extract all found prices as floats
+                        const validPrices = priceMatches.map(p => parseFloat(p.replace(',', '.')));
+                        // Take the MAXIMUM to get the Original Price (ignoring discounted lower prices)
+                        // Example: "10,00 € 8,00 €" -> 10.00
+                        rawPrice = Math.max(...validPrices);
                     }
 
                     // Check for .money element as backup
