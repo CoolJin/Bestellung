@@ -14,6 +14,10 @@ export const ProfileUI = {
         const list = elements.profileOrdersList;
         if (!list) return;
 
+        // Persist Accordion State
+        const isArchOpen = list.dataset.archOpen === 'true';
+        const isCancOpen = list.dataset.cancOpen === 'true';
+
         const allOrders = DB.getOrders().filter(o => o.user === user.username)
             .sort((a, b) => b.id.localeCompare(a.id));
 
@@ -30,10 +34,6 @@ export const ProfileUI = {
         allOrders.forEach(o => {
             const archivedList = o.archivedBy || [];
 
-            // Logic:
-            // "DELETED:username" -> Deleted (Hidden)
-            // "username" -> Archived
-
             const isDeleted = archivedList.includes('DELETED:' + user.username);
             const isArchived = archivedList.includes(user.username);
             const isCancelled = o.status === 'cancelled';
@@ -41,14 +41,6 @@ export const ProfileUI = {
             if (isDeleted) return; // Skip deleted
 
             if (isCancelled) {
-                // If cancelled AND archived? 
-                // Priority: Cancelled -> Cancelled List.
-                // But if User Archived it, maybe they want it in Archive?
-                // Let's assume Cancelled > Archive for list placement, 
-                // OR we can check isArchived flags.
-                // User Flow: "Cancel" -> Cancelled List.
-                // If I Archive a Cancelled order?
-                // Let's put in Cancelled List for now.
                 cancelledOrders.push(o);
             } else if (isArchived) {
                 archivedOrders.push(o);
@@ -86,10 +78,13 @@ export const ProfileUI = {
             // Buttons based on Type
             let buttonsHtml = '';
             if (type === 'active') {
+                // Archive Logic: Only if status is 'abgelehnt' or 'bestellt'
+                const canArchive = o.status === 'abgelehnt' || o.status === 'bestellt';
+
                 buttonsHtml = `
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                    <div style="display:grid; grid-template-columns: 1fr ${canArchive ? '1fr' : ''}; gap:10px; margin-top:10px;">
                         <button class="btn btn-secondary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
-                        <button class="btn btn-secondary btn-sm archive-order" data-id="${o.id}">Archivieren</button>
+                        ${canArchive ? `<button class="btn btn-secondary btn-sm archive-order" data-id="${o.id}">Archivieren</button>` : ''}
                     </div>
                     <button class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</button>
                 `;
@@ -101,8 +96,10 @@ export const ProfileUI = {
                     </div>
                 `;
             } else if (type === 'cancelled') {
+                // Added Delete button for Cancelled orders
                 buttonsHtml = `
                     <button class="btn btn-primary btn-sm revive-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Erneut bestellen</button>
+                    <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}" style="width:100%; margin-top:5px;">Löschen</button>
                 `;
             }
 
@@ -141,7 +138,7 @@ export const ProfileUI = {
 
         // 2. Archived Orders (Accordion)
         fullHtml += `
-        <details style="margin-top:20px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;">
+        <details id="details-archive" style="margin-top:20px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;" ${isArchOpen ? 'open' : ''}>
             <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05);">Archivierte Bestellungen (${archivedOrders.length})</summary>
             <div style="padding:15px;">
                 ${archivedOrders.length > 0 ? archivedOrders.map(o => renderCard(o, 'archived')).join('') : '<p style="color:#888;">Keine archivierten Bestellungen.</p>'}
@@ -150,7 +147,7 @@ export const ProfileUI = {
 
         // 3. Cancelled Orders (Accordion)
         fullHtml += `
-        <details style="margin-top:10px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;">
+        <details id="details-cancelled" style="margin-top:10px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;" ${isCancOpen ? 'open' : ''}>
             <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05);">Stornierte Bestellungen (${cancelledOrders.length})</summary>
             <div style="padding:15px;">
                 ${cancelledOrders.length > 0 ? cancelledOrders.map(o => renderCard(o, 'cancelled')).join('') : '<p style="color:#888;">Keine stornierten Bestellungen.</p>'}
@@ -158,5 +155,12 @@ export const ProfileUI = {
         </details>`;
 
         list.innerHTML = fullHtml;
+
+        // Attach Toggle Listeners for Persistence
+        const dArch = list.querySelector('#details-archive');
+        if (dArch) dArch.ontoggle = () => list.dataset.archOpen = dArch.open;
+
+        const dCanc = list.querySelector('#details-cancelled');
+        if (dCanc) dCanc.ontoggle = () => list.dataset.cancOpen = dCanc.open;
     }
 };
