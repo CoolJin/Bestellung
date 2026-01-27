@@ -374,5 +374,18 @@ export const AdminUI = {
                     }
                 });
         });
+
+        // FIX: Add Handler for "Bestellungen" (Filter Orders) button
+        content.querySelectorAll('.view-user-orders').forEach(b => {
+            b.onclick = () => {
+                const list = elements.ordersList;
+                list.dataset.selectedUser = b.dataset.user;
+                list.dataset.activeTab = 'orders';
+                // Dispatch event for Main UI updates (Nav highlight)
+                window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
+                // Trigger re-render
+                selfRender(elements, DB, showConfirm, selfRender, cartHelper);
+            };
+        });
     }
 };
