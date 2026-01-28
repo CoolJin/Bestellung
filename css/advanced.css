@@ -39,7 +39,7 @@
 
 /* Sold Out State */
 .product-card.sold-out {
-    border: 2px solid #ef4444;
+    border: 2px solid #be123c;
     /* Red border */
     position: relative;
     opacity: 0.8;
@@ -49,7 +49,7 @@
     position: absolute;
     top: 10px;
     right: 10px;
-    background: #ef4444;
+    background: #be123c;
     color: white;
     padding: 4px 8px;
     border-radius: 4px;
@@ -71,17 +71,17 @@
 }
 
 .status-claimed {
-    background: #eab308;
+    background: #d97706;
     color: black;
 }
 
 .status-ordered {
-    background: #3b82f6;
+    background: #4f46e5;
     color: white;
 }
 
 .status-rejected {
-    background: #ef4444;
+    background: #be123c;
     color: white;
 }
 
@@ -105,9 +105,9 @@
 
 /* Red Nav Link - Standard Button */
 .nav-link.btn-danger {
-    background: #ef4444 !important;
+    background: #be123c !important;
     color: white !important;
-    border: 1px solid #ef4444 !important;
+    border: 1px solid #be123c !important;
     box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
     display: inline-flex;
     align-items: center;
@@ -231,7 +231,7 @@
 }
 
 .toast.toast-error {
-    border-color: #ef4444;
+    border-color: #be123c;
 }
 
 @keyframes slideIn {
@@ -268,17 +268,57 @@
     /* Target the Inner Row (Confirm + Paid) */
     .order-card>div:last-child>div {
         display: grid !important;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
+        /* Stacked (User Request: Below each other) */
         gap: 10px;
         width: 100% !important;
     }
 
     /* Touch Targets */
     .btn {
-        min-height: 44px;
+        min-height: 48px;
+        /* Slightly taller */
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+        /* For Shimmer */
+    }
+
+    /* Shimmer Effect */
+    .btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: 0.5s;
+    }
+
+    .btn:hover::after {
+        left: 100%;
+        transition: 0.5s;
+    }
+
+    /* Auto-Shimmer Animation for "Noble" feel */
+    @keyframes shimmer {
+        0% {
+            left: -100%;
+        }
+
+        100% {
+            left: 100%;
+        }
+    }
+
+    /* Apply gentle shimmer to primary buttons periodically? Or just hover? User said "Not just simple hover". */
+    /* Let's make it automatic on load or persistent subtle effect? */
+    /* Persistent is annoying. Let's do a slower sweep or "Sheen". */
+    .btn-shine::after {
+        animation: shimmer 3s infinite;
     }
 
     /* Profile Adjustments */

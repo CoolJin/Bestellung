@@ -229,7 +229,7 @@ export const AdminUI = {
             const buyingStr = calcBuying.toFixed(2).replace('.', ',') + ' €';
             const profitVal = calcSelling - calcBuying;
             const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
-            const profitColor = profitVal >= 0 ? '#22c55e' : '#ef4444';
+            const profitColor = profitVal >= 0 ? '#059669' : '#be123c';
 
             // Status Display
             let displayStatus = o.status.toUpperCase();
@@ -240,7 +240,7 @@ export const AdminUI = {
             // Paid Badge for Header (Visual Only)
             if (o.status === 'bestellt') {
                 const pTxt = o.paid ? 'BEZAHLT' : 'NICHT BEZAHLT';
-                const pCol = o.paid ? '#22c55e' : '#ef4444';
+                const pCol = o.paid ? '#059669' : '#be123c';
                 const pBg = o.paid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
                 statusBadge += `<span style="margin-left:8px; border:1px solid ${pCol}; color:${pCol}; background:${pBg}; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">${pTxt}</span>`;
             }
@@ -255,29 +255,29 @@ export const AdminUI = {
                  `;
             } else if (isCancelled) {
                 btns = `
-                    <div style="font-weight:bold; color:#ef4444; margin-bottom:5px; text-align:center;">STORNIERT</div>
+                    <div style="font-weight:bold; color:#be123c; margin-bottom:5px; text-align:center;">STORNIERT</div>
                     <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
                 `;
             } else {
                 // Confirm & Paid Side-by-Side
                 const confirmBtn = `
                         <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
-                             style="background-color: ${o.status === 'bestellt' ? '#22c55e' : 'transparent'}; 
-                                    border: 1px solid #22c55e; color: ${o.status === 'bestellt' ? 'white' : '#22c55e'}; flex:1;">
+                             style="background-color: ${o.status === 'bestellt' ? '#059669' : 'transparent'}; 
+                                    border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; flex:1;">
                             ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
                         </button>`;
 
                 const paidBtn = o.status === 'bestellt' ? `
                             <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background-color:#22c55e; color:black; border-color:#22c55e;' : 'background-color:transparent; color:#ef4444; border-color:#ef4444;'} flex:1;">
+                                style="${o.paid ? 'background-color:#059669; color:black; border-color:#059669;' : 'background-color:transparent; color:#be123c; border-color:#be123c;'} flex:1;">
                                 ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
                             </button>` : '';
 
                 btns = `
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
-                            style="background-color: ${o.status === 'abgelehnt' ? '#ef4444' : 'transparent'}; 
-                                   border: 1px solid #ef4444; color: ${o.status === 'abgelehnt' ? 'white' : '#ef4444'}; width:100%;">
+                            style="background-color: ${o.status === 'abgelehnt' ? '#be123c' : 'transparent'}; 
+                                   border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
                             ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
                         </button>
                         
@@ -312,7 +312,7 @@ export const AdminUI = {
                         <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
                     </div>` : ''}
 
-                    ${isCancelled ? `<div style="margin-top:10px; font-style:italic; color:#ef4444;">Bestellung wurde vom Nutzer storniert.</div>` : ''}
+                    ${isCancelled ? `<div style="margin-top:10px; font-style:italic; color:#be123c;">Bestellung wurde vom Nutzer storniert.</div>` : ''}
                 </div>
                 <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width:140px;">${btns}</div>
             </div>`;
