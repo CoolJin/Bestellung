@@ -262,21 +262,21 @@ export const AdminUI = {
                 // Confirm & Paid Side-by-Side
                 const confirmBtn = `
                         <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
-                             style="background-color: ${o.status === 'bestellt' ? '#059669' : 'transparent'}; 
+                             style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' : 'transparent'}; 
                                     border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; flex:1;">
                             ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
                         </button>`;
 
                 const paidBtn = o.status === 'bestellt' ? `
                             <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background-color:#059669; color:black; border-color:#059669;' : 'background-color:transparent; color:#be123c; border-color:#be123c;'} flex:1;">
+                                style="${o.paid ? 'background:linear-gradient(135deg, #059669 0%, #047857 100%); color:white; border:1px solid transparent;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} flex:1;">
                                 ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
                             </button>` : '';
 
                 btns = `
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
-                            style="background-color: ${o.status === 'abgelehnt' ? '#be123c' : 'transparent'}; 
+                            style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #be123c 0%, #9f1239 100%)' : 'transparent'}; 
                                    border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
                             ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
                         </button>

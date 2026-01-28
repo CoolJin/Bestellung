@@ -268,23 +268,49 @@
     /* Target the Inner Row (Confirm + Paid) */
     .order-card>div:last-child>div {
         display: grid !important;
-        grid-template-columns: 1fr;
-        /* Stacked (User Request: Below each other) */
+        grid-template-columns: 1fr 1fr;
+        /* Side by side (User liked it adjacent) */
         gap: 10px;
         width: 100% !important;
     }
 
-    /* Touch Targets */
+    /* Touch Targets & Gradients */
     .btn {
         min-height: 48px;
-        /* Slightly taller */
         display: flex;
         align-items: center;
         justify-content: center;
         position: relative;
         overflow: hidden;
-        /* For Shimmer */
+        /* Default Gradient if not overridden */
+        background-size: 200% auto;
+        transition: 0.5s;
     }
+
+    /* Noble Gradients Classes */
+    .btn-noble-green {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        border-color: transparent !important;
+        color: white !important;
+    }
+
+    .btn-noble-red {
+        background: linear-gradient(135deg, #be123c 0%, #9f1239 100%) !important;
+        border-color: transparent !important;
+        color: white !important;
+    }
+
+    .btn-noble-blue {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+        border-color: transparent !important;
+        color: white !important;
+    }
+
+    .btn:hover {
+        background-position: right center;
+    }
+
+    /* Subtle movement */
 
     /* Shimmer Effect */
     .btn::after {

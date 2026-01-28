@@ -20,8 +20,8 @@
     /* Glass Effects */
     --glass-bg: rgba(9, 9, 11, 0.7);
     /* Darker Glass */
-    --glass-border: rgba(255, 255, 255, 0.06);
-    /* Subtle Border */
+    --glass-border: rgba(255, 255, 255, 0.18);
+    /* More Visible Border (Zinc/Silver) */
     --glass-blur: blur(16px);
     /* Stronger Blur */
 

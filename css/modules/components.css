@@ -38,24 +38,39 @@ input:focus {
     transition: transform 0.1s, box-shadow 0.2s;
 }
 
+/* Noble Gradients for Primary/Danger */
 .btn-primary {
-    background: var(--primary-color);
-    color: #0f172a;
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    color: white;
+    border: 1px solid transparent;
 }
 
 .btn-primary:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 0 15px var(--accent-glow);
+    filter: brightness(1.2);
+    box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .btn-danger {
-    background: #ef4444;
+    background: linear-gradient(135deg, #be123c 0%, #881337 100%);
     color: white;
+    border: 1px solid transparent;
 }
 
 .btn-danger:hover {
-    background: #dc2626;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(190, 18, 60, 0.4);
+    filter: brightness(1.1);
+}
+
+/* Added Success Button */
+.btn-success {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    border: 1px solid transparent;
+}
+
+.btn-success:hover {
+    box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);
+    filter: brightness(1.1);
 }
 
 .btn-secondary {
