@@ -47,6 +47,8 @@
 
 .nav-link.active {
     color: white;
-    background: var(--primary-color);
-    box-shadow: 0 0 15px var(--accent-glow);
+    /* User Request: Zinc/Silver for Active Tab, NOT Blue */
+    background: linear-gradient(135deg, #71717a 0%, #52525b 100%);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }

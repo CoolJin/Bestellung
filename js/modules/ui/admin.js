@@ -250,13 +250,13 @@ export const AdminUI = {
 
             if (isArchive) {
                 btns = `
-                    <button class="btn btn-secondary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
+                    <button class="btn btn-primary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
                     <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</button>
                  `;
             } else if (isCancelled) {
                 btns = `
                     <div style="font-weight:bold; color:#be123c; margin-bottom:5px; text-align:center;">STORNIERT</div>
-                    <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
+                    <button class="btn btn-primary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
                 `;
             } else {
                 // Confirm & Paid Stacked (User Request)

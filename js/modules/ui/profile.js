@@ -83,8 +83,8 @@ export const ProfileUI = {
 
                 buttonsHtml = `
                     <div style="display:grid; grid-template-columns: 1fr ${canArchive ? '1fr' : ''}; gap:10px; margin-top:10px;">
-                        <button class="btn btn-secondary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
-                        ${canArchive ? `<button class="btn btn-secondary btn-sm archive-order" data-id="${o.id}">Archivieren</button>` : ''}
+                        <button class="btn btn-primary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
+                        ${canArchive ? `<button class="btn btn-primary btn-sm archive-order" data-id="${o.id}" style="width:100%">Archivieren</button>` : ''}
                     </div>
                     <button class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</button>
                 `;
