@@ -84,7 +84,7 @@ export const AdminUI = {
 
                 return `
                             <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:20px;">
                                     <div>
                                         <div style="font-weight:bold; color:${nameColor};">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>${pabloLabel}</div>
                                         <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">Passwort: ${u.password}</div>
