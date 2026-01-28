@@ -83,16 +83,16 @@ export const AdminUI = {
                 const isAccordionOpen = openAccordions.has(accordionId);
 
                 return `
-                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <div>
-                                        <div style="font-weight:bold; color:${nameColor};">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>${pabloLabel}</div>
-                                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">Passwort: ${u.password}</div>
+                            <div class="user-card" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--glass-border); margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap: 20px;">
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="font-weight:bold; color:${nameColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>${pabloLabel}</div>
+                                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Passwort: ${u.password}</div>
                                     </div>
-                                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                                    <div style="display:flex; gap:5px; flex-wrap:wrap; flex-shrink:0;">
                                         ${showOrdersBtn}
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
-                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen <span class="arrow" style="display:inline-block; transition:transform 0.3s;">▼</span></button>
+                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
                                         ${showDeleteBtn}
                                     </div>
                                 </div>

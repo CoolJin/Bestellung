@@ -69,9 +69,9 @@ export const ProfileUI = {
 
             // Items HTML
             const itemsHtml = updatedItems.map(i => `
-                <div style="display:flex; justify-content:space-between; font-size:0.9em; margin-bottom:2px;">
-                    <span>${i.quantity}x ${i.name}</span>
-                    <span>${i.price}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9em; margin-bottom:5px;">
+                    <span style="padding-right:15px;">${i.quantity}x ${i.name}</span>
+                    <span style="white-space:nowrap; font-weight:600;">${i.price}</span>
                 </div>
             `).join('');
 
@@ -103,12 +103,18 @@ export const ProfileUI = {
                 `;
             }
 
+            const paidBadge = o.paid ?
+                `<span class="status-badge" style="background:rgba(16, 185, 129, 0.2); color:#10b981; margin-left:10px; border:1px solid rgba(16, 185, 129, 0.3);">Bezahlt</span>` :
+                `<span class="status-badge" style="background:rgba(244, 63, 94, 0.2); color:#f43f5e; margin-left:10px; border:1px solid rgba(244, 63, 94, 0.3);">Nicht bezahlt</span>`;
+
             return `
-            <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold; font-size:1.1em;">${o.id}</span>
-                    <span class="status-badge status-${o.status}">${o.status}</span>
-                </div>
+            <div class="order-card" style="background:rgba(255,255,255,0.05); padding:20px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-weight:bold; font-size:1.2em; margin-right:10px;">${o.id}</span>
+                        <span class="status-badge status-${o.status}">${o.status}</span>
+                        ${o.paid !== undefined && o.status === 'bestellt' ? paidBadge : ''}
+                    </div>
                 <div style="font-size:0.85em; color:#ccc;">${o.date}</div>
                 ${o.adminNote ? `<div style="font-size:0.9em; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:8px; border-radius:6px; margin:5px 0;">Admin: ${o.adminNote}</div>` : ''}
                 ${o.note ? `<div style="font-size:0.9em; color:#ccc; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; margin:5px 0 10px 0; font-style:italic;">"${o.note}"</div>` : ''}
