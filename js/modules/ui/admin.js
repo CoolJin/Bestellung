@@ -91,12 +91,12 @@ export const AdminUI = {
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
                                         ${showOrdersBtn}
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
-                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
+                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen <span class="arrow" style="display:inline-block; transition:transform 0.3s;">▼</span></button>
                                         ${showDeleteBtn}
                                     </div>
                                 </div>
-                                <div class="role-accordion ${isAccordionOpen ? '' : 'hidden'}" id="${accordionId}" style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px;">
-                                     <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div class="role-accordion ${isAccordionOpen ? 'open' : ''}" id="${accordionId}" style="margin-top:10px; padding:0 10px; background:rgba(0,0,0,0.2); border-radius:6px; overflow:hidden;">
+                                     <div style="display:flex; flex-direction:column; gap:8px; padding: 10px 0;">
                                         <label class="custom-checkbox-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="event.stopPropagation()">
                                             <input type="checkbox" class="role-checkbox" data-role="admin" data-user="${u.username}" ${u.role === 'admin' ? 'checked' : ''}>
                                             <span class="checkmark"></span><span style="color:white;">Administrator</span>
@@ -398,7 +398,11 @@ export const AdminUI = {
         };
 
         content.querySelectorAll('.manage-role-btn').forEach(b => {
-            b.onclick = () => content.querySelector(`#role-accordion-${b.dataset.user}`).classList.toggle('hidden');
+            b.onclick = () => {
+                const acc = content.querySelector(`#role-accordion-${b.dataset.user}`);
+                acc.classList.toggle('open');
+                b.querySelector('.arrow').classList.toggle('rotate');
+            };
         });
 
         const safeRoleHandler = (e, type) => {
@@ -407,11 +411,17 @@ export const AdminUI = {
 
             const chk = e.target;
             const username = chk.dataset.user;
-            const currentState = chk.checked;
+            const currentState = chk.checked; // Before click state (visual is handled by browser? No, blocked by preventDefault)
+            // Wait, if preventDefault is called, 'checked' property is NOT toggled.
+            // So currentState is the OLD state.
+            // intendedState should be !currentState.
             const intendedState = !currentState;
 
+            // Logic seems correct. But let's verify visual update after DB.
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = intendedState ? 'geben' : 'entziehen';
+
+            // ... (Rest is same)
 
             showAdminModal('Rolle ändern', `Soll <strong>${username}</strong> ${label} ${action}?`, async () => {
                 const updates = {};

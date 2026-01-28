@@ -286,6 +286,23 @@ details[open]>div {
     }
 }
 
+/* Role Accordion Animation */
+.role-accordion {
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s ease;
+}
+
+.role-accordion.open {
+    max-height: 300px;
+    /* Adjust if needed */
+    opacity: 1;
+}
+
+.arrow.rotate {
+    transform: rotate(180deg);
+}
+
 /* --- Mobile Responsiveness (Added by Assistant) --- */
 @media (max-width: 768px) {
 
