@@ -438,7 +438,23 @@ export const AdminUI = {
 
         content.querySelectorAll('.delete-user').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
-            showConfirm('Löschen?', u, async () => { await DB.deleteUser(u); selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper); });
+            const userObj = DB.getUsers().find(user => user.username === u);
+            if (!userObj) return;
+
+            showAdminModal('Benutzer Löschen',
+                `<p>Möchten Sie den Benutzer <strong>${u}</strong> wirklich löschen?</p>
+                 <p style="font-size:0.9em; color:#fca5a5; margin-bottom:10px;">Bitte geben Sie zur Bestätigung das aktuelle Passwort dieses Benutzers ein.</p>
+                 <input type="text" id="confirm-del-pass" placeholder="Passwort eingeben" class="form-input" style="padding:10px; border-radius:8px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.5); color:white; width:100%;">`,
+                async (modal) => {
+                    const inputPass = modal.querySelector('#confirm-del-pass').value;
+                    if (inputPass === userObj.password) {
+                        await DB.deleteUser(u);
+                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
+                    } else {
+                        CoreUI.showModal('Fehler', 'Falsches Passwort. Benutzer nicht gelöscht.');
+                    }
+                }
+            );
         });
         content.querySelectorAll('.edit-pw-btn').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
