@@ -107,8 +107,8 @@ export const ProfileUI = {
                     <div style="display:flex; gap:10px; align-items:center;">
                         <span class="status-badge status-${o.status}">${o.status}</span>
                         ${o.paid ?
-                    '<span style="background:linear-gradient(135deg, #059669 0%, #047857 100%); color:white; padding:4px 10px; border-radius:6px; font-size:0.85em; border:1px solid rgba(255,255,255,0.1); box-shadow:0 2px 4px rgba(0,0,0,0.2);">Bezahlt</span>'
-                    : '<span style="background:rgba(190, 18, 60, 0.1); color:#f43f5e; border:1px solid #be123c; padding:4px 10px; border-radius:6px; font-size:0.85em;">Nicht bezahlt</span>'}
+                    '<span style="background:transparent; color:#059669; border:1px solid #059669; padding:2px 8px; border-radius:6px; font-size:0.85em;">Bezahlt</span>'
+                    : '<span style="background:transparent; color:#be123c; border:1px solid #be123c; padding:2px 8px; border-radius:6px; font-size:0.85em;">Nicht bezahlt</span>'}
                     </div>
                 </div>
                 <div style="font-size:0.85em; color:#ccc;">${o.date}</div>

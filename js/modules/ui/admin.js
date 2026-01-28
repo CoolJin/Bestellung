@@ -270,7 +270,7 @@ export const AdminUI = {
 
                 const paidBtn = o.status === 'bestellt' ? `
                             <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background:linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%); background-size:200% 200%; color:white; border:1px solid transparent;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
+                                style="${o.paid ? 'background:transparent; color:#059669; border:1px solid #059669;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
                                 ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
                             </button>` : '';
 
