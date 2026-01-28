@@ -289,19 +289,19 @@
 
     /* Noble Gradients Classes */
     .btn-noble-green {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        background: linear-gradient(135deg, #34d399 0%, #047857 100%) !important;
         border-color: transparent !important;
         color: white !important;
     }
 
     .btn-noble-red {
-        background: linear-gradient(135deg, #be123c 0%, #9f1239 100%) !important;
+        background: linear-gradient(135deg, #fb7185 0%, #9f1239 100%) !important;
         border-color: transparent !important;
         color: white !important;
     }
 
     .btn-noble-blue {
-        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+        background: linear-gradient(135deg, #818cf8 0%, #4338ca 100%) !important;
         border-color: transparent !important;
         color: white !important;
     }

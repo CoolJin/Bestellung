@@ -240,7 +240,7 @@ input:focus {
     color: var(--primary-color);
 }
 
-/* Cart & Admin Item Cards */
+/* Cart & Admin Item Cards with Glow */
 .cart-item,
 .order-card {
     background: rgba(255, 255, 255, 0.03);
@@ -251,6 +251,16 @@ input:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* User: "Slight glow on all borders" */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.cart-item:hover,
+.order-card:hover {
+    /* User: "Hover makes it stronger/brighter" */
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 #order-note {
