@@ -245,3 +245,54 @@
         opacity: 1;
     }
 }
+
+/* --- Mobile Responsiveness (Added by Assistant) --- */
+@media (max-width: 768px) {
+
+    /* Order Card Stack Layout */
+    .order-card {
+        flex-direction: column !important;
+    }
+
+    /* Admin Order Card: Reset sidebar width and stack it */
+    .order-card>div:last-child {
+        margin-left: 0 !important;
+        margin-top: 15px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Target the Inner Row (Confirm + Paid) */
+    .order-card>div:last-child>div {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100% !important;
+    }
+
+    /* Touch Targets */
+    .btn {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Profile Adjustments */
+    .profile-orders-list .order-card {
+        padding: 10px !important;
+    }
+
+    /* Navigation Adjustments */
+    .nav-tabs {
+        flex-wrap: wrap;
+    }
+
+    .nav-item {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+}
