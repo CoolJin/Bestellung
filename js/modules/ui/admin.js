@@ -44,7 +44,7 @@ export const AdminUI = {
                 <div class="modal-content glass-panel" style="background:#1e293b; padding:20px; border-radius:12px; min-width:300px; border:1px solid rgba(255,255,255,0.1);">
                     <h3 style="margin-top:0;">${title}</h3>
                     <div style="margin:15px 0;">${contentHTML}</div>
-                    <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px;">
+                    <div class="modal-actions" style="display:flex; justify-content:center; gap:10px;">
                         <button class="btn btn-secondary close-modal">Abbrechen</button>
                         <button class="btn btn-primary confirm-modal">Bestätigen</button>
                     </div>
@@ -92,7 +92,7 @@ export const AdminUI = {
                                     <div style="display:flex; gap:5px; flex-wrap:wrap;">
                                         ${showOrdersBtn}
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
-                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen <span class="arrow" style="display:inline-block; transition:transform 0.3s;">▼</span></button>
+                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
                                         ${showDeleteBtn}
                                     </div>
                                 </div>
@@ -402,7 +402,6 @@ export const AdminUI = {
             b.onclick = () => {
                 const acc = content.querySelector(`#role-accordion-${b.dataset.user}`);
                 acc.classList.toggle('open');
-                b.querySelector('.arrow').classList.toggle('rotate');
             };
         });
 
