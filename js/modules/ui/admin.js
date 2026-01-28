@@ -262,21 +262,21 @@ export const AdminUI = {
                 // Confirm & Paid Stacked (User Request)
                 const confirmBtn = `
                         <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
-                             style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%)' : 'transparent'}; 
+                             style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%)' : 'transparent'}; 
                                     background-size: 200% 200%; border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; width:100%;">
                             ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
                         </button>`;
 
                 const paidBtn = o.status === 'bestellt' ? `
                             <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background:linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%); background-size:200% 200%; color:white; border:1px solid transparent;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
+                                style="${o.paid ? 'background:linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%); background-size:200% 200%; color:white; border:1px solid transparent;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
                                 ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
                             </button>` : '';
 
                 btns = `
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
-                            style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #f43f5e 100%)' : 'transparent'}; 
+                            style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%)' : 'transparent'}; 
                                    background-size: 200% 200%; border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
                             ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
                         </button>
