@@ -10,7 +10,8 @@ export const AdminUI = {
         let selectedUserFilter = list.dataset.selectedUser || null;
 
         const openAccordions = new Set();
-        list.querySelectorAll('.role-accordion:not(.hidden)').forEach(acc => openAccordions.add(acc.id));
+        // Updated logic: track '.open' class instead of ':not(.hidden)' because hidden class was removed
+        list.querySelectorAll('.role-accordion.open').forEach(acc => openAccordions.add(acc.id));
 
         // Use details 'open' attribute persistence via dataset
         const isArchiveOpen = list.dataset.archiveOpen === 'true';
@@ -411,13 +412,9 @@ export const AdminUI = {
 
             const chk = e.target;
             const username = chk.dataset.user;
-            const currentState = chk.checked; // Before click state (visual is handled by browser? No, blocked by preventDefault)
-            // Wait, if preventDefault is called, 'checked' property is NOT toggled.
-            // So currentState is the OLD state.
-            // intendedState should be !currentState.
-            const intendedState = !currentState;
+            // Use NEW state directly
+            const intendedState = chk.checked;
 
-            // Logic seems correct. But let's verify visual update after DB.
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = intendedState ? 'geben' : 'entziehen';
 
