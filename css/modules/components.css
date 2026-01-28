@@ -15,14 +15,26 @@ label {
 input,
 textarea,
 .search-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    /* Restore Dark Background */
+    border: 1px solid var(--glass-border);
+    /* Default Border */
+    border-radius: 12px;
+    color: white;
+    /* White Text */
+    font-size: 1rem;
+    outline: none;
     transition: all 0.3s ease;
 }
 
 input:hover,
 textarea:hover,
 .search-input:hover {
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    /* Zinc Hover Glow */
 }
 
 input:focus,
