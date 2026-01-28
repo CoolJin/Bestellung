@@ -11,70 +11,63 @@ label {
     font-size: 0.9rem;
 }
 
-input {
-    width: 100%;
-    padding: 12px 16px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    color: white;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.2s;
+/* Inputs with Glow */
+input,
+textarea,
+.search-input {
+    transition: all 0.3s ease;
 }
 
-input:focus {
+input:hover,
+textarea:hover,
+.search-input:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+input:focus,
+textarea:focus,
+.search-input:focus {
     border-color: var(--primary-color);
+    box-shadow: 0 0 15px var(--accent-glow);
 }
 
-/* Buttons */
-.btn {
-    padding: 12px 24px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
-}
-
-.btn:active {
-    transform: scale(0.96);
-}
-
-/* Noble Gradients for Primary/Danger */
+/* Noble Gradients with Shift Animation */
 .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 50%, #6366f1 100%);
+    background-size: 200% 200%;
     color: white;
     border: 1px solid transparent;
 }
 
 .btn-primary:hover {
-    filter: brightness(1.2);
+    background-position: 100% 50%;
+    /* Shift Gradient 180deg effect */
     box-shadow: 0 0 20px var(--accent-glow);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #be123c 0%, #881337 100%);
+    background: linear-gradient(135deg, #be123c 0%, #881337 50%, #be123c 100%);
+    background-size: 200% 200%;
     color: white;
     border: 1px solid transparent;
 }
 
 .btn-danger:hover {
+    background-position: 100% 50%;
     box-shadow: 0 0 15px rgba(190, 18, 60, 0.4);
-    filter: brightness(1.1);
 }
 
-/* Added Success Button */
 .btn-success {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    background: linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%);
+    background-size: 200% 200%;
     color: white;
     border: 1px solid transparent;
 }
 
 .btn-success:hover {
+    background-position: 100% 50%;
     box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);
-    filter: brightness(1.1);
 }
 
 .btn-secondary {
@@ -246,11 +239,14 @@ input:focus {
 
 /* Cart & Admin Item Cards with Glow */
 .cart-item,
-.order-card {
+.order-card,
+.product-card,
+.user-card {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     padding: 15px;
+    /* Default padding for most cards */
     margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
@@ -260,8 +256,19 @@ input:focus {
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
+/* Specific Override for Product Card to allow full-width image */
+.product-card {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    /* Ensure content stretches */
+}
+
 .cart-item:hover,
-.order-card:hover {
+.order-card:hover,
+.product-card:hover,
+.user-card:hover {
     /* User: "Hover makes it stronger/brighter" */
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
