@@ -75,7 +75,30 @@ export const ProfileUI = {
                 </div>
             `).join('');
 
-            // ...
+            // Buttons based on Type
+            let buttonsHtml = '';
+            if (type === 'active') {
+                const canArchive = o.status === 'abgelehnt' || o.status === 'bestellt';
+                buttonsHtml = `
+                    <div style="display:grid; grid-template-columns: 1fr ${canArchive ? '1fr' : ''}; gap:10px; margin-top:10px;">
+                        <button class="btn btn-primary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
+                        ${canArchive ? `<button class="btn btn-primary btn-sm archive-order" data-id="${o.id}" style="width:100%">Archivieren</button>` : ''}
+                    </div>
+                    <button class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</button>
+                `;
+            } else if (type === 'archived') {
+                buttonsHtml = `
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                        <button class="btn btn-primary btn-sm restore-order" data-id="${o.id}">Wiederherstellen</button>
+                        <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</button>
+                    </div>
+                `;
+            } else if (type === 'cancelled') {
+                buttonsHtml = `
+                    <button class="btn btn-primary btn-sm revive-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Erneut bestellen</button>
+                    <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}" style="width:100%; margin-top:5px;">Löschen</button>
+                `;
+            }
 
             return `
             <div class="order-card" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:10px;">
