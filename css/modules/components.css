@@ -29,7 +29,7 @@ input:focus,
 textarea:focus,
 .search-input:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 15px var(--accent-glow);
+    box-shadow: 0 0 25px var(--accent-glow);
 }
 
 /* Restored .btn Styles with Animation Fix */

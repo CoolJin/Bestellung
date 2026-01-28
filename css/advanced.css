@@ -246,6 +246,46 @@
     }
 }
 
+/* Accordion Animations (User Request) */
+details>summary {
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+details>summary::-webkit-details-marker {
+    display: none;
+}
+
+details>summary::after {
+    content: '▼';
+    font-size: 0.8em;
+    transition: transform 0.4s ease;
+    margin-left: 10px;
+}
+
+details[open]>summary::after {
+    transform: rotate(180deg);
+}
+
+details[open]>div {
+    animation: slideDown 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes slideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* --- Mobile Responsiveness (Added by Assistant) --- */
 @media (max-width: 768px) {
 
