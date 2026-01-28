@@ -327,23 +327,23 @@ details[open]>div {
         transition: 0.5s;
     }
 
-    /* Noble Gradients Classes (Darker Tones + Smooth Shift) */
+    /* Noble Gradients Classes (Brighter Tones + Smooth Shift) */
     .btn-noble-green {
-        background: linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%) !important;
+        background: linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
     }
 
     .btn-noble-red {
-        background: linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%) !important;
+        background: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #f43f5e 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
     }
 
     .btn-noble-blue {
-        background: linear-gradient(135deg, #6366f1 0%, #4338ca 50%, #6366f1 100%) !important;
+        background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #818cf8 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
