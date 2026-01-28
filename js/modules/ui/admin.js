@@ -89,7 +89,7 @@ export const AdminUI = {
                                         <div style="font-weight:bold; color:${nameColor};">${u.username} <span style="font-size:0.8em; color:var(--text-muted);">(${u.role})</span>${pabloLabel}</div>
                                         <div style="font-size:0.85em; color:var(--text-muted); margin-top:2px;">Passwort: ${u.password}</div>
                                     </div>
-                                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-left:auto;">
                                         ${showOrdersBtn}
                                         <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
                                         <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
