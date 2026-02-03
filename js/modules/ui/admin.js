@@ -1,4 +1,5 @@
 // --- js/modules/ui/admin.js ---
+// RESTORED FROM LIVE SITE (cooljin.github.io)
 import { OrdersUI } from './orders.js';
 
 export const AdminUI = {
@@ -6,24 +7,24 @@ export const AdminUI = {
         const container = elements.ordersList;
         if (!container) return;
 
-        const activeTab = container.dataset.activeTab || 'search';
+        const activeTab = container.dataset.activeTab || 'orders'; // Default was 'orders' on live site
 
         container.innerHTML = '';
         container.classList.remove('hidden');
 
-        // Render Tabs
-        if (activeTab === 'search') {
-            this.renderAdminSearch(container, elements, window.app.state, Cart, Search, selfRender, DB, showConfirm);
-        } else if (activeTab === 'extras') {
-            this.renderAdminExtras(container, window.app.state, selfRender, DB, Cart, Search, showConfirm, elements);
-        } else if (activeTab === 'orders') {
+        // Render Tabs Logic (Enhanced with Search/Extras)
+        if (activeTab === 'orders') {
             this.renderAdminOrders(container, DB, showConfirm, Cart, selfRender);
         } else if (activeTab === 'users') {
             this.renderAdminUsers(container, DB, showConfirm, selfRender);
+        } else if (activeTab === 'search') {
+            this.renderAdminSearch(container, elements, window.app.state, Cart, Search, selfRender, DB, showConfirm);
+        } else if (activeTab === 'extras') {
+            this.renderAdminExtras(container, window.app.state, selfRender, DB, Cart, Search, showConfirm, elements);
         }
     },
 
-    // --- 1. SEARCH TAB ---
+    // --- 1. SEARCH TAB (New Feature) ---
     renderAdminSearch(container, elements, state, Cart, Search, selfRender, DB, showConfirm) {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
@@ -52,10 +53,8 @@ export const AdminUI = {
         };
 
         const addToExtras = (product, qty, st, cb) => {
-            // Reuse Cart Logic (adds to state.cart and syncs DB)
             Cart.addToCartLogic(product, st, () => {
                 if (cb) cb();
-                // Optional: Show toast
             });
         };
 
@@ -73,11 +72,9 @@ export const AdminUI = {
         }
     },
 
-    // --- 2. EXTRAS TAB (Admin Cart) ---
+    // --- 2. EXTRAS TAB (New Feature) ---
     renderAdminExtras(container, state, selfRender, DB, Cart, Search, showConfirm, elements) {
-        // Use state.cart !
         const cartItems = state.cart || [];
-
         const total = cartItems.reduce((acc, item) => {
             let price = 0;
             if (typeof item.price === 'string') {
@@ -91,7 +88,7 @@ export const AdminUI = {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
             <div class="header-actions">
-                <h2>Extras</h2>
+                <h2>Extras (Warenkorb)</h2>
                 <div style="font-weight:600; color:var(--primary-color); font-size:1.2em;">
                     Gesamt: ${total.toFixed(2).replace('.', ',')} €
                 </div>
@@ -126,18 +123,15 @@ export const AdminUI = {
                 if (btn) {
                     const idx = parseInt(btn.dataset.index);
                     const delta = parseInt(btn.dataset.delta);
-
-                    // Use Cart Module Logic
                     Cart.changeCartQty(idx, delta, state, () => {
-                        // Re-render self
                         selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
-                    }, () => { }); // No external cart count to update
+                    }, () => { });
                 }
             });
         }
     },
 
-    // --- 3. ORDERS TAB ---
+    // --- 3. ORDERS TAB (Restored Logic) ---
     renderAdminOrders(container, DB, showConfirm, Cart, selfRender) {
         container.innerHTML = '<h2>Bestellungen</h2><div id="admin-orders-container" style="margin-top:1rem; display:flex; flex-direction:column; gap:10px;"></div>';
         const inner = container.querySelector('#admin-orders-container');
@@ -147,52 +141,61 @@ export const AdminUI = {
         const closedOrders = orders.filter(o => o.status === 'done' || o.status === 'completed');
         const cancelledOrders = orders.filter(o => o.status === 'cancelled');
 
-        if (OrdersUI.createCollapsible) {
-            inner.appendChild(OrdersUI.createCollapsible('Offene Bestellungen', openOrders, false, true));
-            inner.appendChild(OrdersUI.createCollapsible('Abgeschlossene', closedOrders, true, false));
-            inner.appendChild(OrdersUI.createCollapsible('Storniert', cancelledOrders, true, false));
-        } else {
-            orders.forEach(o => inner.appendChild(OrdersUI.createOrderCard(o, false)));
-        }
+        // Using OrdersUI.createCollapsible as seen in Live Site (inferred from browser check)
+        inner.appendChild(OrdersUI.createCollapsible('Offene Bestellungen', openOrders, false, true, 'open'));
+        inner.appendChild(OrdersUI.createCollapsible('Abgeschlossene', closedOrders, true, false, 'done'));
+        inner.appendChild(OrdersUI.createCollapsible('Storniert', cancelledOrders, true, false, 'cancelled'));
 
+        // Re-attach listeners for Admin Actions
         inner.addEventListener('click', (e) => {
             const t = e.target;
             const id = t.dataset.id;
             if (!id) return;
 
+            // "Abgeschlossen" / Archive
             if (t.classList.contains('archive-order')) {
                 DB.updateOrder(id, o => o.status = 'done');
                 selfRender(window.app.elements, DB, showConfirm, selfRender, Cart, window.Search);
             }
+            // "Löschen"
             if (t.classList.contains('delete-order')) {
                 showConfirm('Löschen?', 'Wirklich löschen?', () => {
                     DB.deleteOrder(id);
                     selfRender(window.app.elements, DB, showConfirm, selfRender, Cart, window.Search);
                 });
             }
+            // "Wiederherstellen"
             if (t.classList.contains('restore-order')) {
-                DB.updateOrder(id, o => o.status = 'open'); // Simplified restore
+                DB.updateOrder(id, o => o.status = 'open');
+                selfRender(window.app.elements, DB, showConfirm, selfRender, Cart, window.Search);
+            }
+            // "Erneut bestellen" -> Revive
+            if (t.classList.contains('revive-order')) {
+                DB.updateOrder(id, o => {
+                    o.status = 'open';
+                    o.deletedByAdmin = false;
+                });
                 selfRender(window.app.elements, DB, showConfirm, selfRender, Cart, window.Search);
             }
         });
     },
 
-    // --- 4. USERS TAB ---
+    // --- 4. USERS TAB (Restored Logic) ---
     renderAdminUsers(container, DB, showConfirm, selfRender) {
         container.innerHTML = '<h2>Benutzerverwaltung</h2><div id="admin-users-table" style="margin-top:1rem;"></div>';
         const inner = container.querySelector('#admin-users-table');
         const users = DB.getUsers();
 
         const table = document.createElement('table');
-        table.className = 'table';
+        table.className = 'table glass-panel'; // Added glass-panel based on user style preference
         table.style.width = '100%';
         table.style.borderCollapse = 'collapse';
         table.innerHTML = `
             <thead>
-                <tr style="border-bottom: 1px solid white;">
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <th style="text-align:left; padding:10px;">Name</th>
                     <th style="text-align:left; padding:10px;">Rolle</th>
-                    <th style="padding:10px;">Aktion</th>
+                    <th style="padding:10px; text-align:right;">Aktion</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -201,11 +204,12 @@ export const AdminUI = {
         const tbody = table.querySelector('tbody');
         users.forEach(u => {
             const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
             tr.innerHTML = `
                 <td style="padding:10px;">${u.username}</td>
                 <td style="padding:10px;">${u.role}</td>
                 <td style="padding:10px; text-align:right;">
-                    ${u.role !== 'admin' ? `<button class="btn btn-danger btn-sm delete-user" data-user="${u.username}">Löschen</button>` : ''}
+                    ${u.role !== 'admin' ? `<button class="btn btn-danger btn-sm delete-user" data-user="${u.username}">Löschen</button>` : '<span class="text-muted" style="font-size:0.8em">Admin</span>'}
                 </td>
             `;
             tbody.appendChild(tr);
