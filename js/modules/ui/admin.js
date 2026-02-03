@@ -6,7 +6,15 @@ export const AdminUI = {
         const list = elements.ordersList;
         if (!list) return;
 
-        let activeTab = list.dataset.activeTab || 'search'; // Default to Search as requested ("Suche, dann Extra...")
+        // Default to 'orders' if not set, OR 'search' if user prefers? 
+        // User complained "Orders gone". Reverting default to 'orders' might be safer, 
+        // but he explicitly asked for "Search, Extra, Orders, Users". 
+        // However, standard behavior for dashboards is usually Orders.
+        // Let's keep 'search' as default if he asked for that order, BUT ensure tab switching works.
+        // If dataset is empty, set default.
+        if (!list.dataset.activeTab) list.dataset.activeTab = 'search';
+
+        let activeTab = list.dataset.activeTab;
         let selectedUserFilter = list.dataset.selectedUser || null;
 
         const openAccordions = new Set();
@@ -19,10 +27,8 @@ export const AdminUI = {
         let extrasUser = DB.getUsers().find(u => u.username === EXTRAS_USER_ID);
         if (!extrasUser) {
             try {
-                // Silently create the storage user
                 await DB.createUser(EXTRAS_USER_ID, 'internal_storage_' + Date.now());
                 extrasUser = DB.getUsers().find(u => u.username === EXTRAS_USER_ID);
-                console.log('Created Global Extras Storage User');
             } catch (e) {
                 console.error('Failed to create extras storage:', e);
             }
@@ -32,7 +38,7 @@ export const AdminUI = {
         const content = document.createElement('div');
         list.appendChild(content);
 
-        // --- Local Internal Modal (if needed fallback) ---
+        // --- Local Internal Modal ---
         const localShowAdminModal = (title, contentHTML, onConfirm) => {
             const modalId = 'admin-dynamic-modal';
             let modal = document.getElementById(modalId);
@@ -59,11 +65,6 @@ export const AdminUI = {
             modal.querySelector('.confirm-modal').onclick = () => { onConfirm(modal); close(); };
         };
 
-        // --- TAB NAVIGATION IS HANDLED GLOBALLY BY MAIN.JS RENDERNAV VIA DATASET.ACTIVETAB ---
-        // But we need to ensure main.js knows we switched tabs if we do it internally.
-        // Actually, main.js reads list.dataset.activeTab.
-        // So clicking a nav link in main.js sets the view/tab and calls this render function.
-
         // --- TAB CONTENT ---
 
         // 1. SEARCH TAB
@@ -74,7 +75,7 @@ export const AdminUI = {
                     <div style="margin-bottom:20px;">
                         <input type="text" id="admin-search-input" placeholder="Produkt suchen..." class="form-input" style="width:100%; padding:12px; font-size:1.1em; border-radius:8px; border:1px solid var(--primary-color); background:rgba(0,0,0,0.3); color:white;">
                     </div>
-                    <div id="admin-search-results" class="product-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:10px;"></div>
+                    <div id="admin-search-results" class="product-grid"></div>
                 </div>
             `;
 
@@ -84,43 +85,40 @@ export const AdminUI = {
 
             const renderResults = (query) => {
                 const q = query.toLowerCase().trim();
-                const hits = products.filter(p => p.title.toLowerCase().includes(q) || (p.handle && p.handle.toLowerCase().includes(q)));
+                let hits = products;
+                if (q.length > 0) {
+                    hits = products.filter(p => p.title.toLowerCase().includes(q) || (p.handle && p.handle.toLowerCase().includes(q)));
+                } else {
+                    hits = []; // Don't show everything by default to keep clean? Or show all? User Catalog shows all. Let's show empty until search.
+                }
 
-                resultsDiv.innerHTML = hits.slice(0, 20).map(p => { // Limit 20
+                // Matches User Catalog Design (Standard product-card)
+                resultsDiv.innerHTML = hits.slice(0, 50).map(p => {
                     const price = (typeof p.price === 'number') ? p.price.toFixed(2).replace('.', ',') + ' €' : p.price;
-                    const img = p.images && p.images[0] ? p.images[0].src : '';
+                    const img = p.images && p.images[0] ? p.images[0].src : 'https://via.placeholder.com/150';
                     return `
-                    <div class="product-card" style="padding:10px; display:flex; flex-direction:column; gap:5px; align-items:center;">
-                        ${img ? `<img src="${img}" style="width:60px; height:60px; object-fit:contain; border-radius:4px;">` : ''}
-                        <div style="text-align:center; font-size:0.9em; font-weight:bold; height:40px; overflow:hidden;">${p.title}</div>
-                        <div style="color:var(--primary-color); text-align:center;">${price}</div>
-                        <button class="btn btn-primary btn-sm add-to-extra" data-id="${p.id}" style="width:100%; margin-top:auto;">+ Extra</button>
-                    </div>`;
+                    <article class="product-card">
+                         <img src="${img}" class="product-image" alt="${p.title}" style="height:150px; object-fit:contain; width:100%; border-radius:8px;">
+                         <div class="product-info" style="padding:10px;">
+                             <h3 style="font-size:1em; margin:0 0 10px 0; height:40px; overflow:hidden;">${p.title}</h3>
+                             <div class="product-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                                 <div class="product-price" style="font-weight:bold; color:var(--primary-color);">${price}</div>
+                                 <button class="btn btn-primary btn-sm add-to-extra" data-id="${p.id}" style="padding:5px 10px;">+ Extra</button>
+                             </div>
+                         </div>
+                     </article>`;
                 }).join('');
 
-                // Add Handlers
                 resultsDiv.querySelectorAll('.add-to-extra').forEach(b => {
                     b.onclick = async () => {
                         if (!extrasUser) return;
                         const pid = b.dataset.id;
-                        // Use Cart Logic but manually for storage user
-                        // We can reuse Cart.addToCart if we hack state.currentUser temporarily?
-                        // Better: Duplicate logic carefully to avoid side effects.
-
                         const product = products.find(p => String(p.id) === String(pid));
                         if (product && cartHelper) {
-                            // Using cartHelper but targeting SPECIFIC user
-                            // Only Cart.addToCart uses state.currentUser implicitly.
-                            // We must MANUALLY update extrasUser.cart
-
                             let currentCart = extrasUser.cart || [];
                             const item = JSON.parse(JSON.stringify(product));
                             item.quantity = 1;
-                            // Calculate Price for ADMIN (Using Shared User)
-                            // Assuming standard price for extras logic? Or Admin Price?
-                            // Usually Extras are sold at standard price? Or just Inventory tracking?
-                            // User said: "Inventory".
-                            // Let's use standard price logic.
+                            // Calculate Price
                             const effectivePrice = cartHelper.calculatePrice(item, extrasUser);
                             item.price = effectivePrice.toFixed(2).replace('.', ',') + ' €';
 
@@ -132,7 +130,6 @@ export const AdminUI = {
                                 currentCart.push(item);
                             }
 
-                            // SAVE
                             await DB.saveCart(EXTRAS_USER_ID, currentCart);
                             CoreUI.showModal('Hinzugefügt', `${item.title} zu Extras hinzugefügt.`);
                         }
@@ -141,13 +138,25 @@ export const AdminUI = {
             };
 
             input.oninput = (e) => renderResults(e.target.value);
-            // Initial render empty or all? Empty looks cleaner.
+            // Optionally render initial "Popular" or just empty
+            renderResults(""); // Show nothing initially? Or All?
+            // User Catalog shows "All" initially.
+            // But Admin might not want clutter. 
+            // I'll show nothing initially to encourage search.
         }
 
-        // 2. EXTRA TAB (Inventory)
+        // 2. EXTRA TAB
         else if (activeTab === 'extra') {
             const cartItems = (extrasUser && extrasUser.cart) ? extrasUser.cart : [];
             const totalItems = cartItems.reduce((acc, i) => acc + (i.quantity || 0), 0);
+
+            // Calculate Value?
+            let totalValue = 0;
+            cartItems.forEach(i => {
+                const price = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                totalValue += price * (i.quantity || 1);
+            });
+            const totalValueStr = totalValue.toFixed(2).replace('.', ',') + ' €';
 
             let listHtml = '';
             if (cartItems.length === 0) {
@@ -160,10 +169,10 @@ export const AdminUI = {
                             <div style="font-size:0.85em; color:#888;">${i.price}</div>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <button class="btn btn-secondary btn-sm dec-extra" data-id="${i.id}">-</button>
-                            <span style="font-weight:bold; min-width:20px; text-align:center;">${i.quantity}</span>
-                            <button class="btn btn-secondary btn-sm inc-extra" data-id="${i.id}">+</button>
-                            <button class="btn btn-danger btn-sm del-extra" data-id="${i.id}">✕</button>
+                            <button class="btn btn-secondary btn-sm dec-extra" data-id="${i.id}" style="width:30px;">-</button>
+                            <span style="font-weight:bold; min-width:30px; text-align:center;">${i.quantity}</span>
+                            <button class="btn btn-secondary btn-sm inc-extra" data-id="${i.id}" style="width:30px;">+</button>
+                            <button class="btn btn-danger btn-sm del-extra" data-id="${i.id}" style="margin-left:10px;">✕</button>
                         </div>
                     </div>
                 `).join('');
@@ -171,7 +180,11 @@ export const AdminUI = {
 
             content.innerHTML = `
                 <div class="admin-panel">
-                    <h3>Extras Lagerbestand (${totalItems} Dosen)</h3>
+                    <h3>Extras Lagerbestand</h3>
+                    <div style="display:flex; gap:20px; margin-bottom:20px; font-size:1.1em; color:var(--primary-color);">
+                        <span>Gesamt Dosen: <b>${totalItems}</b></span>
+                        <span>Gesamtwert: <b>${totalValueStr}</b></span>
+                    </div>
                     <div style="margin-top:20px;">
                         ${listHtml}
                     </div>
@@ -205,7 +218,9 @@ export const AdminUI = {
 
         // 3. USERS TAB
         else if (activeTab === 'users') {
-            const users = DB.getUsers(); // .filter(u => u.username !== EXTRAS_USER_ID); // Hide storage user? Yes.
+            // ... Code from Previous Step (Omitted for brevity, but I MUST include it) 
+            // Logic identical to Step 1693
+            const users = DB.getUsers();
             const visibleUsers = users.filter(u => u.username !== EXTRAS_USER_ID);
 
             content.innerHTML = `
@@ -263,16 +278,20 @@ export const AdminUI = {
             AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, localShowAdminModal, cartHelper, appState);
         }
 
-        // 4. ORDERS TAB (Default or Selected)
+        // 4. ORDERS TAB (Explicit)
         else {
-            // ... EXISTING ORDERS LOGIC ...
+            // ACTIVE TAB IS 'orders' OR UNKNOWN
+            // Ensure we update dataset only if it was unknown?
+            if (activeTab !== 'orders') list.dataset.activeTab = 'orders';
+
             let allOrders = DB.getOrders().filter(o => !o.deletedByAdmin).sort((a, b) => b.id.localeCompare(a.id));
             const activeOrders = allOrders.filter(o => !o.adminArchived);
             const archivedOrders = allOrders.filter(o => o.adminArchived);
             const products = (appState && appState.products) ? appState.products : (DB.state.products || []);
 
             let displayOrders = activeOrders;
-            if (activeTab === 'orders' && selectedUserFilter) {
+            // FILTER BY USER
+            if (selectedUserFilter) {
                 displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
                 content.innerHTML += `
                     <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
@@ -283,21 +302,19 @@ export const AdminUI = {
                     const cfBtn = content.querySelector('#clear-filter-btn');
                     if (cfBtn) cfBtn.onclick = () => {
                         list.dataset.selectedUser = '';
-                        // Do not change tab here, stay on Orders
                         selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
                     };
                 }, 0);
             }
 
-            // Reuse RenderOrderCard Logic... structure it inline to access closures
+            // ORDER CARD RENDERER
             const renderOrderCard = (o, isArchive) => {
-                let total = o.total; // We calculate Selling Price manually below, but keep total var for reference if needed
+                let total = o.total;
 
                 // Layout fix for Archive
                 const cardBg = isArchive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
                 const cardOpacity = isArchive ? '0.75' : '1';
 
-                // Formatting Time (Force DD.MM.YYYY, HH:MM)
                 let dateStr = o.date;
                 try {
                     const d = new Date(o.date);
@@ -310,7 +327,6 @@ export const AdminUI = {
                     }
                 } catch (e) { }
 
-                // PROFIT CALCULATION & Item Rendering
                 let calcSelling = 0;
                 let calcBuying = 0;
 
@@ -318,14 +334,11 @@ export const AdminUI = {
                     const orderUser = DB.getUsers().find(u => u.username === o.user);
                     let origPrice = 0;
 
-                    // Catalog Item Lookup
                     let catItem = products.find(p => String(p.id) === String(i.id));
-                    // Fallback: Match by Name if ID fails (recovers profit/links for old orders)
                     if (!catItem) {
                         catItem = products.find(p => p.title === i.name || p.name === i.name);
                     }
 
-                    // Buying Price Logic
                     if (i.originalPrice) {
                         origPrice = parseFloat(String(i.originalPrice).replace(',', '.'));
                     } else {
@@ -339,7 +352,6 @@ export const AdminUI = {
                         }
                     }
 
-                    // Selling Price (Calculated)
                     let userPrice = 0;
                     if (cartHelper && orderUser) {
                         userPrice = cartHelper.calculatePrice(i, orderUser);
@@ -355,12 +367,10 @@ export const AdminUI = {
                     const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
 
                     let priceDisplay = `<span>${userPriceStr}</span>`;
-                    // Compare for Individual Item (Grey, No Strikethrough)
                     if (Math.abs(origPrice - userPrice) > 0.01 && origPrice > 0) {
                         priceDisplay = `<span style="color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
                     }
 
-                    // Product Link Logic
                     let nameDisplay = i.name;
                     const handle = i.handle || (catItem ? catItem.handle : null);
 
@@ -369,35 +379,28 @@ export const AdminUI = {
                         nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${i.name}</a>`;
                     }
 
-                    // Row with Gap Spacing
                     return `<div style="display:flex; justify-content:space-between; align-items:flex-end; gap:25px; margin-bottom:5px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
                                 <span style="flex:1;">${q}x ${nameDisplay}</span>
                                 <div style="flex-shrink:0;">${priceDisplay}</div>
                             </div>`;
                 }).join('');
 
-                // Totals Formatting
                 const sellingStr = calcSelling.toFixed(2).replace('.', ',') + ' €';
                 const buyingStr = calcBuying.toFixed(2).replace('.', ',') + ' €';
                 const profitVal = calcSelling - calcBuying;
                 const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
                 const profitColor = profitVal >= 0 ? '#059669' : '#be123c';
 
-                // Status Display
                 let displayStatus = o.status.toUpperCase();
                 if (displayStatus === 'OPEN') displayStatus = 'OFFEN';
 
                 let statusBadge = `<span class="status-badge status-${o.status}">${displayStatus}</span>`;
 
-                // Paid Badge
                 if (o.status === 'bestellt') {
                     const pTxt = o.paid ? 'BEZAHLT' : 'NICHT BEZAHLT';
-                    const pCol = o.paid ? '#059669' : '#be123c';
-                    // SIMPLE DESIGN (Outline)
                     const pStyle = o.paid ?
                         `background:transparent; color:#059669; border:1px solid #059669;` :
                         `background:transparent; color:#be123c; border:1px solid #be123c;`;
-
                     statusBadge += `<span style="margin-left:8px; ${pStyle} padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">${pTxt}</span>`;
                 }
 
@@ -495,11 +498,8 @@ export const AdminUI = {
                     if (det) det.ontoggle = () => list.dataset.archiveOpen = det.open;
                 }, 0);
             }
-        } // End of Tab Conditional
 
-        // --- Common Listeners (re-bind for Orders since it's default) ---
-        if (activeTab === 'orders' || activeTab === 'users') {
-            // Re-bind click handlers for Orders specific stuff
+            // LISTENERS FOR ORDERS
             list.onclick = async (e) => {
                 const t = e.target;
                 const id = t.dataset.id;
@@ -534,12 +534,13 @@ export const AdminUI = {
                 }
             };
         }
-
     },
 
     setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper, appState) {
+        // ... (Exact Copy of Previous implementation)
         const createBtn = content.querySelector('#create-user-btn');
         if (createBtn) createBtn.onclick = async () => {
+            // ...
             const u = content.querySelector('#new-user-name').value.trim();
             const p = content.querySelector('#new-user-pass').value.trim();
             if (u && p) {
@@ -556,13 +557,13 @@ export const AdminUI = {
         });
 
         const safeRoleHandler = (e, type) => {
+            // ...
             e.preventDefault();
             e.stopPropagation();
 
             const chk = e.target;
             const username = chk.dataset.user;
             const intendedState = chk.checked;
-
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = intendedState ? 'geben' : 'entziehen';
 
@@ -570,19 +571,17 @@ export const AdminUI = {
                 const updates = {};
                 if (type === 'admin') updates.role = intendedState ? 'admin' : 'user';
                 if (type === 'pablo') updates.isPablo = intendedState;
-
                 try {
                     await DB.updateUser(username, updates);
                     setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState), 50);
-                } catch (e) {
-                    CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.');
-                }
+                } catch (e) { CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.'); }
             });
         };
 
         content.querySelectorAll('.role-checkbox').forEach(c => c.onclick = (e) => safeRoleHandler(e, 'admin'));
         content.querySelectorAll('.pablo-checkbox').forEach(c => c.onclick = (e) => safeRoleHandler(e, 'pablo'));
 
+        // ... Delete and PW Edit handlers must also use selfRender with appState
         content.querySelectorAll('.delete-user').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
             const userObj = DB.getUsers().find(user => user.username === u);
@@ -603,6 +602,7 @@ export const AdminUI = {
                 }
             );
         });
+
         content.querySelectorAll('.edit-pw-btn').forEach(b => b.onclick = () => {
             const u = b.dataset.user;
             showAdminModal('Passwort Ändern',
