@@ -30,25 +30,9 @@ export const AdminUI = {
         if (!list.dataset.activeTab) list.dataset.activeTab = 'orders';
         const activeTab = list.dataset.activeTab;
 
-        // Render Tabs
-        list.innerHTML = `
-            <div class="admin-tabs" style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-                <button class="btn btn-sm ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'} nav-tab" data-tab="orders">Bestellungen</button>
-                <button class="btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'} nav-tab" data-tab="users">Benutzer</button>
-                <button class="btn btn-sm ${activeTab === 'search' ? 'btn-primary' : 'btn-secondary'} nav-tab" data-tab="search">Produkte</button>
-            </div>
-            <div id="admin-content"></div>
-        `;
-
+        // Clear previous content
+        list.innerHTML = '<div id="admin-content"></div>';
         const content = list.querySelector('#admin-content');
-
-        list.querySelectorAll('.nav-tab').forEach(b => {
-            b.onclick = () => {
-                list.dataset.activeTab = b.dataset.tab;
-                window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: b.dataset.tab } }));
-                renderSelf(elements, DB, showConfirm, renderSelf, Cart);
-            };
-        });
 
         // --- SEARCH TAB ---
         if (activeTab === 'search') {
