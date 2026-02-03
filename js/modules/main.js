@@ -146,7 +146,6 @@ window.app = {
         } else if (this.state.currentUser.role === 'admin') {
             createLink('Bestellungen', 'admin', '', 'orders');
             createLink('Benutzer', 'admin', '', 'users');
-            createLink('Produkte', 'admin', '', 'search');
             createLink('Abmelden', 'logout', 'btn-danger');
         }
     },
