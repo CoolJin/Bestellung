@@ -2,35 +2,37 @@
 import { CoreUI } from './core.js';
 
 export const AdminUI = {
-    renderAdminDashboard(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper) {
+    async renderAdminDashboard(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState) {
         const list = elements.ordersList;
         if (!list) return;
 
-        let activeTab = list.dataset.activeTab || 'orders';
+        let activeTab = list.dataset.activeTab || 'search'; // Default to Search as requested ("Suche, dann Extra...")
         let selectedUserFilter = list.dataset.selectedUser || null;
 
         const openAccordions = new Set();
-        // Updated logic: track '.open' class instead of ':not(.hidden)' because hidden class was removed
         list.querySelectorAll('.role-accordion.open').forEach(acc => openAccordions.add(acc.id));
 
-        // Use details 'open' attribute persistence via dataset
         const isArchiveOpen = list.dataset.archiveOpen === 'true';
+
+        // --- GLOBAL EXTRAS USER INIT ---
+        const EXTRAS_USER_ID = 'admin_extras_storage';
+        let extrasUser = DB.getUsers().find(u => u.username === EXTRAS_USER_ID);
+        if (!extrasUser) {
+            try {
+                // Silently create the storage user
+                await DB.createUser(EXTRAS_USER_ID, 'internal_storage_' + Date.now());
+                extrasUser = DB.getUsers().find(u => u.username === EXTRAS_USER_ID);
+                console.log('Created Global Extras Storage User');
+            } catch (e) {
+                console.error('Failed to create extras storage:', e);
+            }
+        }
 
         list.innerHTML = '';
         const content = document.createElement('div');
         list.appendChild(content);
 
-        // --- Improved Modal ---
-        // Ensure showAdminModal is available or redefine it (It is passed as argument usually, but fallback needed?)
-        // The argument name in signature is 'showAdminModal'. But in main.js iteration it might be different.
-        // Wait, line 5 has 'showAdminModal' MISSING in the view!
-        // View Line 5: renderAdminDashboard(elements, DB, showConfirm, selfRender, cartHelper)
-        // IT WAS MISSING 'showAdminModal' in the signature in previous file!
-        // But Line 105 calls setupUserHandlers with showAdminModal.
-        // Where does it come from?
-        // Ah, Line 23 re-defines `showAdminModal = ...`. It is a local function.
-        // So I don't need to add it to signature.
-
+        // --- Local Internal Modal (if needed fallback) ---
         const localShowAdminModal = (title, contentHTML, onConfirm) => {
             const modalId = 'admin-dynamic-modal';
             let modal = document.getElementById(modalId);
@@ -57,9 +59,155 @@ export const AdminUI = {
             modal.querySelector('.confirm-modal').onclick = () => { onConfirm(modal); close(); };
         };
 
-        // --- USERS TAB ---
-        if (activeTab === 'users') {
-            const users = DB.getUsers();
+        // --- TAB NAVIGATION IS HANDLED GLOBALLY BY MAIN.JS RENDERNAV VIA DATASET.ACTIVETAB ---
+        // But we need to ensure main.js knows we switched tabs if we do it internally.
+        // Actually, main.js reads list.dataset.activeTab.
+        // So clicking a nav link in main.js sets the view/tab and calls this render function.
+
+        // --- TAB CONTENT ---
+
+        // 1. SEARCH TAB
+        if (activeTab === 'search') {
+            content.innerHTML = `
+                <div class="admin-panel">
+                    <h3>Produktsuche (Extras hinzufügen)</h3>
+                    <div style="margin-bottom:20px;">
+                        <input type="text" id="admin-search-input" placeholder="Produkt suchen..." class="form-input" style="width:100%; padding:12px; font-size:1.1em; border-radius:8px; border:1px solid var(--primary-color); background:rgba(0,0,0,0.3); color:white;">
+                    </div>
+                    <div id="admin-search-results" class="product-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:10px;"></div>
+                </div>
+            `;
+
+            const input = content.querySelector('#admin-search-input');
+            const resultsDiv = content.querySelector('#admin-search-results');
+            const products = (appState && appState.products) ? appState.products : DB.state.products;
+
+            const renderResults = (query) => {
+                const q = query.toLowerCase().trim();
+                const hits = products.filter(p => p.title.toLowerCase().includes(q) || (p.handle && p.handle.toLowerCase().includes(q)));
+
+                resultsDiv.innerHTML = hits.slice(0, 20).map(p => { // Limit 20
+                    const price = (typeof p.price === 'number') ? p.price.toFixed(2).replace('.', ',') + ' €' : p.price;
+                    const img = p.images && p.images[0] ? p.images[0].src : '';
+                    return `
+                    <div class="product-card" style="padding:10px; display:flex; flex-direction:column; gap:5px; align-items:center;">
+                        ${img ? `<img src="${img}" style="width:60px; height:60px; object-fit:contain; border-radius:4px;">` : ''}
+                        <div style="text-align:center; font-size:0.9em; font-weight:bold; height:40px; overflow:hidden;">${p.title}</div>
+                        <div style="color:var(--primary-color); text-align:center;">${price}</div>
+                        <button class="btn btn-primary btn-sm add-to-extra" data-id="${p.id}" style="width:100%; margin-top:auto;">+ Extra</button>
+                    </div>`;
+                }).join('');
+
+                // Add Handlers
+                resultsDiv.querySelectorAll('.add-to-extra').forEach(b => {
+                    b.onclick = async () => {
+                        if (!extrasUser) return;
+                        const pid = b.dataset.id;
+                        // Use Cart Logic but manually for storage user
+                        // We can reuse Cart.addToCart if we hack state.currentUser temporarily?
+                        // Better: Duplicate logic carefully to avoid side effects.
+
+                        const product = products.find(p => String(p.id) === String(pid));
+                        if (product && cartHelper) {
+                            // Using cartHelper but targeting SPECIFIC user
+                            // Only Cart.addToCart uses state.currentUser implicitly.
+                            // We must MANUALLY update extrasUser.cart
+
+                            let currentCart = extrasUser.cart || [];
+                            const item = JSON.parse(JSON.stringify(product));
+                            item.quantity = 1;
+                            // Calculate Price for ADMIN (Using Shared User)
+                            // Assuming standard price for extras logic? Or Admin Price?
+                            // Usually Extras are sold at standard price? Or just Inventory tracking?
+                            // User said: "Inventory".
+                            // Let's use standard price logic.
+                            const effectivePrice = cartHelper.calculatePrice(item, extrasUser);
+                            item.price = effectivePrice.toFixed(2).replace('.', ',') + ' €';
+
+                            const existing = currentCart.find(i => String(i.id) === String(item.id));
+                            if (existing) {
+                                existing.quantity = (existing.quantity || 1) + 1;
+                                existing.price = item.price;
+                            } else {
+                                currentCart.push(item);
+                            }
+
+                            // SAVE
+                            await DB.saveCart(EXTRAS_USER_ID, currentCart);
+                            CoreUI.showModal('Hinzugefügt', `${item.title} zu Extras hinzugefügt.`);
+                        }
+                    };
+                });
+            };
+
+            input.oninput = (e) => renderResults(e.target.value);
+            // Initial render empty or all? Empty looks cleaner.
+        }
+
+        // 2. EXTRA TAB (Inventory)
+        else if (activeTab === 'extra') {
+            const cartItems = (extrasUser && extrasUser.cart) ? extrasUser.cart : [];
+            const totalItems = cartItems.reduce((acc, i) => acc + (i.quantity || 0), 0);
+
+            let listHtml = '';
+            if (cartItems.length === 0) {
+                listHtml = '<p style="color:#888;">Keine Extras im Bestand.</p>';
+            } else {
+                listHtml = cartItems.map(i => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <div style="font-weight:bold;">${i.title || i.name}</div>
+                            <div style="font-size:0.85em; color:#888;">${i.price}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <button class="btn btn-secondary btn-sm dec-extra" data-id="${i.id}">-</button>
+                            <span style="font-weight:bold; min-width:20px; text-align:center;">${i.quantity}</span>
+                            <button class="btn btn-secondary btn-sm inc-extra" data-id="${i.id}">+</button>
+                            <button class="btn btn-danger btn-sm del-extra" data-id="${i.id}">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            content.innerHTML = `
+                <div class="admin-panel">
+                    <h3>Extras Lagerbestand (${totalItems} Dosen)</h3>
+                    <div style="margin-top:20px;">
+                        ${listHtml}
+                    </div>
+                </div>
+            `;
+
+            // Handlers
+            const updateExtraQty = async (id, delta) => {
+                if (!extrasUser) return;
+                let cart = extrasUser.cart || [];
+                const idx = cart.findIndex(c => String(c.id) === String(id));
+                if (idx !== -1) {
+                    cart[idx].quantity = (cart[idx].quantity || 1) + delta;
+                    if (cart[idx].quantity <= 0) {
+                        cart.splice(idx, 1);
+                    }
+                    await DB.saveCart(EXTRAS_USER_ID, cart);
+                    selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
+                }
+            };
+
+            content.querySelectorAll('.inc-extra').forEach(b => b.onclick = () => updateExtraQty(b.dataset.id, 1));
+            content.querySelectorAll('.dec-extra').forEach(b => b.onclick = () => updateExtraQty(b.dataset.id, -1));
+            content.querySelectorAll('.del-extra').forEach(b => b.onclick = async () => {
+                let cart = extrasUser.cart || [];
+                cart = cart.filter(c => String(c.id) !== String(b.dataset.id));
+                await DB.saveCart(EXTRAS_USER_ID, cart);
+                selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
+            });
+        }
+
+        // 3. USERS TAB
+        else if (activeTab === 'users') {
+            const users = DB.getUsers(); // .filter(u => u.username !== EXTRAS_USER_ID); // Hide storage user? Yes.
+            const visibleUsers = users.filter(u => u.username !== EXTRAS_USER_ID);
+
             content.innerHTML = `
                 <div class="user-management-panel">
                     <h3>Benutzer verwalten</h3>
@@ -72,7 +220,7 @@ export const AdminUI = {
                         </div>
                     </div>
                     <div class="user-list" style="display:grid; gap:10px;">
-                        ${users.map(u => {
+                        ${visibleUsers.map(u => {
                 const showOrdersBtn = u.role !== 'admin' ?
                     `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : '';
                 const showDeleteBtn = u.role !== 'admin' ?
@@ -112,288 +260,290 @@ export const AdminUI = {
             }).join('')}
                     </div>
                 </div>`;
-            AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, localShowAdminModal, cartHelper);
-            return;
+            AdminUI.setupUserHandlers(content, DB, elements, showConfirm, selfRender, localShowAdminModal, cartHelper, appState);
         }
 
-        // --- ORDERS TAB ---
-        let allOrders = DB.getOrders().filter(o => !o.deletedByAdmin).sort((a, b) => b.id.localeCompare(a.id));
-        const activeOrders = allOrders.filter(o => !o.adminArchived);
-        const archivedOrders = allOrders.filter(o => o.adminArchived);
-        const products = DB.state.products || [];
+        // 4. ORDERS TAB (Default or Selected)
+        else {
+            // ... EXISTING ORDERS LOGIC ...
+            let allOrders = DB.getOrders().filter(o => !o.deletedByAdmin).sort((a, b) => b.id.localeCompare(a.id));
+            const activeOrders = allOrders.filter(o => !o.adminArchived);
+            const archivedOrders = allOrders.filter(o => o.adminArchived);
+            const products = (appState && appState.products) ? appState.products : (DB.state.products || []);
 
-        let displayOrders = activeOrders;
-        if (selectedUserFilter) {
-            displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
-            content.innerHTML += `
-                <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
-                    <span>Filter: <strong>${selectedUserFilter}</strong> (${displayOrders.length})</span>
-                    <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
+            let displayOrders = activeOrders;
+            if (activeTab === 'orders' && selectedUserFilter) {
+                displayOrders = displayOrders.filter(o => o.user === selectedUserFilter);
+                content.innerHTML += `
+                    <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
+                        <span>Filter: <strong>${selectedUserFilter}</strong> (${displayOrders.length})</span>
+                        <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
+                    </div>`;
+                setTimeout(() => {
+                    const cfBtn = content.querySelector('#clear-filter-btn');
+                    if (cfBtn) cfBtn.onclick = () => {
+                        list.dataset.selectedUser = '';
+                        // Do not change tab here, stay on Orders
+                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
+                    };
+                }, 0);
+            }
+
+            // Reuse RenderOrderCard Logic... structure it inline to access closures
+            const renderOrderCard = (o, isArchive) => {
+                let total = o.total; // We calculate Selling Price manually below, but keep total var for reference if needed
+
+                // Layout fix for Archive
+                const cardBg = isArchive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+                const cardOpacity = isArchive ? '0.75' : '1';
+
+                // Formatting Time (Force DD.MM.YYYY, HH:MM)
+                let dateStr = o.date;
+                try {
+                    const d = new Date(o.date);
+                    if (!isNaN(d.getTime())) {
+                        dateStr = d.toLocaleDateString('de-DE', {
+                            day: '2-digit', month: '2-digit', year: 'numeric'
+                        }) + ', ' + d.toLocaleTimeString('de-DE', {
+                            hour: '2-digit', minute: '2-digit'
+                        });
+                    }
+                } catch (e) { }
+
+                // PROFIT CALCULATION & Item Rendering
+                let calcSelling = 0;
+                let calcBuying = 0;
+
+                const itemsHtml = (o.items || []).map(i => {
+                    const orderUser = DB.getUsers().find(u => u.username === o.user);
+                    let origPrice = 0;
+
+                    // Catalog Item Lookup
+                    let catItem = products.find(p => String(p.id) === String(i.id));
+                    // Fallback: Match by Name if ID fails (recovers profit/links for old orders)
+                    if (!catItem) {
+                        catItem = products.find(p => p.title === i.name || p.name === i.name);
+                    }
+
+                    // Buying Price Logic
+                    if (i.originalPrice) {
+                        origPrice = parseFloat(String(i.originalPrice).replace(',', '.'));
+                    } else {
+                        if (catItem) {
+                            if (catItem.originalPrice) origPrice = parseFloat(String(catItem.originalPrice).replace(',', '.'));
+                            else if (typeof catItem.price === 'number') origPrice = catItem.price;
+                        }
+                        if (origPrice === 0) {
+                            let storedP = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                            origPrice = storedP;
+                        }
+                    }
+
+                    // Selling Price (Calculated)
+                    let userPrice = 0;
+                    if (cartHelper && orderUser) {
+                        userPrice = cartHelper.calculatePrice(i, orderUser);
+                    } else {
+                        userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                    }
+
+                    const q = i.quantity || 1;
+                    calcSelling += userPrice * q;
+                    calcBuying += origPrice * q;
+
+                    const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
+                    const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
+
+                    let priceDisplay = `<span>${userPriceStr}</span>`;
+                    // Compare for Individual Item (Grey, No Strikethrough)
+                    if (Math.abs(origPrice - userPrice) > 0.01 && origPrice > 0) {
+                        priceDisplay = `<span style="color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
+                    }
+
+                    // Product Link Logic
+                    let nameDisplay = i.name;
+                    const handle = i.handle || (catItem ? catItem.handle : null);
+
+                    if (handle) {
+                        const url = `https://snuzone.com/products/${handle}`;
+                        nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${i.name}</a>`;
+                    }
+
+                    // Row with Gap Spacing
+                    return `<div style="display:flex; justify-content:space-between; align-items:flex-end; gap:25px; margin-bottom:5px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
+                                <span style="flex:1;">${q}x ${nameDisplay}</span>
+                                <div style="flex-shrink:0;">${priceDisplay}</div>
+                            </div>`;
+                }).join('');
+
+                // Totals Formatting
+                const sellingStr = calcSelling.toFixed(2).replace('.', ',') + ' €';
+                const buyingStr = calcBuying.toFixed(2).replace('.', ',') + ' €';
+                const profitVal = calcSelling - calcBuying;
+                const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
+                const profitColor = profitVal >= 0 ? '#059669' : '#be123c';
+
+                // Status Display
+                let displayStatus = o.status.toUpperCase();
+                if (displayStatus === 'OPEN') displayStatus = 'OFFEN';
+
+                let statusBadge = `<span class="status-badge status-${o.status}">${displayStatus}</span>`;
+
+                // Paid Badge
+                if (o.status === 'bestellt') {
+                    const pTxt = o.paid ? 'BEZAHLT' : 'NICHT BEZAHLT';
+                    const pCol = o.paid ? '#059669' : '#be123c';
+                    // SIMPLE DESIGN (Outline)
+                    const pStyle = o.paid ?
+                        `background:transparent; color:#059669; border:1px solid #059669;` :
+                        `background:transparent; color:#be123c; border:1px solid #be123c;`;
+
+                    statusBadge += `<span style="margin-left:8px; ${pStyle} padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">${pTxt}</span>`;
+                }
+
+                let btns = '';
+                const isCancelled = o.status === 'cancelled';
+
+                if (isArchive) {
+                    btns = `
+                        <button class="btn btn-primary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
+                        <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</button>
+                     `;
+                } else if (isCancelled) {
+                    btns = `
+                        <div style="font-weight:bold; color:#be123c; margin-bottom:5px; text-align:center;">STORNIERT</div>
+                        <button class="btn btn-primary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
+                    `;
+                } else {
+                    const confirmBtn = `
+                            <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
+                                 style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%)' : 'transparent'}; 
+                                        background-size: 200% 200%; border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; width:100%;">
+                                ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
+                            </button>`;
+
+                    const paidBtn = o.status === 'bestellt' ? `
+                                <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
+                                    style="${o.paid ? 'background:transparent; color:#059669; border:1px solid #059669;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
+                                    ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
+                                </button>` : '';
+
+                    btns = `
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
+                                style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%)' : 'transparent'}; 
+                                       background-size: 200% 200%; border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
+                                ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
+                            </button>
+                            <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                                ${confirmBtn}
+                                ${paidBtn}
+                            </div>
+                            <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</button>
+                        </div>
+                     `;
+                }
+
+                return `
+                <div class="order-card" style="opacity:${cardOpacity}; background:${cardBg}; border:1px solid var(--glass-border); border-radius:8px; padding:10px; margin-bottom:10px; display:flex;">
+                    <div style="flex:1">
+                        <div style="display:flex; justify-content:space-between;">
+                            <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span style="margin-left:8px;">${statusBadge}</span></div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:bold; font-size:1.1em;">${sellingStr}</div>
+                                <div style="font-size:0.8em; color:#888;">Einkaufspreis: ${buyingStr}</div>
+                                <div style="font-size:0.8em; color:${profitColor};">Gewinn: ${profitStr}</div>
+                            </div>
+                        </div>
+                        <div style="font-size:0.8em; color:#888; margin:2px 0 8px 0;">${dateStr}</div>
+                        ${o.note ? `<div style="font-size:0.9em; color:#ddd; background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin:0 0 8px 0; font-style:italic;">"${o.note}"</div>` : ''}
+                        <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
+                        
+                        ${(!isArchive && !isCancelled) ? `
+                        <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
+                            <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:none; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
+                            <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
+                        </div>` : ''}
+
+                        ${isCancelled ? `<div style="margin-top:10px; font-style:italic; color:#be123c;">Bestellung wurde vom Nutzer storniert.</div>` : ''}
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width:140px;">${btns}</div>
                 </div>`;
-            setTimeout(() => {
-                const cfBtn = content.querySelector('#clear-filter-btn');
-                if (cfBtn) cfBtn.onclick = () => {
-                    list.dataset.selectedUser = '';
-                    selfRender(elements, DB, showConfirm, selfRender, cartHelper);
-                };
-            }, 0);
-        }
+            };
 
-        const renderOrderCard = (o, isArchive) => {
-            let total = o.total; // We calculate Selling Price manually below, but keep total var for reference if needed
+            const activeHtml = displayOrders.length ? displayOrders.map(o => renderOrderCard(o, false)).join('') : '<p style="color:#888; padding:10px;">Keine aktiven Bestellungen.</p>';
+            const mainDiv = document.createElement('div');
+            mainDiv.innerHTML = activeHtml;
+            content.appendChild(mainDiv);
 
-            // Layout fix for Archive
-            const cardBg = isArchive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
-            const cardOpacity = isArchive ? '0.75' : '1';
+            if (archivedOrders.length > 0) {
+                const archDiv = document.createElement('div');
+                archDiv.innerHTML = `
+                    <details id="admin-archive-details" style="margin-top:40px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;" ${isArchiveOpen ? 'open' : ''}>
+                        <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05); color:var(--text-color);">Archiv (${archivedOrders.length})</summary>
+                        <div class="archive-list" style="padding:15px; display:grid; gap:15px; min-height:50px; opacity:1 !important; transform:none !important; animation:none !important;">
+                            ${archivedOrders.map(o => {
+                    try { return renderOrderCard(o, true); }
+                    catch (e) { console.error('Archive Render Error', o, e); return `<div style="color:red; padding:10px; border:1px solid red;">Error rendering order ${o.id}</div>`; }
+                }).join('')}
+                        </div>
+                    </details>
+                `;
+                content.appendChild(archDiv);
+                setTimeout(() => {
+                    const det = content.querySelector('#admin-archive-details');
+                    if (det) det.ontoggle = () => list.dataset.archiveOpen = det.open;
+                }, 0);
+            }
+        } // End of Tab Conditional
 
-            // Formatting Time (Force DD.MM.YYYY, HH:MM)
-            let dateStr = o.date;
-            try {
-                const d = new Date(o.date);
-                if (!isNaN(d.getTime())) {
-                    dateStr = d.toLocaleDateString('de-DE', {
-                        day: '2-digit', month: '2-digit', year: 'numeric'
-                    }) + ', ' + d.toLocaleTimeString('de-DE', {
-                        hour: '2-digit', minute: '2-digit'
+        // --- Common Listeners (re-bind for Orders since it's default) ---
+        if (activeTab === 'orders' || activeTab === 'users') {
+            // Re-bind click handlers for Orders specific stuff
+            list.onclick = async (e) => {
+                const t = e.target;
+                const id = t.dataset.id;
+                const reload = () => selfRender(elements, DB, showConfirm, selfRender, localShowAdminModal, cartHelper, appState);
+
+                if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
+                if (t.classList.contains('unarchive-order')) { await DB.updateOrder(id, o => o.adminArchived = false); reload(); }
+                if (t.classList.contains('delete-permanent')) {
+                    showConfirm('Endgültig Löschen?', 'Diese Bestellung wird komplett aus der Datenbank entfernt.', async () => {
+                        await DB.deleteOrder(id);
+                        reload();
                     });
                 }
-            } catch (e) { }
-
-            // PROFIT CALCULATION & Item Rendering
-            let calcSelling = 0;
-            let calcBuying = 0;
-
-            const itemsHtml = (o.items || []).map(i => {
-                const orderUser = DB.getUsers().find(u => u.username === o.user);
-                let origPrice = 0;
-
-                // Catalog Item Lookup
-                let catItem = products.find(p => String(p.id) === String(i.id));
-                // Fallback: Match by Name if ID fails (recovers profit/links for old orders)
-                if (!catItem) {
-                    catItem = products.find(p => p.title === i.name || p.name === i.name);
+                if (t.classList.contains('reject-order')) {
+                    const newStatus = t.dataset.status === 'abgelehnt' ? 'open' : 'abgelehnt';
+                    await DB.updateOrder(id, o => o.status = newStatus);
+                    reload();
                 }
-
-                // Buying Price Logic
-                if (i.originalPrice) {
-                    origPrice = parseFloat(String(i.originalPrice).replace(',', '.'));
-                } else {
-                    if (catItem) {
-                        if (catItem.originalPrice) origPrice = parseFloat(String(catItem.originalPrice).replace(',', '.'));
-                        else if (typeof catItem.price === 'number') origPrice = catItem.price;
-                    }
-                    if (origPrice === 0) {
-                        let storedP = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
-                        origPrice = storedP;
-                    }
+                if (t.classList.contains('confirm-order')) {
+                    const newStatus = t.dataset.status === 'bestellt' ? 'open' : 'bestellt';
+                    await DB.updateOrder(id, o => o.status = newStatus);
+                    reload();
                 }
-
-                // Selling Price (Calculated)
-                let userPrice = 0;
-                if (cartHelper && orderUser) {
-                    userPrice = cartHelper.calculatePrice(i, orderUser);
-                } else {
-                    userPrice = parseFloat(i.price.replace('€', '').replace(',', '.').trim()) || 0;
+                if (t.classList.contains('toggle-paid')) {
+                    await DB.updateOrder(id, o => o.paid = !o.paid);
+                    reload();
                 }
-
-                const q = i.quantity || 1;
-                calcSelling += userPrice * q;
-                calcBuying += origPrice * q;
-
-                const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
-                const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
-
-                let priceDisplay = `<span>${userPriceStr}</span>`;
-                // Compare for Individual Item (Grey, No Strikethrough)
-                if (Math.abs(origPrice - userPrice) > 0.01 && origPrice > 0) {
-                    priceDisplay = `<span style="color:#888; font-size:0.9em; margin-right:8px;">${origPriceStr}</span><span>${userPriceStr}</span>`;
+                if (t.classList.contains('save-note-btn')) {
+                    const val = list.querySelector(`.admin-note-input[data-id="${id}"]`).value;
+                    await DB.updateOrder(id, o => o.adminNote = val);
+                    CoreUI.showModal('Gespeichert', 'OK');
                 }
-
-                // Product Link Logic
-                let nameDisplay = i.name;
-                const handle = i.handle || (catItem ? catItem.handle : null);
-
-                if (handle) {
-                    const url = `https://snuzone.com/products/${handle}`;
-                    nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${i.name}</a>`;
-                }
-
-                // Row with Gap Spacing
-                return `<div style="display:flex; justify-content:space-between; align-items:flex-end; gap:25px; margin-bottom:5px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:3px;">
-                            <span style="flex:1;">${q}x ${nameDisplay}</span>
-                            <div style="flex-shrink:0;">${priceDisplay}</div>
-                        </div>`;
-            }).join('');
-
-            // Totals Formatting
-            const sellingStr = calcSelling.toFixed(2).replace('.', ',') + ' €';
-            const buyingStr = calcBuying.toFixed(2).replace('.', ',') + ' €';
-            const profitVal = calcSelling - calcBuying;
-            const profitStr = profitVal.toFixed(2).replace('.', ',') + ' €';
-            const profitColor = profitVal >= 0 ? '#059669' : '#be123c';
-
-            // Status Display
-            let displayStatus = o.status.toUpperCase();
-            if (displayStatus === 'OPEN') displayStatus = 'OFFEN';
-
-            let statusBadge = `<span class="status-badge status-${o.status}">${displayStatus}</span>`;
-
-            // Paid Badge for Header (Visual Only)
-            if (o.status === 'bestellt') {
-                const pTxt = o.paid ? 'BEZAHLT' : 'NICHT BEZAHLT';
-                const pCol = o.paid ? '#059669' : '#be123c';
-                const pBg = o.paid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-                statusBadge += `<span style="margin-left:8px; border:1px solid ${pCol}; color:${pCol}; background:${pBg}; padding:2px 6px; border-radius:4px; font-size:0.75em; font-weight:bold;">${pTxt}</span>`;
-            }
-
-            let btns = '';
-            const isCancelled = o.status === 'cancelled';
-
-            if (isArchive) {
-                btns = `
-                    <button class="btn btn-primary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
-                    <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</button>
-                 `;
-            } else if (isCancelled) {
-                btns = `
-                    <div style="font-weight:bold; color:#be123c; margin-bottom:5px; text-align:center;">STORNIERT</div>
-                    <button class="btn btn-primary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
-                `;
-            } else {
-                // Confirm & Paid Stacked (User Request)
-                const confirmBtn = `
-                        <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
-                             style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%)' : 'transparent'}; 
-                                    background-size: 200% 200%; border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; width:100%;">
-                            ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
-                        </button>`;
-
-                const paidBtn = o.status === 'bestellt' ? `
-                            <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
-                                style="${o.paid ? 'background:transparent; color:#059669; border:1px solid #059669;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
-                                ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
-                            </button>` : '';
-
-                btns = `
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
-                            style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%)' : 'transparent'}; 
-                                   background-size: 200% 200%; border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
-                            ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
-                        </button>
-                        
-                        <!-- Wrapper for Confirm/Paid Stacked -->
-                        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-                            ${confirmBtn}
-                            ${paidBtn}
-                        </div>
-
-                        <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</button>
-                    </div>
-                 `;
-            }
-
-            return `
-            <div class="order-card" style="opacity:${cardOpacity}; background:${cardBg}; border:1px solid var(--glass-border); border-radius:8px; padding:10px; margin-bottom:10px; display:flex;">
-                <div style="flex:1">
-                    <div style="display:flex; justify-content:space-between;">
-                        <div><b>${o.id}</b> <span style="color:#888">(${o.user})</span> <span style="margin-left:8px;">${statusBadge}</span></div>
-                        <div style="text-align:right;">
-                            <div style="font-weight:bold; font-size:1.1em;">${sellingStr}</div>
-                            <div style="font-size:0.8em; color:#888;">Einkaufspreis: ${buyingStr}</div>
-                            <div style="font-size:0.8em; color:${profitColor};">Gewinn: ${profitStr}</div>
-                        </div>
-                    </div>
-                    <div style="font-size:0.8em; color:#888; margin:2px 0 8px 0;">${dateStr}</div>
-                    ${o.note ? `<div style="font-size:0.9em; color:#ddd; background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin:0 0 8px 0; font-style:italic;">"${o.note}"</div>` : ''}
-                    <div style="font-size:0.9em; color:#ccc;">${itemsHtml}</div>
-                    
-                    ${(!isArchive && !isCancelled) ? `
-                    <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
-                        <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:none; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
-                        <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
-                    </div>` : ''}
-
-                    ${isCancelled ? `<div style="margin-top:10px; font-style:italic; color:#be123c;">Bestellung wurde vom Nutzer storniert.</div>` : ''}
-                </div>
-                <div style="display:flex; flex-direction:column; gap:5px; margin-left:10px; min-width:140px;">${btns}</div>
-            </div>`;
-        };
-
-        const activeHtml = displayOrders.length ? displayOrders.map(o => renderOrderCard(o, false)).join('') : '<p style="color:#888; padding:10px;">Keine aktiven Bestellungen.</p>';
-        const mainDiv = document.createElement('div');
-        mainDiv.innerHTML = activeHtml;
-        content.appendChild(mainDiv);
-
-        if (archivedOrders.length > 0) {
-            const archDiv = document.createElement('div');
-            // MATCHING PROFILE LOGIC EXACTLY
-            archDiv.innerHTML = `
-                <details id="admin-archive-details" style="margin-top:40px; background:rgba(255,255,255,0.02); border-radius:8px; overflow:hidden;" ${isArchiveOpen ? 'open' : ''}>
-                    <summary style="padding:15px; cursor:pointer; font-weight:bold; background:rgba(255,255,255,0.05); color:var(--text-color);">Archiv (${archivedOrders.length})</summary>
-                    <div class="archive-list" style="padding:15px; display:grid; gap:15px; min-height:50px; opacity:1 !important; transform:none !important; animation:none !important;">
-                        ${archivedOrders.map(o => {
-                try { return renderOrderCard(o, true); }
-                catch (e) { console.error('Archive Render Error', o, e); return `<div style="color:red; padding:10px; border:1px solid red;">Error rendering order ${o.id}</div>`; }
-            }).join('')}
-                    </div>
-                </details>
-            `;
-            content.appendChild(archDiv);
-
-            // Persistence Listener Only (No Manual Arrow Logic)
-            setTimeout(() => {
-                const det = content.querySelector('#admin-archive-details');
-                if (det) det.ontoggle = () => list.dataset.archiveOpen = det.open;
-            }, 0);
+            };
         }
 
-        // --- Event Delegation ---
-        list.onclick = async (e) => {
-            const t = e.target;
-            const id = t.dataset.id;
-            // if (t.closest('summary')) return; // Summary handles toggle natively
-
-            const reload = () => selfRender(elements, DB, showConfirm, selfRender, localShowAdminModal, cartHelper);
-
-            if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
-            if (t.classList.contains('unarchive-order')) { await DB.updateOrder(id, o => o.adminArchived = false); reload(); }
-            if (t.classList.contains('delete-permanent')) {
-                showConfirm('Endgültig Löschen?', 'Diese Bestellung wird komplett aus der Datenbank entfernt.', async () => {
-                    await DB.deleteOrder(id);
-                    reload();
-                });
-            }
-
-            if (t.classList.contains('reject-order')) {
-                const newStatus = t.dataset.status === 'abgelehnt' ? 'open' : 'abgelehnt';
-                await DB.updateOrder(id, o => o.status = newStatus);
-                reload();
-            }
-            if (t.classList.contains('confirm-order')) {
-                const newStatus = t.dataset.status === 'bestellt' ? 'open' : 'bestellt';
-                await DB.updateOrder(id, o => o.status = newStatus);
-                reload();
-            }
-            if (t.classList.contains('toggle-paid')) {
-                await DB.updateOrder(id, o => o.paid = !o.paid);
-                reload();
-            }
-            if (t.classList.contains('save-note-btn')) {
-                const val = list.querySelector(`.admin-note-input[data-id="${id}"]`).value;
-                await DB.updateOrder(id, o => o.adminNote = val);
-                CoreUI.showModal('Gespeichert', 'OK');
-            }
-        };
-
     },
-    setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper) {
+
+    setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper, appState) {
         const createBtn = content.querySelector('#create-user-btn');
         if (createBtn) createBtn.onclick = async () => {
             const u = content.querySelector('#new-user-name').value.trim();
             const p = content.querySelector('#new-user-pass').value.trim();
             if (u && p) {
-                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper); }
+                try { await DB.createUser(u, p); selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState); }
                 catch (e) { CoreUI.showModal('Fehler', e.message); }
             }
         };
@@ -411,13 +561,10 @@ export const AdminUI = {
 
             const chk = e.target;
             const username = chk.dataset.user;
-            // Use NEW state directly
             const intendedState = chk.checked;
 
             const label = type === 'admin' ? 'Administrator' : 'Pablo Flatrate';
             const action = intendedState ? 'geben' : 'entziehen';
-
-            // ... (Rest is same)
 
             showAdminModal('Rolle ändern', `Soll <strong>${username}</strong> ${label} ${action}?`, async () => {
                 const updates = {};
@@ -426,7 +573,7 @@ export const AdminUI = {
 
                 try {
                     await DB.updateUser(username, updates);
-                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper), 50);
+                    setTimeout(() => selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState), 50);
                 } catch (e) {
                     CoreUI.showModal('Fehler', 'Speichern fehlgeschlagen.');
                 }
@@ -449,7 +596,7 @@ export const AdminUI = {
                     const inputPass = modal.querySelector('#confirm-del-pass').value;
                     if (inputPass === userObj.password) {
                         await DB.deleteUser(u);
-                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
+                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
                     } else {
                         CoreUI.showModal('Fehler', 'Falsches Passwort. Benutzer nicht gelöscht.');
                     }
@@ -468,23 +615,20 @@ export const AdminUI = {
                     if (p1 && p1 === p2) {
                         await DB.updateUser(u, { password: p1 });
                         CoreUI.showModal('Erfolg', 'Passwort wurde geändert.');
-                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
+                        selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
                     } else if (p1 !== p2) {
                         CoreUI.showModal('Fehler', 'Passwörter stimmen nicht überein.');
                     }
                 });
         });
 
-        // FIX: Add Handler for "Bestellungen" (Filter Orders) button
         content.querySelectorAll('.view-user-orders').forEach(b => {
             b.onclick = () => {
                 const list = elements.ordersList;
                 list.dataset.selectedUser = b.dataset.user;
                 list.dataset.activeTab = 'orders';
-                // Dispatch event for Main UI updates (Nav highlight)
                 window.dispatchEvent(new CustomEvent('admin-tab-changed', { detail: { tab: 'orders' } }));
-                // Trigger re-render
-                selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper);
+                selfRender(elements, DB, showConfirm, selfRender, showAdminModal, cartHelper, appState);
             };
         });
     }
