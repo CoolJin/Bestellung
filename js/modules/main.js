@@ -106,7 +106,7 @@ window.app = {
 
         if (viewName === 'catalog') UI.renderCatalog(this.elements, this.state);
         if (viewName === 'cart') UI.renderCart(this.elements, this.state, this.changeCartQty.bind(this));
-        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard, Cart, this.state);
+        if (viewName === 'admin') UI.renderAdminDashboard(this.elements, DB, UI.showConfirm, UI.renderAdminDashboard, Cart);
         // Pass Cart to ProfileUI for Dynamic Pricing Calculation (Dependency Injection)
         if (viewName === 'profile') UI.renderProfile(this.elements, DB, this.state, Cart);
 
@@ -144,10 +144,8 @@ window.app = {
             createLink('Profil', 'profile');
             createLink('Abmelden', 'logout', 'btn-danger');
         } else if (this.state.currentUser.role === 'admin') {
-            createLink('Suchen', 'admin', '', 'search'); // Tab 1
-            createLink('Extras', 'admin', '', 'extra');  // Tab 2
-            createLink('Bestellungen', 'admin', '', 'orders'); // Tab 3
-            createLink('Benutzer', 'admin', '', 'users'); // Tab 4
+            createLink('Bestellungen', 'admin', '', 'orders');
+            createLink('Benutzer', 'admin', '', 'users');
             createLink('Abmelden', 'logout', 'btn-danger');
         }
     },

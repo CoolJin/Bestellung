@@ -182,37 +182,9 @@ export const Search = {
             this.renderSearchResults(products);
 
         } catch (e) {
-            console.warn("External Search Error, attempting Local Fallback...", e);
-            // Fallback: Local Products
-            if (this.state && this.state.products && this.state.products.length > 0) {
-                const q = query.toLowerCase().trim();
-                const hits = this.state.products.filter(p => p.title.toLowerCase().includes(q) || (p.handle && p.handle.toLowerCase().includes(q)));
-
-                // Transform local products to match "SearchResult" schema if needed, or render them directly
-                // We need to pass them to renderSearchResults which uses ProductsUI.
-                // Local products structure: { id, title, price, ... }
-                // Processed Expects: { name, price ... }
-                // Let's normalize
-                const fallbackResults = hits.map((p, idx) => ({
-                    id: p.id,
-                    name: p.title,
-                    price: (typeof p.price === 'number') ? p.price.toFixed(2).replace('.', ',') + ' €' : p.price,
-                    image: (p.images && p.images[0]) ? p.images[0].src : 'https://via.placeholder.com/150',
-                    soldOut: false,
-                    external: false
-                }));
-
-                if (fallbackResults.length > 0) {
-                    this.renderSearchResults(fallbackResults);
-                } else {
-                    if (this.elements.snuzoneResultsGrid) {
-                        this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center;color:#ccc">Keine Ergebnisse (Lokal & Extern).</div>';
-                    }
-                }
-            } else {
-                if (this.elements.snuzoneResultsGrid) {
-                    this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center;color:#ff5555">Fehler bei der Suche (Keine lokale Datenbank).</div>';
-                }
+            console.error("Search Error", e);
+            if (this.elements.snuzoneResultsGrid) {
+                this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center;color:#ff5555">Fehler bei der Suche</div>';
             }
         }
     },
