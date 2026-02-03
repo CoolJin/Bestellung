@@ -24,7 +24,7 @@ export const ProductsUI = {
         }
     },
 
-    renderSearchResults(products, elements) {
+    renderSearchResults(products, elements, options = {}) {
         const grid = elements.snuzoneResultsGrid;
         if (!grid) return;
         grid.innerHTML = '';
@@ -34,9 +34,20 @@ export const ProductsUI = {
             return;
         }
 
+        const showAddToCart = options.showAddToCart !== false; // Default true
+
         products.forEach((p, index) => {
             const card = document.createElement('article');
             card.className = `product-card ${p.soldOut ? 'sold-out' : ''}`;
+
+            // Button Logic
+            let btnHtml = '';
+            if (showAddToCart) {
+                btnHtml = !p.soldOut ?
+                    `<button class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</button>`
+                    : '<button disabled class="btn btn-secondary btn-sm">N/A</button>';
+            }
+
             card.innerHTML = `
                 ${p.soldOut ? '<div class="sold-out-badge">Ausverkauft</div>' : ''}
                 <img src="${p.image}" class="product-image" alt="${p.name}">
@@ -44,7 +55,7 @@ export const ProductsUI = {
                     <h3>${p.name}</h3>
                     <div class="product-footer">
                          <div class="product-price">${p.price}</div>
-                        ${!p.soldOut ? `<button class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</button>` : '<button disabled class="btn btn-secondary btn-sm">N/A</button>'}
+                        ${btnHtml}
                     </div>
                 </div>
             `;
