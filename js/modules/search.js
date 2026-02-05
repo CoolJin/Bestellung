@@ -54,17 +54,83 @@ export const Search = {
         }
 
         try {
-            // Use External Search Proxy (Allorigins) - CorsProxy.io blocked
+            // --- Multi-Proxy Strategy for Reliability & Speed ---
             console.log(`Searching for: ${query}`);
+
             const targetUrl = `https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
-            const searchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-            const response = await fetch(searchUrl);
-            if (!response.ok) throw new Error("Search failed");
+            // Proxies ordered by expected speed/reliability
+            const proxies = [
+                {
+                    url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`,
+                    type: 'json'
+                },
+                {
+                    url: (target) => `https://corsproxy.io/?${target}`,
+                    type: 'text'
+                },
+                {
+                    url: (target) => `https://thingproxy.freeboard.io/fetch/${target}`,
+                    type: 'text'
+                }
+            ];
 
-            const data = await response.json();
-            const html = data.contents;
-            if (!html) throw new Error("No content received");
+            let html = null;
+            let lastError = null;
+
+            // Helper: Fetch with Timeout
+            const fetchWithTimeout = async (url, timeout = 6000) => {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+                try {
+                    const response = await fetch(url, { signal: controller.signal });
+                    clearTimeout(id);
+                    return response;
+                } catch (e) {
+                    clearTimeout(id);
+                    throw e;
+                }
+            };
+
+            // Attempt Proxies Sequentially
+            for (const [index, proxy] of proxies.entries()) {
+                try {
+                    // Update UI only if taking long (after 1st fail)
+                    if (index > 0 && this.elements.snuzoneResultsGrid) {
+                        this.elements.snuzoneResultsGrid.innerHTML = `
+                            <div style="text-align:center; padding:20px; color:white;">
+                                Verbinde über Alternativ-Route ${index + 1}...<br>
+                                <span style="font-size:0.8em; color:gray;">(Suche läuft)</span>
+                            </div>`;
+                    }
+
+                    const proxyUrl = proxy.url(targetUrl);
+                    console.log(`[Search] Trying Proxy ${index + 1}: ${proxyUrl}`);
+
+                    const response = await fetchWithTimeout(proxyUrl, 6000); // 6s strict timeout
+                    if (!response.ok) throw new Error(`Status ${response.status}`);
+
+                    if (proxy.type === 'json') {
+                        const data = await response.json();
+                        html = data.contents; // allorigins field
+                    } else {
+                        html = await response.text();
+                    }
+
+                    if (!html || html.length < 500) throw new Error("Empty/Invalid content");
+
+                    console.log(`[Search] Success via Proxy ${index + 1}`);
+                    break; // Success!
+
+                } catch (e) {
+                    console.warn(`[Search] Proxy ${index + 1} Failed:`, e.message);
+                    lastError = e;
+                    // Continue to next proxy...
+                }
+            }
+
+            if (!html) throw new Error("All proxies failed. Last error: " + (lastError ? lastError.message : "Unknown"));
+
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
