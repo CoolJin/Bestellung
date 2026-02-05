@@ -56,22 +56,45 @@ export const Search = {
         try {
             // Use External Search Proxy (Snuzone)
             console.log(`Searching for: ${query}`);
-            // Added timestamp to force fresh fetch (cache busting)
-            // Added timestamp to force fresh fetch (cache busting)
-            const searchUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
+            // Parallel Fetch Strategy: Race both proxies, take first success
+            console.log(`Starting parallel search for: ${query}`);
+
+            const fetchWithTimeout = async (url, timeout = 8000) => {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+                try {
+                    const res = await fetch(url, { signal: controller.signal });
+                    clearTimeout(id);
+                    if (!res.ok) throw new Error(`Status ${res.status}`);
+                    return res;
+                } catch (e) {
+                    clearTimeout(id);
+                    throw e;
+                }
+            };
+
+            const primaryUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
+            const secondaryUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://snuzone.com/search?q=${encodeURIComponent(query)}`)}`;
 
             let html = '';
+
             try {
-                const response = await fetch(searchUrl);
-                if (!response.ok) throw new Error("Primary Proxy failed");
-                html = await response.text();
-            } catch (err) {
-                console.warn("Primary Proxy failed, switching to fallback...", err);
-                const fallbackUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://snuzone.com/search?q=${encodeURIComponent(query)}`)}`;
-                const response = await fetch(fallbackUrl);
-                if (!response.ok) throw new Error("Fallback Proxy failed");
-                const data = await response.json();
-                html = data.contents;
+                // Try Primary (HTML) and Secondary (JSON -> HTML) in parallel
+                // Promise.any waits for the First FULFILLED promise
+                const result = await Promise.any([
+                    fetchWithTimeout(primaryUrl).then(async res => ({ type: 'html', content: await res.text() })),
+                    fetchWithTimeout(secondaryUrl).then(async res => {
+                        const data = await res.json();
+                        return { type: 'json', content: data.contents };
+                    })
+                ]);
+
+                html = result.content;
+                console.log(`[Search] Success via ${result.type === 'html' ? 'Primary' : 'Secondary'} proxy`);
+
+            } catch (aggregateError) {
+                console.error("[Search] All proxies failed", aggregateError);
+                throw new Error("Alle Suchdienste sind derzeit nicht erreichbar.");
             }
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');

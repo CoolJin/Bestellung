@@ -1,8 +1,8 @@
-import { Auth } from './auth.js';
-import { Search } from './search.js';
-import { Cart } from './cart.js';
-import { UI } from './ui.js';
-import { DB } from '../db.js';
+import { Auth } from './auth.js?v=2.0';
+import { Search } from './search.js?v=2.0';
+import { Cart } from './cart.js?v=2.0';
+import { UI } from './ui.js?v=2.0';
+import { DB } from '../db.js?v=2.0';
 
 window.app = {
     views: {},
