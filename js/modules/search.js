@@ -59,7 +59,13 @@ export const Search = {
             // Parallel Fetch Strategy: Race both proxies, take first success
             console.log(`Starting parallel search for: ${query}`);
 
-            const fetchWithTimeout = async (url, timeout = 8000) => {
+            // Construct Inner URL with Cache Buster (Random + Time)
+            const cacheBuster = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const innerUrl = `https://snuzone.com/search?q=${encodeURIComponent(query)}&_cb=${cacheBuster}`;
+
+            console.log(`[Search] Target URL: ${innerUrl}`);
+
+            const fetchWithTimeout = async (url, timeout = 12000) => {
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort(), timeout);
                 try {
@@ -73,8 +79,9 @@ export const Search = {
                 }
             };
 
-            const primaryUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
-            const secondaryUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://snuzone.com/search?q=${encodeURIComponent(query)}`)}`;
+            const primaryUrl = `https://corsproxy.io/?${encodeURIComponent(innerUrl)}`;
+            // allorigins caches by URL, so the unique innerUrl will force a fresh fetch
+            const secondaryUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(innerUrl)}`;
 
             let html = '';
 
@@ -82,9 +89,14 @@ export const Search = {
                 // Try Primary (HTML) and Secondary (JSON -> HTML) in parallel
                 // Promise.any waits for the First FULFILLED promise
                 const result = await Promise.any([
-                    fetchWithTimeout(primaryUrl).then(async res => ({ type: 'html', content: await res.text() })),
+                    fetchWithTimeout(primaryUrl).then(async res => {
+                        const txt = await res.text();
+                        if (!txt || txt.length < 500) throw new Error("Primary: Empty/Short HTML");
+                        return { type: 'html', content: txt };
+                    }),
                     fetchWithTimeout(secondaryUrl).then(async res => {
                         const data = await res.json();
+                        if (!data || !data.contents || data.contents.length < 500) throw new Error("Secondary: Invalid JSON/HTML");
                         return { type: 'json', content: data.contents };
                     })
                 ]);
@@ -93,7 +105,8 @@ export const Search = {
                 console.log(`[Search] Success via ${result.type === 'html' ? 'Primary' : 'Secondary'} proxy`);
 
             } catch (aggregateError) {
-                console.error("[Search] All proxies failed", aggregateError);
+                console.error("[Search] All proxies failed/timed out.", aggregateError);
+                if (window.UI && window.UI.showToast) window.UI.showToast("Suchdienste antworten nicht. Bitte später erneut versuchen.", "error");
                 throw new Error("Alle Suchdienste sind derzeit nicht erreichbar.");
             }
             const parser = new DOMParser();
