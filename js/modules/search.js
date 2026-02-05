@@ -57,12 +57,22 @@ export const Search = {
             // Use External Search Proxy (Snuzone)
             console.log(`Searching for: ${query}`);
             // Added timestamp to force fresh fetch (cache busting)
+            // Added timestamp to force fresh fetch (cache busting)
             const searchUrl = `https://corsproxy.io/?https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
 
-            const response = await fetch(searchUrl);
-            if (!response.ok) throw new Error("Search failed");
-
-            const html = await response.text();
+            let html = '';
+            try {
+                const response = await fetch(searchUrl);
+                if (!response.ok) throw new Error("Primary Proxy failed");
+                html = await response.text();
+            } catch (err) {
+                console.warn("Primary Proxy failed, switching to fallback...", err);
+                const fallbackUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://snuzone.com/search?q=${encodeURIComponent(query)}`)}`;
+                const response = await fetch(fallbackUrl);
+                if (!response.ok) throw new Error("Fallback Proxy failed");
+                const data = await response.json();
+                html = data.contents;
+            }
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
