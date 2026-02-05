@@ -54,61 +54,17 @@ export const Search = {
         }
 
         try {
-            // Use External Search Proxy (Snuzone)
+            // Use External Search Proxy (Allorigins) - CorsProxy.io blocked
             console.log(`Searching for: ${query}`);
-            // Parallel Fetch Strategy: Race both proxies, take first success
-            console.log(`Starting parallel search for: ${query}`);
+            const targetUrl = `https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
+            const searchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-            // Construct Inner URL with Cache Buster (Random + Time)
-            const cacheBuster = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-            const innerUrl = `https://snuzone.com/search?q=${encodeURIComponent(query)}&_cb=${cacheBuster}`;
+            const response = await fetch(searchUrl);
+            if (!response.ok) throw new Error("Search failed");
 
-            console.log(`[Search] Target URL: ${innerUrl}`);
-
-            const fetchWithTimeout = async (url, timeout = 12000) => {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                try {
-                    const res = await fetch(url, { signal: controller.signal });
-                    clearTimeout(id);
-                    if (!res.ok) throw new Error(`Status ${res.status}`);
-                    return res;
-                } catch (e) {
-                    clearTimeout(id);
-                    throw e;
-                }
-            };
-
-            const primaryUrl = `https://corsproxy.io/?${encodeURIComponent(innerUrl)}`;
-            // allorigins caches by URL, so the unique innerUrl will force a fresh fetch
-            const secondaryUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(innerUrl)}`;
-
-            let html = '';
-
-            try {
-                // Try Primary (HTML) and Secondary (JSON -> HTML) in parallel
-                // Promise.any waits for the First FULFILLED promise
-                const result = await Promise.any([
-                    fetchWithTimeout(primaryUrl).then(async res => {
-                        const txt = await res.text();
-                        if (!txt || txt.length < 500) throw new Error("Primary: Empty/Short HTML");
-                        return { type: 'html', content: txt };
-                    }),
-                    fetchWithTimeout(secondaryUrl).then(async res => {
-                        const data = await res.json();
-                        if (!data || !data.contents || data.contents.length < 500) throw new Error("Secondary: Invalid JSON/HTML");
-                        return { type: 'json', content: data.contents };
-                    })
-                ]);
-
-                html = result.content;
-                console.log(`[Search] Success via ${result.type === 'html' ? 'Primary' : 'Secondary'} proxy`);
-
-            } catch (aggregateError) {
-                console.error("[Search] All proxies failed/timed out.", aggregateError);
-                if (window.UI && window.UI.showToast) window.UI.showToast("Suchdienste antworten nicht. Bitte später erneut versuchen.", "error");
-                throw new Error("Alle Suchdienste sind derzeit nicht erreichbar.");
-            }
+            const data = await response.json();
+            const html = data.contents;
+            if (!html) throw new Error("No content received");
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
