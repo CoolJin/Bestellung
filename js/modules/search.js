@@ -54,82 +54,87 @@ export const Search = {
         }
 
         try {
-            // --- Multi-Proxy Strategy for Reliability & Speed ---
+            // --- High-Speed Parallel Race Strategy ---
             console.log(`Searching for: ${query}`);
 
             const targetUrl = `https://snuzone.com/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`;
 
-            // Proxies ordered by expected speed/reliability
+            // Define Proxies
             const proxies = [
                 {
-                    url: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`,
+                    name: 'AllOrigins',
+                    url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
                     type: 'json'
                 },
                 {
-                    url: (target) => `https://corsproxy.io/?${target}`,
+                    name: 'CodeTabs',
+                    url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
                     type: 'text'
                 },
                 {
-                    url: (target) => `https://thingproxy.freeboard.io/fetch/${target}`,
+                    name: 'CorsProxy',
+                    url: `https://corsproxy.io/?${targetUrl}`,
                     type: 'text'
                 }
             ];
 
             let html = null;
-            let lastError = null;
 
-            // Helper: Fetch with Timeout
-            const fetchWithTimeout = async (url, timeout = 6000) => {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                try {
-                    const response = await fetch(url, { signal: controller.signal });
-                    clearTimeout(id);
-                    return response;
-                } catch (e) {
-                    clearTimeout(id);
-                    throw e;
-                }
+            // Timeout Wrapper
+            const fetchWithTimeout = (url, timeout = 4500) => {
+                return new Promise((resolve, reject) => {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => {
+                        controller.abort();
+                        reject(new Error(`Timeout ${timeout}ms`));
+                    }, timeout);
+
+                    fetch(url, { signal: controller.signal })
+                        .then(async response => {
+                            clearTimeout(id);
+                            if (!response.ok) throw new Error(`Status ${response.status}`);
+                            return response;
+                        })
+                        .then(resolve)
+                        .catch(err => {
+                            clearTimeout(id);
+                            reject(err);
+                        });
+                });
             };
 
-            // Attempt Proxies Sequentially
-            for (const [index, proxy] of proxies.entries()) {
-                try {
-                    // Update UI only if taking long (after 1st fail)
-                    if (index > 0 && this.elements.snuzoneResultsGrid) {
-                        this.elements.snuzoneResultsGrid.innerHTML = `
+            // Race Logic
+            try {
+                if (this.elements.snuzoneResultsGrid) {
+                    this.elements.snuzoneResultsGrid.innerHTML = `
                             <div style="text-align:center; padding:20px; color:white;">
-                                Verbinde über Alternativ-Route ${index + 1}...<br>
-                                <span style="font-size:0.8em; color:gray;">(Suche läuft)</span>
+                                Suche läuft...<br>
+                                <span style="font-size:0.8em; color:gray;">(High-Speed Race Mode)</span>
                             </div>`;
-                    }
-
-                    const proxyUrl = proxy.url(targetUrl);
-                    console.log(`[Search] Trying Proxy ${index + 1}: ${proxyUrl}`);
-
-                    const response = await fetchWithTimeout(proxyUrl, 6000); // 6s strict timeout
-                    if (!response.ok) throw new Error(`Status ${response.status}`);
-
-                    if (proxy.type === 'json') {
-                        const data = await response.json();
-                        html = data.contents; // allorigins field
-                    } else {
-                        html = await response.text();
-                    }
-
-                    if (!html || html.length < 500) throw new Error("Empty/Invalid content");
-
-                    console.log(`[Search] Success via Proxy ${index + 1}`);
-                    break; // Success!
-
-                } catch (e) {
-                    console.warn(`[Search] Proxy ${index + 1} Failed:`, e.message);
-                    lastError = e;
-                    // Continue to next proxy...
                 }
-            }
 
-            if (!html) throw new Error("All proxies failed. Last error: " + (lastError ? lastError.message : "Unknown"));
+                const promises = proxies.map(proxy =>
+                    fetchWithTimeout(proxy.url, 4500).then(async res => {
+                        let content;
+                        if (proxy.type === 'json') {
+                            const json = await res.json();
+                            content = json.contents;
+                        } else {
+                            content = await res.text();
+                        }
+                        if (!content || content.length < 500) throw new Error("Invalid content");
+                        console.log(`[Search] WINNER: ${proxy.name}`);
+                        return content;
+                    })
+                );
+
+                // Promise.any returns the FIRST fulfilled promise
+                html = await Promise.any(promises);
+
+            } catch (aggregateError) {
+                console.error("[Search] All proxies failed", aggregateError);
+                throw new Error("Verbindung fehlgeschlagen (Alle Routen blockiert oder Timeout)");
+            }
 
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
@@ -233,7 +238,7 @@ export const Search = {
                             products.push({
                                 id: 'ext-' + index + '-' + Date.now(),
                                 name: title,
-                                price: rawPrice > 0 ? rawPrice : 5.00, // Store RAW number. Fallback 5.00 if parsing fails.
+                                mean: rawPrice > 0 ? rawPrice : 5.00, // Store RAW number. Fallback 5.00 if parsing fails.
                                 originalPrice: rawPrice > 0 ? rawPrice : 5.00, // Persist Original Price
                                 formattedPrice: rawPrice.toFixed(2).replace('.', ',') + ' €', // For UI display if needed directly
                                 image: img,
