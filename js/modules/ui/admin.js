@@ -601,18 +601,27 @@ export const AdminUI = {
                 e.stopPropagation();
                 const idx = parseInt(btn.dataset.index);
                 const delta = parseInt(btn.dataset.delta);
-                // Deep Clone to avoid reference issues
-                const items = JSON.parse(JSON.stringify(DB.state.adminExtras || []));
 
-                if (items[idx]) {
-                    items[idx].quantity = (items[idx].quantity || 1) + delta;
-                    if (items[idx].quantity <= 0) items.splice(idx, 1);
+                // OPTIMISTIC UPDATE (Mirroring User Cart Logic)
+                // 1. Modify State Directly
+                const items = DB.state.adminExtras || [];
+                const item = items[idx];
 
-                    // Optimistic UI Update first (Optional) but better to wait for DB to confirm source of truth
-                    DB.saveAdminExtras(items).then(async () => {
-                        // Refresh from Cloud to ensure all admins are in sync and local state is perfect
-                        await DB.refreshData();
-                        selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
+                if (item) {
+                    item.quantity = (item.quantity || 1) + delta;
+
+                    if (item.quantity <= 0) {
+                        items.splice(idx, 1);
+                    }
+
+                    // 2. Render Immediately (No Wait)
+                    selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
+
+                    // 3. Save in Background
+                    DB.saveAdminExtras(items).catch(err => {
+                        console.error('Background Save Failed', err);
+                        // Optional: Alert user, but don't crash UI
+                        // alert('Warnung: Speichern fehlgeschlagen. ' + err.message);
                     });
                 }
             }
