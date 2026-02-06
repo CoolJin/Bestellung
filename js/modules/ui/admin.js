@@ -377,10 +377,10 @@ export const AdminUI = {
         // Reuse the main Search module logic but map elements to this local container
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
-            <div class="header-actions" style="flex-direction:column; align-items:flex-start; gap:10px;">
+            <div class="header-actions" style="flex-direction:column; align-items:center; gap:10px;">
                 <h2 style="margin:0;">Produktsuche</h2>
-                <div class="search-wrapper" style="max-width:400px; position:relative; width:100%;">
-                    <span class="search-icon">&#128269;</span>
+                <div class="search-wrapper" style="max-width:400px; position:relative; width:100%; display:flex; justify-content:center;">
+                    <span class="search-icon" style="left: 15px;">&#128269;</span>
                     <input type="text" id="admin-snuzone-search" placeholder="Suche..." class="search-input" style="width:100%;">
                     <button id="admin-search-clear" class="search-clear">✕</button>
                     <!-- Loading Indicator for Admin -->
@@ -389,10 +389,8 @@ export const AdminUI = {
                     </div>
                 </div>
             </div>
-            <div id="admin-search-results" class="product-grid" style="margin-top:20px;">
-                <div style="grid-column:1/-1; text-align:center; color:gray; padding:20px;">
-                    Suche starten...
-                </div>
+            <div id="admin-search-results" class="product-grid" style="margin-top:20px; min-height:50px;">
+                <!-- Results injected here -->
             </div>
         `;
         container.appendChild(wrapper);

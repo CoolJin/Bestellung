@@ -50,7 +50,7 @@ export const Search = {
 
         // Show loading state with Spinner and Query Text
         this.elements.snuzoneResultsGrid.innerHTML = `
-                <div style="text-align:center; padding:40px; color:white;">
+                <div style="grid-column: 1 / -1; width: 100%; text-align: center; padding: 40px; color: white;">
                     <div class="search-spinner" style="
                         width: 40px; height: 40px; margin: 0 auto 15px auto;
                         border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--primary-color);
