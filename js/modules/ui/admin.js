@@ -467,22 +467,85 @@ export const AdminUI = {
         let totalSelling = 0;
         let totalBuying = 0;
 
+        // Helper to fetch nicotine (Shared / Static)
+        const fetchNicotineForHandle = async (handle) => {
+            const targetUrl = `https://snuzone.com/products/${handle}`;
+            const proxies = [
+                `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+                `https://corsproxy.io/?${targetUrl}`
+            ];
+
+            for (const proxy of proxies) {
+                try {
+                    const res = await fetch(proxy);
+                    let text = '';
+                    if (proxy.includes('allorigins')) {
+                        const json = await res.json();
+                        text = json.contents;
+                    } else {
+                        text = await res.text();
+                    }
+
+                    // Regex for "50 MG/G" pattern (commonly found in variants or labels)
+                    // Pattern: Number + space + MG/G (case insensitive)
+                    // Also check for "public_title":"50 MG/G" in JSON
+                    const matchJSON = text.match(/"public_title":"(\d+\s*MG\/G)"/i);
+                    if (matchJSON && matchJSON[1]) return matchJSON[1];
+
+                    const matchText = text.match(/(\d+)\s*MG\/G/i);
+                    if (matchText) return `${matchText[1]} MG/G`;
+
+                    // Fallback: Check for "mg/g" text content
+                    const matchSmall = text.match(/(\d+)\s*mg\/g/i);
+                    if (matchSmall) return `${matchSmall[1]} mg/g`;
+
+                } catch (e) {
+                    console.warn('Proxy failed', proxy, e);
+                }
+            }
+            return null;
+        };
+
+        // Trigger fetches for missing info
+        cartItems.forEach((item, idx) => {
+            if (item.handle && !item.nicotine && !item.fetchingNicotine) {
+                item.fetchingNicotine = true; // Flag to prevent double fetch
+                fetchNicotineForHandle(item.handle).then(nicotine => {
+                    if (nicotine) {
+                        const currentItems = DB.state.adminExtras;
+                        // Find item again by handle in case index shifted
+                        const liveItem = currentItems.find(i => i.handle === item.handle);
+                        if (liveItem) {
+                            liveItem.nicotine = nicotine;
+                            liveItem.fetchingNicotine = false;
+                            // Save and Render
+                            DB.saveAdminExtras(currentItems).then(() => {
+                                // Optimistic Render? Or just let next render handle it?
+                                // Better to re-render to show the data
+                                this.renderAdminDashboard(elements, DB, showConfirm, this.renderAdminDashboard, Cart, Search);
+                            });
+                        }
+                    }
+                });
+            }
+        });
+
         const listHtml = cartItems.map((item, index) => {
             // Price Parsing
-            let userPrice = 0; // Selling Price (User/Pablo context doesn't apply strictly here, assume standard or stored)
+            let userPrice = 0;
             if (typeof item.price === 'string') {
                 userPrice = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
             } else {
                 userPrice = item.price || 0;
             }
 
-            let origPrice = 0; // Buying Price
+            let origPrice = 0;
             if (item.originalPrice) {
                 origPrice = parseFloat(String(item.originalPrice).replace(',', '.'));
-            } else if (item.mean) { // From Search
+            } else if (item.mean) {
                 origPrice = item.mean;
             } else {
-                // Fallback if not stored, assume same as user price (no profit known)
                 origPrice = userPrice;
             }
 
@@ -493,11 +556,16 @@ export const AdminUI = {
             const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
             const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
 
+            // Nicotine Badge
+            const nicoBadge = item.nicotine ? `<span style="background:rgba(255,100,100,0.2); color:#ffdddd; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:10px;">${item.nicotine}</span>` : (item.fetchingNicotine ? '<span style="color:#666; font-size:0.8em; margin-left:8px;">(Lade...)</span>' : '');
+
             // Name / Link
             let nameDisplay = item.name;
             if (item.handle) {
                 const url = `https://snuzone.com/products/${item.handle}`;
-                nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${item.name}</a>`;
+                nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${item.name}</a> ${nicoBadge}`;
+            } else {
+                nameDisplay += ` ${nicoBadge}`;
             }
 
             return `
@@ -527,11 +595,21 @@ export const AdminUI = {
         const profitColor = totalProfit >= 0 ? '#059669' : '#be123c';
 
         // Copy Implementation
-        // Copy Implementation
         const copyToClipboard = () => {
             if (!cartItems || cartItems.length === 0) return;
-            // Format: "{quantity}x {Name}"
-            const lines = cartItems.map(item => `${item.quantity || 1}x ${item.name}`);
+            // Format: "{quantity}x {Name} {Nicotine} {Price}"
+            const lines = cartItems.map(item => {
+                let userPriceStr = '';
+                if (typeof item.price === 'string') {
+                    userPriceStr = item.price;
+                } else {
+                    userPriceStr = (item.price || 0).toFixed(2).replace('.', ',') + ' €';
+                }
+
+                // Ensure nice spacing
+                const nico = item.nicotine ? ` ${item.nicotine}` : '';
+                return `${item.quantity || 1}x ${item.name}${nico} ${userPriceStr}`;
+            });
             const textBlock = lines.join('\n');
 
             navigator.clipboard.writeText(textBlock).then(() => {
