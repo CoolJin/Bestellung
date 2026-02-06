@@ -556,13 +556,15 @@ export const AdminUI = {
         container.appendChild(wrapper);
 
         // Handlers
+        // Handlers
         wrapper.addEventListener('click', (e) => {
             const btn = e.target.closest('.change-qty');
             if (btn) {
                 e.stopPropagation();
                 const idx = parseInt(btn.dataset.index);
                 const delta = parseInt(btn.dataset.delta);
-                const items = [...DB.state.adminExtras]; // Clone
+                // Deep Clone to avoid reference issues
+                const items = JSON.parse(JSON.stringify(DB.state.adminExtras || []));
 
                 if (items[idx]) {
                     items[idx].quantity = (items[idx].quantity || 1) + delta;
