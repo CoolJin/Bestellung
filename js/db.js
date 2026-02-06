@@ -76,18 +76,32 @@ const DB = {
     },
 
     async saveAdminExtras(items) {
-        this.state.adminExtras = items;
+        if (!supabaseClient) {
+            alert("Datenbank-Verbindung fehlt!");
+            return;
+        }
+
         // Upsert special order
         const specialOrder = {
             id: '#ADMIN_EXTRAS',
-            user_id: 'admin',
+            user_id: 'admin', // Ensure this user exists or RLS allows "admin" role to write to 'admin' user_id
             status: 'hidden',
             items: items,
             total: 0,
             date: new Date().toISOString()
         };
+
         const { error } = await supabaseClient.from('orders').upsert([specialOrder]);
-        if (error) console.error('DB: Save Admin Extras Error', error);
+
+        if (error) {
+            console.error('DB: Save Admin Extras Error', error);
+            alert(`Fehler beim Speichern der Extras: ${error.message || JSON.stringify(error)}`);
+            // Do NOT update local state if failed
+            throw error;
+        } else {
+            // Success
+            this.state.adminExtras = items;
+        }
     },
 
     // --- Users ---
