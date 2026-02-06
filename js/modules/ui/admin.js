@@ -6,8 +6,8 @@ export const AdminUI = {
         const list = elements.ordersList;
         if (!list) return;
 
-        // Default to 'search' if not set, or preserve existing
-        let activeTab = list.dataset.activeTab || 'search';
+        // Default to 'orders' as per user request
+        let activeTab = list.dataset.activeTab || 'orders';
         // Note: main.js sets dataset.activeTab when clicking nav links.
 
         let selectedUserFilter = list.dataset.selectedUser || null;
@@ -338,11 +338,6 @@ export const AdminUI = {
             list.onclick = async (e) => {
                 const t = e.target;
                 const id = t.dataset.id;
-
-                // Add SEARCH/EXTRAS delegation guards if needed, or rely on activeTab check in render.
-                // Since we clear list.innerHTML, only current tab listeners matter?
-                // Wait, list.onclick is overwritten per render! Correct.
-
                 const reload = () => selfRender(elements, DB, showConfirm, selfRender, cartHelper, Search);
 
                 if (t.classList.contains('archive-order-btn')) { await DB.updateOrder(id, o => o.adminArchived = true); reload(); }
@@ -377,20 +372,27 @@ export const AdminUI = {
         }
     },
 
-    // --- HELPER: RENDER SEARCH (Copied from previous implementation) ---
+    // --- HELPER: RENDER SEARCH (Fixed to use shared Search Module) ---
     renderAdminSearch(container, elements, state, Cart, Search) {
+        // Reuse the main Search module logic but map elements to this local container
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
             <div class="header-actions">
                 <h2>Produktsuche</h2>
-                <div class="search-wrapper" style="max-width:400px;">
+                <div class="search-wrapper" style="max-width:400px; position:relative;">
                     <span class="search-icon">&#128269;</span>
                     <input type="text" id="admin-snuzone-search" placeholder="Suche..." class="search-input">
                     <button id="admin-search-clear" class="search-clear">✕</button>
+                    <!-- Loading Indicator for Admin -->
+                    <div id="admin-search-loading" style="display:none; position:absolute; right:40px; top:50%; transform:translateY(-50%); color:var(--primary-color);">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    </div>
                 </div>
             </div>
             <div id="admin-search-results" class="product-grid" style="margin-top:20px;">
-                <div style="grid-column:1/-1; text-align:center; color:gray; padding:20px;">Suche starten...</div>
+                <div style="grid-column:1/-1; text-align:center; color:gray; padding:20px;">
+                    Suche starten...
+                </div>
             </div>
         `;
         container.appendChild(wrapper);
@@ -398,29 +400,54 @@ export const AdminUI = {
         const input = wrapper.querySelector('#admin-snuzone-search');
         const clearBtn = wrapper.querySelector('#admin-search-clear');
         const grid = wrapper.querySelector('#admin-search-results');
+        const loader = wrapper.querySelector('#admin-search-loading'); // Placeholder if we want local loader, but Search.js handles grid content
 
+        // Create a proxy elements object to trick Search.js into rendering here
         const proxyElements = {
             ...elements,
             snuzoneSearch: input,
-            snuzoneResultsGrid: grid
+            snuzoneResultsGrid: grid,
+            // Override toggle functionality if needed, or ensure these don't break Search.js
+            productsSection: document.createElement('div'), // Dummy
+            productGrid: document.createElement('div'), // Dummy
+            cartCount: null // No cart count update needed here or handled by callback
         };
 
+        // Custom addToCart that adds to Admin Extras
         const addToExtras = (product, qty, st, cb) => {
             Cart.addToCartLogic(product, st, () => {
                 if (cb) cb();
-            });
+            }); // 'st' is passed state (window.app.state)
         };
 
+        // Init the Search module for this specific context if needed, 
+        // OR just call handleSearch manually. 
+        // Best approach: Manually bind events to call Search.handleSearch with THIS context.
+
         if (Search && input) {
+            // We need to inject the proper elements into the Search module context 
+            // OR pass them as arguments if handleSearch supports it.
+            // Looking at Search.js, it uses `this.elements`. 
+            // So we can temporary bind the Search object or just clone it.
+            // Refactor Plan: We updated Search.js to use `this.elements`. 
+            // To reuse it without breaking main User search, we can create a temporary instance or just clone it.
+
+            const AdminSearchContext = Object.create(Search);
+            AdminSearchContext.elements = proxyElements;
+            AdminSearchContext.state = state;
+            AdminSearchContext.addToCart = addToExtras;
+
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    Search.handleSearch(input.value, proxyElements, addToExtras);
+                    input.blur(); // Hide keyboard
+                    AdminSearchContext.handleSearch(input.value);
                 }
             });
+
             clearBtn.addEventListener('click', () => {
                 input.value = '';
-                grid.innerHTML = '';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:gray; padding:20px;">Suche starten...</div>';
             });
         }
     },

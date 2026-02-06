@@ -48,9 +48,19 @@ export const Search = {
         if (searchContainer) searchContainer.classList.remove('hidden');
         if (defaultGrid) defaultGrid.classList.add('hidden');
 
-        // Show loading state
+        // Show loading state with Spinner and Query Text
         if (this.elements.snuzoneResultsGrid) {
-            this.elements.snuzoneResultsGrid.innerHTML = '<div style="text-align:center; padding:20px; color:white;">Lade Ergebnisse...</div>';
+            this.elements.snuzoneResultsGrid.innerHTML = `
+                <div style="text-align:center; padding:40px; color:white;">
+                    <div class="search-spinner" style="
+                        width: 40px; height: 40px; margin: 0 auto 15px auto;
+                        border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--primary-color);
+                        border-radius: 50%; animation: spin 1s linear infinite;
+                    "></div>
+                    <div style="font-size:1.1em; font-weight:bold;">Suche nach "${query}"...</div>
+                    <div style="font-size:0.9em; color:gray; margin-top:5px;">(High-Speed Race Mode)</div>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                </div>`;
         }
 
         try {
