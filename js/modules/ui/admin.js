@@ -615,13 +615,13 @@ export const AdminUI = {
                     }
 
                     // 2. Render Immediately (No Wait)
-                    selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
+                    // Use 'this.renderAdminDashboard' to ensure context is preserved
+                    this.renderAdminDashboard(elements, DB, showConfirm, this.renderAdminDashboard, Cart, Search);
 
                     // 3. Save in Background
                     DB.saveAdminExtras(items).catch(err => {
                         console.error('Background Save Failed', err);
-                        // Optional: Alert user, but don't crash UI
-                        // alert('Warnung: Speichern fehlgeschlagen. ' + err.message);
+                        alert('Warnung: Speichern fehlgeschlagen. ' + (err.message || JSON.stringify(err)));
                     });
                 }
             }
