@@ -487,18 +487,24 @@ export const AdminUI = {
                         text = await res.text();
                     }
 
-                    // Regex for "50 MG/G" pattern (commonly found in variants or labels)
+                    // Regex for "50 MG/G" pattern
                     // Pattern: Number + space + MG/G (case insensitive)
-                    // Also check for "public_title":"50 MG/G" in JSON
-                    const matchJSON = text.match(/"public_title":"(\d+\s*MG\/G)"/i);
-                    if (matchJSON && matchJSON[1]) return matchJSON[1];
+                    let result = null;
 
-                    const matchText = text.match(/(\d+)\s*MG\/G/i);
-                    if (matchText) return `${matchText[1]} MG/G`;
+                    const matchJSON = text.match(/"public_title":"(\d+)\s*MG\/G"/i);
+                    if (matchJSON && matchJSON[1]) result = `${matchJSON[1]} mg/g`;
 
-                    // Fallback: Check for "mg/g" text content
-                    const matchSmall = text.match(/(\d+)\s*mg\/g/i);
-                    if (matchSmall) return `${matchSmall[1]} mg/g`;
+                    if (!result) {
+                        const matchText = text.match(/(\d+)\s*MG\/G/i);
+                        if (matchText) result = `${matchText[1]} mg/g`;
+                    }
+
+                    if (!result) {
+                        const matchSmall = text.match(/(\d+)\s*mg\/g/i);
+                        if (matchSmall) result = `${matchSmall[1]} mg/g`;
+                    }
+
+                    if (result) return result; // Return immediately if found
 
                 } catch (e) {
                     console.warn('Proxy failed', proxy, e);
@@ -597,19 +603,44 @@ export const AdminUI = {
         // Copy Implementation
         const copyToClipboard = () => {
             if (!cartItems || cartItems.length === 0) return;
-            // Format: "{quantity}x {Name} {Nicotine} {Price}"
-            const lines = cartItems.map(item => {
-                let userPriceStr = '';
+
+            // 1. Prepare Data with Alignment Parts
+            const rows = cartItems.map(item => {
+                const qty = item.quantity || 1;
+                const nico = item.nicotine ? (typeof item.nicotine === 'string' ? item.nicotine.toLowerCase() : item.nicotine) : ''; // Ensure lower
+
+                // Name Start
+                // Format: "5x | Pablo Red 50 mg/g"
+                const part1 = `${qty}x | ${item.name}${nico ? ` ${nico}` : ''}`;
+
+                // Price Formatting: 5 € or 4,50 €
+                let priceVal = 0;
                 if (typeof item.price === 'string') {
-                    userPriceStr = item.price;
+                    priceVal = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
                 } else {
-                    userPriceStr = (item.price || 0).toFixed(2).replace('.', ',') + ' €';
+                    priceVal = item.price || 0;
                 }
 
-                // Ensure nice spacing
-                const nico = item.nicotine ? ` ${item.nicotine}` : '';
-                return `${item.quantity || 1}x ${item.name}${nico} ${userPriceStr}`;
+                let priceStr = '';
+                if (priceVal % 1 === 0) {
+                    priceStr = `${priceVal} €`; // No decimals
+                } else {
+                    priceStr = `${priceVal.toFixed(2).replace('.', ',')} €`;
+                }
+
+                return { part1, priceStr };
             });
+
+            // 2. Find Max Length of Part1
+            const maxLen = Math.max(...rows.map(r => r.part1.length));
+
+            // 3. Build Final String with Padding
+            // Result: "5x | Pablo Red 50 mg/g       | 4,50 €"
+            const lines = rows.map(r => {
+                const padded = r.part1.padEnd(maxLen, ' '); // Adds spaces to the right
+                return `${padded} | ${r.priceStr}`;
+            });
+
             const textBlock = lines.join('\n');
 
             navigator.clipboard.writeText(textBlock).then(() => {
@@ -619,7 +650,7 @@ export const AdminUI = {
 
                     btn.innerHTML = '&#10003; Kopiert!';
                     btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-success'); // Green feedback
+                    btn.classList.add('btn-success');
 
                     const timerId = setTimeout(() => {
                         btn.innerHTML = 'Extras kopieren';
