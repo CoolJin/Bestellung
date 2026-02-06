@@ -529,27 +529,33 @@ export const AdminUI = {
         const profitColor = totalProfit >= 0 ? '#059669' : '#be123c';
 
         // Copy Implementation
+        // Copy Implementation
         const copyToClipboard = () => {
             if (!cartItems || cartItems.length === 0) return;
+            // Format: "{quantity}x {Name}"
             const lines = cartItems.map(item => `${item.quantity || 1}x ${item.name}`);
             const textBlock = lines.join('\n');
 
             navigator.clipboard.writeText(textBlock).then(() => {
                 const btn = wrapper.querySelector('.copy-extras-btn');
                 if (btn) {
-                    const originalText = btn.innerHTML;
+                    if (btn.dataset.timerId) clearTimeout(parseInt(btn.dataset.timerId));
+
                     btn.innerHTML = '&#10003; Kopiert!';
                     btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-success');
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
+                    btn.classList.add('btn-success'); // Green feedback
+
+                    const timerId = setTimeout(() => {
+                        btn.innerHTML = 'Extras kopieren';
                         btn.classList.remove('btn-success');
                         btn.classList.add('btn-primary');
+                        delete btn.dataset.timerId;
                     }, 2000);
+                    btn.dataset.timerId = timerId.toString();
                 }
             }).catch(err => {
                 console.error('Copy failed', err);
-                alert('Kopieren fehlgeschlagen');
+                alert('Kopieren fehlgeschlagen: ' + err);
             });
         };
 
@@ -558,7 +564,7 @@ export const AdminUI = {
             <div style="margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:20px;">
                     <h2 style="margin:0;">Extras</h2>
-                    ${cartItems.length > 0 ? `<button class="btn btn-primary btn-sm copy-extras-btn" style="display:flex; align-items:center; gap:5px;"><span style="font-size:1.2em;">📋</span> Extras kopieren</button>` : ''}
+                    ${cartItems.length > 0 ? `<button class="btn btn-primary btn-sm copy-extras-btn" style="min-width:140px;">Extras kopieren</button>` : ''}
                 </div>
                 
                 ${cartItems.length === 0 ? '<div style="text-align:center; padding:40px; color:gray; background:rgba(255,255,255,0.02); border-radius:12px;">Keine Extras vorhanden. Suche Produkte um sie hinzuzufügen.</div>' : listHtml}
