@@ -559,6 +559,7 @@ export const AdminUI = {
         wrapper.addEventListener('click', (e) => {
             const btn = e.target.closest('.change-qty');
             if (btn) {
+                e.stopPropagation();
                 const idx = parseInt(btn.dataset.index);
                 const delta = parseInt(btn.dataset.delta);
                 const items = [...DB.state.adminExtras]; // Clone
@@ -567,7 +568,10 @@ export const AdminUI = {
                     items[idx].quantity = (items[idx].quantity || 1) + delta;
                     if (items[idx].quantity <= 0) items.splice(idx, 1);
 
-                    DB.saveAdminExtras(items).then(() => {
+                    // Optimistic UI Update first (Optional) but better to wait for DB to confirm source of truth
+                    DB.saveAdminExtras(items).then(async () => {
+                        // Refresh from Cloud to ensure all admins are in sync and local state is perfect
+                        await DB.refreshData();
                         selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
                     });
                 }
