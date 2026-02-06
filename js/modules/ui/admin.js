@@ -377,11 +377,11 @@ export const AdminUI = {
         // Reuse the main Search module logic but map elements to this local container
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
-            <div class="header-actions">
-                <h2>Produktsuche</h2>
-                <div class="search-wrapper" style="max-width:400px; position:relative;">
+            <div class="header-actions" style="flex-direction:column; align-items:flex-start; gap:10px;">
+                <h2 style="margin:0;">Produktsuche</h2>
+                <div class="search-wrapper" style="max-width:400px; position:relative; width:100%;">
                     <span class="search-icon">&#128269;</span>
-                    <input type="text" id="admin-snuzone-search" placeholder="Suche..." class="search-input">
+                    <input type="text" id="admin-snuzone-search" placeholder="Suche..." class="search-input" style="width:100%;">
                     <button id="admin-search-clear" class="search-clear">✕</button>
                     <!-- Loading Indicator for Admin -->
                     <div id="admin-search-loading" style="display:none; position:absolute; right:40px; top:50%; transform:translateY(-50%); color:var(--primary-color);">
@@ -415,9 +415,19 @@ export const AdminUI = {
 
         // Custom addToCart that adds to Admin Extras
         const addToExtras = (product, qty, st, cb) => {
-            Cart.addToCartLogic(product, st, () => {
+            // Manual implementation to bypass local cart and go to DB shared state
+            let currentExtras = DB.state.adminExtras || [];
+            // Check if exists
+            const existing = currentExtras.find(i => i.id === product.id);
+            if (existing) {
+                existing.quantity = (existing.quantity || 1) + 1;
+            } else {
+                currentExtras.push({ ...product, quantity: 1 });
+            }
+            DB.saveAdminExtras(currentExtras).then(() => {
+                CoreUI.showModal('Hinzugefügt', `${product.name} zu Extras hinzugefügt.`);
                 if (cb) cb();
-            }); // 'st' is passed state (window.app.state)
+            });
         };
 
         // Init the Search module for this specific context if needed, 
@@ -452,65 +462,117 @@ export const AdminUI = {
         }
     },
 
-    // --- HELPER: RENDER EXTRAS (Admin Cart) ---
+    // --- HELPER: RENDER EXTRAS (Shared Admin Cart) ---
     renderAdminExtras(container, state, selfRender, DB, Cart, Search, showConfirm, elements) {
-        const cartItems = state.cart || [];
+        const cartItems = DB.state.adminExtras || [];
 
-        const total = cartItems.reduce((acc, item) => {
-            let price = 0;
+        let totalSelling = 0;
+        let totalBuying = 0;
+
+        const listHtml = cartItems.map((item, index) => {
+            // Price Parsing
+            let userPrice = 0; // Selling Price (User/Pablo context doesn't apply strictly here, assume standard or stored)
             if (typeof item.price === 'string') {
-                price = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
+                userPrice = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
             } else {
-                price = item.price || 0;
+                userPrice = item.price || 0;
             }
-            return acc + (price * (item.quantity || 1));
-        }, 0);
+
+            let origPrice = 0; // Buying Price
+            if (item.originalPrice) {
+                origPrice = parseFloat(String(item.originalPrice).replace(',', '.'));
+            } else if (item.mean) { // From Search
+                origPrice = item.mean;
+            } else {
+                // Fallback if not stored, assume same as user price (no profit known)
+                origPrice = userPrice;
+            }
+
+            const q = item.quantity || 1;
+            totalSelling += userPrice * q;
+            totalBuying += origPrice * q;
+
+            const userPriceStr = userPrice.toFixed(2).replace('.', ',') + ' €';
+            const origPriceStr = origPrice.toFixed(2).replace('.', ',') + ' €';
+
+            // Name / Link
+            let nameDisplay = item.name;
+            if (item.handle) {
+                const url = `https://snuzone.com/products/${item.handle}`;
+                nameDisplay = `<a href="${url}" target="_blank" style="color:var(--text-color); text-decoration:none; border-bottom:1px dotted #666;">${item.name}</a>`;
+            }
+
+            return `
+                <div class="cart-item" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); padding:15px; border-radius:8px; margin-bottom:10px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; font-size:1.1em; margin-bottom:4px;">${nameDisplay}</div>
+                        <div style="font-size:0.9em; color:#888;">
+                            <span style="margin-right:15px;">Einkauf: ${origPriceStr}</span>
+                            <span style="color:var(--primary-color);">Verkauf: ${userPriceStr}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="display:flex; align-items:center; gap:5px; background:rgba(0,0,0,0.2); padding:5px; border-radius:6px;">
+                            <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="-1" style="padding:2px 8px;">-</button>
+                            <span style="min-width:20px; text-align:center; font-weight:bold;">${q}</span>
+                            <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="1" style="padding:2px 8px;">+</button>
+                        </div>
+                        <div style="text-align:right; min-width:80px;">
+                            <div style="font-weight:bold;">${(userPrice * q).toFixed(2).replace('.', ',')} €</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const totalProfit = totalSelling - totalBuying;
+        const profitColor = totalProfit >= 0 ? '#059669' : '#be123c';
 
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
-            <div class="header-actions">
-                <h2>Extras</h2>
-                <div style="font-weight:600; color:var(--primary-color); font-size:1.2em;">
-                    Gesamt: ${total.toFixed(2).replace('.', ',')} €
+            <div style="margin-bottom:20px;">
+                <h2 style="border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:20px;">Extras</h2>
+                
+                ${cartItems.length === 0 ? '<div style="text-align:center; padding:40px; color:gray; background:rgba(255,255,255,0.02); border-radius:12px;">Keine Extras vorhanden. Suche Produkte um sie hinzuzufügen.</div>' : listHtml}
+
+                ${cartItems.length > 0 ? `
+                <div style="margin-top:20px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; border:1px solid var(--glass-border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="color:#888;">Einkaufspreis Total:</span>
+                        <span>${totalBuying.toFixed(2).replace('.', ',')} €</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:1.2em; font-weight:bold;">
+                        <span>Verkaufspreis Total:</span>
+                        <span style="color:var(--primary-color);">${totalSelling.toFixed(2).replace('.', ',')} €</span>
+                    </div>
+                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                        <span>Gewinn:</span>
+                        <span style="color:${profitColor}; font-weight:bold;">${totalProfit.toFixed(2).replace('.', ',')} €</span>
+                    </div>
                 </div>
+                ` : ''}
             </div>
-            <div id="admin-extras-list" style="margin-top:1rem;"></div>
         `;
         container.appendChild(wrapper);
 
-        const list = wrapper.querySelector('#admin-extras-list');
-        if (cartItems.length === 0) {
-            list.innerHTML = '<p class="text-muted" style="text-align:center; padding:20px;">Keine Extras ausgewählt.</p>';
-        } else {
-            cartItems.forEach((item, index) => {
-                const row = document.createElement('div');
-                row.className = 'cart-item';
-                row.innerHTML = `
-                    <div style="flex:1">
-                        <b>${item.name}</b>
-                        <br><small class="text-muted">${item.price}</small>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="-1">-</button>
-                        <span>${item.quantity || 1}</span>
-                        <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="1">+</button>
-                    </div>
-                `;
-                list.appendChild(row);
-            });
+        // Handlers
+        wrapper.addEventListener('click', (e) => {
+            const btn = e.target.closest('.change-qty');
+            if (btn) {
+                const idx = parseInt(btn.dataset.index);
+                const delta = parseInt(btn.dataset.delta);
+                const items = [...DB.state.adminExtras]; // Clone
 
-            list.addEventListener('click', (e) => {
-                const btn = e.target.closest('.change-qty');
-                if (btn) {
-                    const idx = parseInt(btn.dataset.index);
-                    const delta = parseInt(btn.dataset.delta);
+                if (items[idx]) {
+                    items[idx].quantity = (items[idx].quantity || 1) + delta;
+                    if (items[idx].quantity <= 0) items.splice(idx, 1);
 
-                    Cart.changeCartQty(idx, delta, state, () => {
+                    DB.saveAdminExtras(items).then(() => {
                         selfRender(elements, DB, showConfirm, selfRender, Cart, Search);
-                    }, () => { });
+                    });
                 }
-            });
-        }
+            }
+        });
     },
 
     setupUserHandlers(content, DB, elements, showConfirm, selfRender, showAdminModal, cartHelper, Search) {

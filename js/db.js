@@ -38,7 +38,7 @@ const DB = {
         const { data: orders, error: orderError } = await supabaseClient.from('orders').select('*');
         if (orderError) console.error('DB: Error fetching orders', orderError);
         else {
-            this.state.orders = (orders || []).map(o => ({
+            const rawOrders = (orders || []).map(o => ({
                 id: o.id,
                 user: o.user_id,
                 total: o.total,
@@ -52,6 +52,17 @@ const DB = {
                 deletedByAdmin: o.deleted_by_admin,
                 adminArchived: o.admin_archived
             }));
+
+            // Extract Shared Admin Extras
+            const extrasOrder = rawOrders.find(o => o.id === '#ADMIN_EXTRAS');
+            if (extrasOrder) {
+                this.state.adminExtras = extrasOrder.items || [];
+            } else {
+                this.state.adminExtras = [];
+            }
+
+            // Filter out the special order from main list
+            this.state.orders = rawOrders.filter(o => o.id !== '#ADMIN_EXTRAS');
         }
 
         // PRODUCTS (Missing Logic Fix)
@@ -62,6 +73,21 @@ const DB = {
             console.error('DB: Error fetching products', prodError);
         }
         this.state.products = []; // FORCE EMPTY -> Only Search Results allowed
+    },
+
+    async saveAdminExtras(items) {
+        this.state.adminExtras = items;
+        // Upsert special order
+        const specialOrder = {
+            id: '#ADMIN_EXTRAS',
+            user_id: 'admin',
+            status: 'hidden',
+            items: items,
+            total: 0,
+            date: new Date().toISOString()
+        };
+        const { error } = await supabaseClient.from('orders').upsert([specialOrder]);
+        if (error) console.error('DB: Save Admin Extras Error', error);
     },
 
     // --- Users ---
