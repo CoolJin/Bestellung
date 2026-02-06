@@ -81,10 +81,19 @@ const DB = {
             return;
         }
 
+        const session = this.getSession();
+        const currentUsername = session ? session.username : null;
+
+        if (!currentUsername) {
+            alert("Fehler: Nicht eingeloggt (Session fehlt). Bitte neu laden.");
+            throw new Error("No Session");
+        }
+
         // Upsert special order
+        // user_id must be a VALID user. We use the current admin's username.
         const specialOrder = {
             id: '#ADMIN_EXTRAS',
-            user_id: 'admin', // Ensure this user exists or RLS allows "admin" role to write to 'admin' user_id
+            user_id: currentUsername,
             status: 'hidden',
             items: items,
             total: 0,
