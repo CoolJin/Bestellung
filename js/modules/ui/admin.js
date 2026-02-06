@@ -604,16 +604,9 @@ export const AdminUI = {
         const copyToClipboard = () => {
             if (!cartItems || cartItems.length === 0) return;
 
-            // 1. Prepare Data with Alignment Parts
-            const rows = cartItems.map(item => {
-                const qty = item.quantity || 1;
-                const nico = item.nicotine ? (typeof item.nicotine === 'string' ? item.nicotine.toLowerCase() : item.nicotine) : ''; // Ensure lower
-
-                // Name Start
-                // Format: "5x | Pablo Red 50 mg/g"
-                const part1 = `${qty}x | ${item.name}${nico ? ` ${nico}` : ''}`;
-
-                // Price Formatting: 5 € or 4,50 €
+            // Format: "{Price} | {Nicotine} | {Qty} | {Name}" (Left Aligned)
+            const lines = cartItems.map(item => {
+                // Price
                 let priceVal = 0;
                 if (typeof item.price === 'string') {
                     priceVal = parseFloat(item.price.replace('€', '').replace(',', '.').trim()) || 0;
@@ -623,22 +616,21 @@ export const AdminUI = {
 
                 let priceStr = '';
                 if (priceVal % 1 === 0) {
-                    priceStr = `${priceVal} €`; // No decimals
+                    priceStr = `${priceVal} €`;
                 } else {
                     priceStr = `${priceVal.toFixed(2).replace('.', ',')} €`;
                 }
 
-                return { part1, priceStr };
-            });
+                // Nicotine
+                const nico = item.nicotine ? (typeof item.nicotine === 'string' ? item.nicotine.toLowerCase() : item.nicotine) : '-'; // Use dash if missing? Or empty? User said "{mg/g}". using "-" keeps alignment clearer.
 
-            // 2. Find Max Length of Part1
-            const maxLen = Math.max(...rows.map(r => r.part1.length));
+                // Qty
+                const qty = `${item.quantity || 1}x`;
 
-            // 3. Build Final String with Padding
-            // Result: "5x | Pablo Red 50 mg/g       | 4,50 €"
-            const lines = rows.map(r => {
-                const padded = r.part1.padEnd(maxLen, ' '); // Adds spaces to the right
-                return `${padded} | ${r.priceStr}`;
+                // Name
+                const name = item.name;
+
+                return `${priceStr} | ${nico} | ${qty} | ${name}`;
             });
 
             const textBlock = lines.join('\n');
