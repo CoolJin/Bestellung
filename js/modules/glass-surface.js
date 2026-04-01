@@ -121,12 +121,13 @@ class GlassSurface extends HTMLElement {
         if (this.getAttribute('type') === 'submit') {
             const form = this.closest('form');
             if (form) {
-                // Check if form is valid before submitting
-                if (form.checkValidity()) {
-                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                } else {
-                    form.reportValidity();
-                }
+                // Some forms require actual submit buttons to trigger listeners correctly
+                const hiddenBtn = document.createElement('button');
+                hiddenBtn.type = 'submit';
+                hiddenBtn.style.display = 'none';
+                form.appendChild(hiddenBtn);
+                hiddenBtn.click();
+                form.removeChild(hiddenBtn);
             }
         }
     });
