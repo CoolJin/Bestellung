@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CoolJin/Bestellung.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CoolJin/Bestellung/issues"
+  },
+  "homepage": "https://github.com/CoolJin/Bestellung#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "playwright": "^1.59.0"
+  }
+}

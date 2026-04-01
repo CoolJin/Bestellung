@@ -6,19 +6,19 @@ export const OrdersUI = {
 
         let btns = '';
         if (isArchived) {
-            btns = `<button class="btn btn-secondary btn-sm restore-order" data-id="${order.id}">Wiederherstellen</button>
-                    <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</button>`;
+            btns = `<glass-surface class="btn btn-secondary btn-sm restore-order" data-id="${order.id}">Wiederherstellen</glass-surface>
+                    <glass-surface class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</glass-surface>`;
         } else if (order.status === 'cancelled') {
             // User wants "Erneut bestellen" (Restore) and "Löschen"
-            btns = `<button class="btn btn-secondary btn-sm revive-order" data-id="${order.id}">Erneut bestellen</button>
-                    <button class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</button>`;
+            btns = `<glass-surface class="btn btn-secondary btn-sm revive-order" data-id="${order.id}">Erneut bestellen</glass-surface>
+                    <glass-surface class="btn btn-danger btn-sm delete-order" data-id="${order.id}">Löschen</glass-surface>`;
         } else {
             // Active
             if (order.status === 'open' || order.status === 'captured') {
-                btns = `<button class="btn btn-primary btn-sm edit-order" data-id="${order.id}">Bearbeiten</button>
-                        <button class="btn btn-danger btn-sm cancel-order" data-id="${order.id}" style="margin-left:5px">Stornieren</button>`;
+                btns = `<glass-surface class="btn btn-primary btn-sm edit-order" data-id="${order.id}">Bearbeiten</glass-surface>
+                        <glass-surface class="btn btn-danger btn-sm cancel-order" data-id="${order.id}" style="margin-left:5px">Stornieren</glass-surface>`;
             } else {
-                btns = `<button class="btn btn-secondary btn-sm archive-order" data-id="${order.id}">Archivieren</button>`;
+                btns = `<glass-surface class="btn btn-secondary btn-sm archive-order" data-id="${order.id}">Archivieren</glass-surface>`;
             }
         }
 

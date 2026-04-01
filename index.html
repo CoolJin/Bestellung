@@ -40,7 +40,7 @@
                         <label for="password">Passwort</label>
                         <input type="password" id="password" name="password" required autocomplete="current-password">
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%">Anmelden</button>
+                    <glass-surface type="submit" class="btn btn-primary" style="width: 100%">Anmelden</glass-surface>
                     <div id="login-error" style="color: #ef4444; margin-top: 1rem;"></div>
                 </form>
             </div>
@@ -52,7 +52,7 @@
                 <div class="search-wrapper">
                     <span class="search-icon">&#128269;</span>
                     <input type="text" id="snuzone-search" placeholder="Suche..." class="search-input">
-                    <button id="search-clear-btn" class="search-clear" title="Löschen">✕</button>
+                    <glass-surface id="search-clear-btn" class="search-clear" title="Löschen">✕</glass-surface>
                     <!-- "Go" button removed, search triggers on Enter -->
                 </div>
                 <div style="font-weight: 600; color: var(--primary-color); margin-left: 15px; white-space: nowrap;">
@@ -101,7 +101,7 @@
                 style="margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1rem; text-align: right;">
                 <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Gesamt: <span
                         id="cart-total">0.00 €</span></div>
-                <button id="checkout-btn" class="btn btn-primary">Bestellung absenden</button>
+                <glass-surface id="checkout-btn" class="btn btn-primary">Bestellung absenden</glass-surface>
             </div>
         </section>
 
@@ -121,8 +121,8 @@
             <h3>Abmelden?</h3>
             <p>Möchten Sie sich wirklich abmelden?</p>
             <div class="modal-actions">
-                <button id="logout-cancel" class="btn btn-secondary">Abbrechen</button>
-                <button id="logout-confirm" class="btn btn-danger">Ja, abmelden</button>
+                <glass-surface id="logout-cancel" class="btn btn-secondary">Abbrechen</glass-surface>
+                <glass-surface id="logout-confirm" class="btn btn-danger">Ja, abmelden</glass-surface>
             </div>
         </div>
     </div>

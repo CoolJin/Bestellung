@@ -10,7 +10,7 @@ export const CoreUI = {
             <div class="notification-content">
                 <div class="notification-title">${title}</div>
                 <div class="notification-msg">${msg}</div>
-                <button class="btn btn-primary" onclick="this.closest('.notification-modal').remove()">Ok</button>
+                <glass-surface class="btn btn-primary" onclick="this.closest('.notification-modal').remove()">Ok</glass-surface>
             </div>
         `;
         document.body.appendChild(modal);
@@ -31,8 +31,8 @@ export const CoreUI = {
                 <h3>${title}</h3>
                 <p>${msg}</p>
                 <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Abbrechen</button>
-                    <button class="btn btn-primary" id="confirm-yes-btn">Ja</button>
+                    <glass-surface class="btn btn-secondary" onclick="this.closest('.modal').remove()">Abbrechen</glass-surface>
+                    <glass-surface class="btn btn-primary" id="confirm-yes-btn">Ja</glass-surface>
                 </div>
             </div>
         `;

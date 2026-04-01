@@ -34,9 +34,9 @@ export const CartUI = {
                     </div>
                 </div>
                 <div style="display: flex; align-items: center;">
-                    <button class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, -1)">-</button>
+                    <glass-surface class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, -1)">-</glass-surface>
                     <span style="margin:0 10px">${item.quantity || 1}</span>
-                    <button class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, 1)">+</button>
+                    <glass-surface class="btn btn-secondary btn-sm" onclick="window.app.changeCartQty(${index}, 1)">+</glass-surface>
                 </div>
            `;
             el.appendChild(div);

@@ -47,7 +47,7 @@ textarea:focus,
 }
 
 /* Restored .btn Styles with Animation Fix */
-.btn {
+.btn, glass-surface.btn {
     padding: 12px 24px;
     border-radius: 12px;
     border: none;
@@ -62,7 +62,7 @@ textarea:focus,
 }
 
 /* Noble Gradients with Shift Animation (Darker Tones) */
-.btn-primary {
+.btn-primary, glass-surface.btn-primary {
     background: linear-gradient(135deg, #6366f1 0%, #4338ca 50%, #6366f1 100%);
     background-size: 200% 200%;
     color: white;
@@ -74,7 +74,7 @@ textarea:focus,
     box-shadow: 0 0 20px var(--accent-glow);
 }
 
-.btn-danger {
+.btn-danger, glass-surface.btn-danger {
     background: linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%);
     background-size: 200% 200%;
     color: white;
@@ -98,7 +98,7 @@ textarea:focus,
     box-shadow: 0 0 15px rgba(5, 150, 105, 0.4);
 }
 
-.btn-secondary {
+.btn-secondary, glass-surface.btn-secondary {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-color);

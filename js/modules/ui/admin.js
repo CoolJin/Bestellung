@@ -46,8 +46,8 @@ export const AdminUI = {
                     <h3 style="margin-top:0;">${title}</h3>
                     <div style="margin:15px 0;">${contentHTML}</div>
                     <div class="modal-actions" style="display:flex; justify-content:center; gap:10px;">
-                        <button class="btn btn-secondary close-modal">Abbrechen</button>
-                        <button class="btn btn-primary confirm-modal">Bestätigen</button>
+                        <glass-surface class="btn btn-secondary close-modal">Abbrechen</glass-surface>
+                        <glass-surface class="btn btn-primary confirm-modal">Bestätigen</glass-surface>
                     </div>
                 </div>
             `;
@@ -69,15 +69,15 @@ export const AdminUI = {
                         <div style="display:flex; gap:10px; flex-wrap:wrap;">
                             <input type="text" id="new-user-name" placeholder="Name" style="flex:1;">
                             <input type="text" id="new-user-pass" placeholder="Passwort" style="flex:1;">
-                            <button id="create-user-btn" class="btn btn-primary">Erstellen</button>
+                            <glass-surface id="create-user-btn" class="btn btn-primary">Erstellen</glass-surface>
                         </div>
                     </div>
                     <div class="user-list" style="display:grid; gap:10px;">
                         ${users.map(u => {
                 const showOrdersBtn = u.role !== 'admin' ?
-                    `<button class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</button>` : '';
+                    `<glass-surface class="btn btn-sm btn-secondary view-user-orders" data-user="${u.username}">Bestellungen</glass-surface>` : '';
                 const showDeleteBtn = u.role !== 'admin' ?
-                    `<button class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</button>` : '';
+                    `<glass-surface class="btn btn-sm btn-danger delete-user" data-user="${u.username}">Löschen</glass-surface>` : '';
                 const nameColor = u.role === 'admin' ? 'var(--primary-color)' : 'var(--text-color)';
                 const pabloLabel = u.isPablo ? '<span style="font-size:0.8em; color:var(--primary-color); margin-left:5px;">(Pablo-Flat)</span>' : '';
                 const accordionId = `role-accordion-${u.username}`;
@@ -92,8 +92,8 @@ export const AdminUI = {
                                     </div>
                                     <div style="display:flex; gap:5px; flex-wrap:wrap; margin-left:auto;">
                                         ${showOrdersBtn}
-                                        <button class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</button>
-                                        <button class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</button>
+                                        <glass-surface class="btn btn-sm btn-secondary edit-pw-btn" data-user="${u.username}">Passwort ändern</glass-surface>
+                                        <glass-surface class="btn btn-sm btn-secondary manage-role-btn" data-user="${u.username}">Rollen</glass-surface>
                                         ${showDeleteBtn}
                                     </div>
                                 </div>
@@ -131,7 +131,7 @@ export const AdminUI = {
                 content.innerHTML += `
                     <div style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(56, 189, 248, 0.1); padding:10px; border-radius:8px; border:1px solid var(--primary-color);">
                         <span>Filter: <strong>${selectedUserFilter}</strong> (${displayOrders.length})</span>
-                        <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</button>
+                        <glass-surface class="btn btn-sm btn-secondary" id="clear-filter-btn">Filter löschen</glass-surface>
                     </div>`;
                 setTimeout(() => {
                     const cfBtn = content.querySelector('#clear-filter-btn');
@@ -241,42 +241,42 @@ export const AdminUI = {
 
                 if (isArchive) {
                     btns = `
-                        <button class="btn btn-primary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</button>
-                        <button class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</button>
+                        <glass-surface class="btn btn-primary btn-sm unarchive-order" data-id="${o.id}">Wiederherstellen</glass-surface>
+                        <glass-surface class="btn btn-danger btn-sm delete-permanent" data-id="${o.id}">Löschen</glass-surface>
                     `;
                 } else if (isCancelled) {
                     btns = `
                         <div style="font-weight:bold; color:#be123c; margin-bottom:5px; text-align:center;">STORNIERT</div>
-                        <button class="btn btn-primary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</button>
+                        <glass-surface class="btn btn-primary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%;">Archivieren</glass-surface>
                     `;
                 } else {
                     const confirmBtn = `
-                            <button class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}" 
+                            <glass-surface class="btn btn-sm confirm-order" data-id="${o.id}" data-status="${o.status}"
                                 style="background: ${o.status === 'bestellt' ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%)' : 'transparent'}; 
                                         background-size: 200% 200%; border: 1px solid #059669; color: ${o.status === 'bestellt' ? 'white' : '#059669'}; width:100%;">
                                 ${o.status === 'bestellt' ? 'Bestätigt' : 'Bestätigen'}
-                            </button>`;
+                            </glass-surface>`;
 
                     const paidBtn = o.status === 'bestellt' ? `
-                                <button class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}" 
+                                <glass-surface class="btn btn-secondary btn-sm toggle-paid" data-id="${o.id}"
                                     style="${o.paid ? 'background:transparent; color:#059669; border:1px solid #059669;' : 'background:transparent; color:#be123c; border:1px solid #be123c;'} width:100%;">
                                     ${o.paid ? 'Bezahlt' : 'Nicht bezahlt'}
-                                </button>` : '';
+                                </glass-surface>` : '';
 
                     btns = `
                         <div style="display:flex; flex-direction:column; gap:8px;">
-                            <button class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}" 
+                            <glass-surface class="btn btn-sm reject-order" data-id="${o.id}" data-status="${o.status}"
                                 style="background: ${o.status === 'abgelehnt' ? 'linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%)' : 'transparent'}; 
                                     background-size: 200% 200%; border: 1px solid #be123c; color: ${o.status === 'abgelehnt' ? 'white' : '#be123c'}; width:100%;">
                                 ${o.status === 'abgelehnt' ? 'Abgelehnt' : 'Ablehnen'}
-                            </button>
+                            </glass-surface>
                             
                             <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
                                 ${confirmBtn}
                                 ${paidBtn}
                             </div>
 
-                            <button class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</button>
+                            <glass-surface class="btn btn-secondary btn-sm archive-order-btn" data-id="${o.id}" style="width:100%; margin-top:5px;">Archivieren</glass-surface>
                         </div>
                     `;
                 }
@@ -299,7 +299,7 @@ export const AdminUI = {
                         ${(!isArchive && !isCancelled) ? `
                         <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
                             <textarea class="form-control admin-note-input" data-id="${o.id}" rows="3" placeholder="Admin Notiz..." style="width:100%; margin-bottom:8px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:white; resize:none; padding:8px; border-radius:4px;">${o.adminNote || ''}</textarea>
-                            <button class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</button>
+                            <glass-surface class="btn btn-secondary btn-sm save-note-btn" data-id="${o.id}" style="width:100%">Notiz Speichern</glass-surface>
                         </div>` : ''}
 
                         ${isCancelled ? `<div style="margin-top:10px; font-style:italic; color:#be123c;">Bestellung wurde vom Nutzer storniert.</div>` : ''}
@@ -336,7 +336,8 @@ export const AdminUI = {
 
             // --- Event Delegation (Orders) ---
             list.onclick = async (e) => {
-                const t = e.target;
+                const t = e.target.closest('.btn');
+                if (!t) return;
                 const id = t.dataset.id;
                 const reload = () => selfRender(elements, DB, showConfirm, selfRender, cartHelper, Search);
 
@@ -382,7 +383,7 @@ export const AdminUI = {
                 <div class="search-wrapper" style="max-width:400px; position:relative; width:100%; display:flex; justify-content:center;">
                     <span class="search-icon" style="left: 15px;">&#128269;</span>
                     <input type="text" id="admin-snuzone-search" placeholder="Suche..." class="search-input" style="width:100%;">
-                    <button id="admin-search-clear" class="search-clear">✕</button>
+                    <glass-surface id="admin-search-clear" class="search-clear">✕</glass-surface>
                     <!-- Loading Indicator for Admin -->
                     <div id="admin-search-loading" style="display:none; position:absolute; right:40px; top:50%; transform:translateY(-50%); color:var(--primary-color);">
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -585,9 +586,9 @@ export const AdminUI = {
                     </div>
                     <div style="display:flex; align-items:center; gap:15px;">
                         <div style="display:flex; align-items:center; gap:5px; background:rgba(0,0,0,0.2); padding:5px; border-radius:6px;">
-                            <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="-1" style="padding:2px 8px;">-</button>
+                            <glass-surface class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="-1" style="padding:2px 8px;">-</glass-surface>
                             <span style="min-width:20px; text-align:center; font-weight:bold;">${q}</span>
-                            <button class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="1" style="padding:2px 8px;">+</button>
+                            <glass-surface class="btn btn-secondary btn-sm change-qty" data-index="${index}" data-delta="1" style="padding:2px 8px;">+</glass-surface>
                         </div>
                         <div style="text-align:right; min-width:80px;">
                             <div style="font-weight:bold;">${(userPrice * q).toFixed(2).replace('.', ',')} €</div>
@@ -663,7 +664,7 @@ export const AdminUI = {
             <div style="margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:20px;">
                     <h2 style="margin:0;">Extras</h2>
-                    ${cartItems.length > 0 ? `<button class="btn btn-primary btn-sm copy-extras-btn" style="min-width:140px;">Extras kopieren</button>` : ''}
+                    ${cartItems.length > 0 ? `<glass-surface class="btn btn-primary btn-sm copy-extras-btn" style="min-width:140px;">Extras kopieren</glass-surface>` : ''}
                 </div>
                 
                 ${cartItems.length === 0 ? '<div style="text-align:center; padding:40px; color:gray; background:rgba(255,255,255,0.02); border-radius:12px;">Keine Extras vorhanden. Suche Produkte um sie hinzuzufügen.</div>' : listHtml}
