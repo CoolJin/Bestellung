@@ -66,12 +66,8 @@ const DB = {
         }
 
         // PRODUCTS (Missing Logic Fix)
-        const { data: products, error: prodError } = await supabaseClient.from('products').select('*');
         // User requested REAL search, not fallback.
         // We clear state.products to ensure NO "fake/old" results are shown from DB.
-        if (prodError) {
-            console.error('DB: Error fetching products', prodError);
-        }
         this.state.products = []; // FORCE EMPTY -> Only Search Results allowed
     },
 
