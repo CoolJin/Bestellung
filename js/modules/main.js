@@ -3,6 +3,7 @@ import { Search } from './search.js';
 import { Cart } from './cart.js';
 import { UI } from './ui.js';
 import { DB } from '../db.js';
+import { GlassSurfaceManager } from './ui/glass-surface.js';
 
 window.app = {
     views: {},
@@ -90,6 +91,10 @@ window.app = {
 
         Auth.checkSession(DB, this.state, () => this.updateUI(), (v) => this.navigateTo(v), this.currentView);
         log('Session checked');
+
+        // Apply GlassSurface to all .btn elements (current + future via MutationObserver)
+        GlassSurfaceManager.init();
+        log('GlassSurface initialized');
 
         console.log('App Initialized (Modular)');
     },
