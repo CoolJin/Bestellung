@@ -332,7 +332,7 @@ details[open]>div {
     }
 
     /* Touch Targets & Gradients */
-    .btn {
+    .btn, glass-surface.btn {
         min-height: 48px;
         display: flex;
         align-items: center;
@@ -345,35 +345,35 @@ details[open]>div {
     }
 
     /* Noble Gradients Classes (Darker Tones + Smooth Shift) */
-    .btn-noble-green {
+    .btn-noble-green, glass-surface.btn-noble-green {
         background: linear-gradient(135deg, #059669 0%, #047857 50%, #059669 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
     }
 
-    .btn-noble-red {
+    .btn-noble-red, glass-surface.btn-noble-red {
         background: linear-gradient(135deg, #be123c 0%, #9f1239 50%, #be123c 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
     }
 
-    .btn-noble-blue {
+    .btn-noble-blue, glass-surface.btn-noble-blue {
         background: linear-gradient(135deg, #6366f1 0%, #4338ca 50%, #6366f1 100%) !important;
         background-size: 200% 200%;
         border-color: transparent !important;
         color: white !important;
     }
 
-    .btn:hover {
+    .btn:hover, glass-surface.btn:hover {
         background-position: right center;
     }
 
     /* Subtle movement */
 
     /* Shimmer Effect */
-    .btn::after {
+    .btn::after, glass-surface.btn::after {
         content: '';
         position: absolute;
         top: 0;
@@ -384,7 +384,7 @@ details[open]>div {
         transition: 0.5s;
     }
 
-    .btn:hover::after {
+    .btn:hover::after, glass-surface.btn:hover::after {
         left: 100%;
         transition: 0.5s;
     }
@@ -403,7 +403,7 @@ details[open]>div {
     /* Apply gentle shimmer to primary buttons periodically? Or just hover? User said "Not just simple hover". */
     /* Let's make it automatic on load or persistent subtle effect? */
     /* Persistent is annoying. Let's do a slower sweep or "Sheen". */
-    .btn-shine::after {
+    .btn-shine::after, glass-surface.btn-shine::after {
         animation: shimmer 3s infinite;
     }
 

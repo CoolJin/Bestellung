@@ -15,7 +15,7 @@ export const ProductsUI = {
                          <h3>${p.name}</h3>
                          <div class="product-footer">
                              <div class="product-price">${p.price || 'Kein Preis'}</div>
-                             <button class="btn btn-primary btn-sm add-to-cart" data-id="${p.id}">Hinzufügen</button>
+                             <glass-surface class="btn btn-primary btn-sm add-to-cart" data-id="${p.id}">Hinzufügen</glass-surface>
                          </div>
                      </div>
                  `;
@@ -44,7 +44,7 @@ export const ProductsUI = {
                     <h3>${p.name}</h3>
                     <div class="product-footer">
                          <div class="product-price">${p.price}</div>
-                        ${!p.soldOut ? `<button class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</button>` : '<button disabled class="btn btn-secondary btn-sm">N/A</button>'}
+                        ${!p.soldOut ? `<glass-surface class="btn btn-primary btn-sm add-external" data-index="${index}">Hinzufügen</glass-surface>` : '<glass-surface disabled class="btn btn-secondary btn-sm">N/A</glass-surface>'}
                     </div>
                 </div>
             `;

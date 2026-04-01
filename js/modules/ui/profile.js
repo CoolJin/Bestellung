@@ -81,22 +81,22 @@ export const ProfileUI = {
                 const canArchive = o.status === 'abgelehnt' || o.status === 'bestellt';
                 buttonsHtml = `
                     <div style="display:grid; grid-template-columns: 1fr ${canArchive ? '1fr' : ''}; gap:10px; margin-top:10px;">
-                        <button class="btn btn-primary btn-sm edit-order" data-id="${o.id}">Bearbeiten</button>
-                        ${canArchive ? `<button class="btn btn-primary btn-sm archive-order" data-id="${o.id}" style="width:100%">Archivieren</button>` : ''}
+                        <glass-surface class="btn btn-primary btn-sm edit-order" data-id="${o.id}">Bearbeiten</glass-surface>
+                        ${canArchive ? `<glass-surface class="btn btn-primary btn-sm archive-order" data-id="${o.id}" style="width:100%">Archivieren</glass-surface>` : ''}
                     </div>
-                    <button class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</button>
+                    <glass-surface class="btn btn-danger btn-sm cancel-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Stornieren</glass-surface>
                 `;
             } else if (type === 'archived') {
                 buttonsHtml = `
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-                        <button class="btn btn-primary btn-sm restore-order" data-id="${o.id}">Wiederherstellen</button>
-                        <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</button>
+                        <glass-surface class="btn btn-primary btn-sm restore-order" data-id="${o.id}">Wiederherstellen</glass-surface>
+                        <glass-surface class="btn btn-danger btn-sm delete-order" data-id="${o.id}">Löschen</glass-surface>
                     </div>
                 `;
             } else if (type === 'cancelled') {
                 buttonsHtml = `
-                    <button class="btn btn-primary btn-sm revive-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Erneut bestellen</button>
-                    <button class="btn btn-danger btn-sm delete-order" data-id="${o.id}" style="width:100%; margin-top:5px;">Löschen</button>
+                    <glass-surface class="btn btn-primary btn-sm revive-order" data-id="${o.id}" style="width:100%; margin-top:10px;">Erneut bestellen</glass-surface>
+                    <glass-surface class="btn btn-danger btn-sm delete-order" data-id="${o.id}" style="width:100%; margin-top:5px;">Löschen</glass-surface>
                 `;
             }
 

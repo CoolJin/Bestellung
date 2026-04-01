@@ -1,3 +1,4 @@
+import './glass-surface.js';
 import { Auth } from './auth.js';
 import { Search } from './search.js';
 import { Cart } from './cart.js';
@@ -35,7 +36,7 @@ window.app = {
             document.body.innerHTML = `<div style="color:white; padding:20px; text-align:center;">
                 <h1>Fehler beim Starten</h1>
                 <p>Verbindung fehlgeschlagen. Bitte neu laden.</p>
-                <button onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</button>
+                <glass-surface onclick="location.reload()" style="padding:10px; margin-top:20px;">Neu laden</glass-surface>
             </div>`;
             return;
         }
@@ -165,10 +166,11 @@ window.app = {
 
         if (this.elements.navContainer) {
             this.elements.navContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('nav-link')) {
+                const targetLink = e.target.closest('.nav-link');
+                if (targetLink) {
                     e.preventDefault();
-                    const targetView = e.target.dataset.view;
-                    const targetTab = e.target.dataset.tab;
+                    const targetView = targetLink.dataset.view;
+                    const targetTab = targetLink.dataset.tab;
 
                     if (targetTab && this.elements.ordersList) {
                         this.elements.ordersList.dataset.activeTab = targetTab;
@@ -238,9 +240,11 @@ window.app = {
     },
 
     handleProfileAction(e) {
-        const id = e.target.dataset.id;
+        const targetBtn = e.target.closest('.btn');
+        if (!targetBtn) return;
+        const id = targetBtn.dataset.id;
         if (!id) return;
-        const cls = e.target.classList;
+        const cls = targetBtn.classList;
 
         if (cls.contains('cancel-order')) {
             UI.showConfirm('Bestellung stornieren?', 'Möchten Sie diese Bestellung wirklich stornieren?', () => {
