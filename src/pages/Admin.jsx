@@ -207,7 +207,10 @@ export default function Admin() {
 
                     {!order.adminArchived && order.status === 'processing' && (
                         <>
-                            <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed')}><CheckCircle size={16} /> Abschließen</button>
+                            <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.25rem' }}>
+                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed')}><CheckCircle size={16} /> Abschließen</button>
+                                <button className="btn btn-secondary" style={{ padding: '0 0.5rem' }} onClick={() => handleOrderAction(order.id, 'open')} title="Zurück zu Offen"><RotateCcw size={16} /></button>
+                            </div>
                             <button className="btn btn-danger" onClick={() => handleOrderAction(order.id, 'cancelled')}><XCircle size={16} /> Ablehnen</button>
                         </>
                     )}
@@ -215,6 +218,12 @@ export default function Admin() {
                     {!order.adminArchived && (order.status === 'completed' || order.status === 'cancelled') && (
                         <>
                             <button className="btn btn-secondary" onClick={() => handleArchiveToggle(order.id, true)}><Archive size={16} /> Archivieren</button>
+                        </>
+                    )}
+
+                    {!order.adminArchived && order.status === 'completed' && (
+                        <>
+                            <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'processing')} title="Zurück in Bearbeitung"><RotateCcw size={16} /> Rückgängig</button>
                         </>
                     )}
 
