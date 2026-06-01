@@ -306,6 +306,11 @@ body {
     min-height: 100vh;
     padding: 25vh 2rem 2rem 2rem;
     position: relative;
+    transition: padding-top 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.home-container.search-active {
+    padding-top: 40px !important;
 }
 
 @media (max-width: 768px) {

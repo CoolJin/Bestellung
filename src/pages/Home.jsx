@@ -52,12 +52,9 @@ export default function Home() {
                 await wait(500); // Wait for texts to fade out
                 setSearchPhase('moving_bar');
                 
-                const wrapper = document.querySelector('.home-search-wrapper');
-                if (wrapper) {
-                    const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
-                    const targetScrollY = absoluteTop - 40;
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                }
+                // We scroll to exactly 0 (top of the page) as requested.
+                // The CSS .search-active class will simultaneously transition the padding to 40px.
+                smoothScrollTo(0, 1000);
                 
                 await wait(1000); // Wait for smooth scroll to finish
                 setSearchPhase('waiting_for_results');
@@ -217,7 +214,7 @@ export default function Home() {
     }, [isHintVisible]);
 
     return (
-        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
+        <div className={`home-container page-transition ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'search-active' : ''}`}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -305,12 +302,6 @@ export default function Home() {
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
-                    
-                    {!loading && !error && results.length === 0 && query && (
-                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
-                            <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
                 </div>
