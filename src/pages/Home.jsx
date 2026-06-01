@@ -11,6 +11,7 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
+    const [animPhase, setAnimPhase] = useState('idle'); // idle | keyboard_hiding | fading_out | scrolling | done
 
     const performSearch = async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }
@@ -28,18 +29,46 @@ export default function Home() {
     };
 
     const triggerSearch = () => {
+        if (animPhase === 'fading_out' || animPhase === 'scrolling') return; // Prevent double trigger
+
         const input = document.querySelector('.home-search-input');
         if (input) input.blur();
 
         performSearch(query.trim());
 
         if (window.innerWidth <= 768) {
-            const wrapper = document.querySelector('.home-search-wrapper');
-            if (wrapper) {
-                const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
-                const targetScrollY = absoluteTop - 40;
-                smoothScrollTo(Math.max(0, targetScrollY), 1000);
+            if (animPhase === 'done') {
+                // Texts already faded, just hide keyboard and scroll
+                setAnimPhase('keyboard_hiding');
+                setTimeout(() => {
+                    setAnimPhase('scrolling');
+                    const wrapper = document.querySelector('.home-search-wrapper');
+                    if (wrapper) {
+                        const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
+                        const targetScrollY = absoluteTop - 40;
+                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                    }
+                    setTimeout(() => setAnimPhase('done'), 1000);
+                }, 300);
+            } else {
+                // Full choreographed sequence
+                setAnimPhase('keyboard_hiding');
+                setTimeout(() => {
+                    setAnimPhase('fading_out');
+                    setTimeout(() => {
+                        setAnimPhase('scrolling');
+                        const wrapper = document.querySelector('.home-search-wrapper');
+                        if (wrapper) {
+                            const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
+                            const targetScrollY = absoluteTop - 40;
+                            smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                        }
+                        setTimeout(() => setAnimPhase('done'), 1000);
+                    }, 400); // 400ms CSS fade duration
+                }, 300); // 300ms keyboard hide duration
             }
+        } else {
+            setAnimPhase('done');
         }
     };
 
@@ -181,7 +210,14 @@ export default function Home() {
                 }
             }
         }, 50); // Short delay to let React render the DOM change
-    }, [isHintVisible]);
+    useEffect(() => {
+        if (!query && animPhase !== 'idle') {
+            setAnimPhase('idle');
+            setResults([]);
+        }
+    }, [query, animPhase]);
+
+    const isFadingOrDone = animPhase !== 'idle' && animPhase !== 'keyboard_hiding';
 
     return (
         <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
@@ -192,12 +228,12 @@ export default function Home() {
             </div>
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-                {results.length === 0 && !loading && (
+                <div style={{ transition: 'opacity 0.4s ease', opacity: isFadingOrDone ? 0 : 1, pointerEvents: isFadingOrDone ? 'none' : 'auto' }}>
                     <div className="animate-fade-in-up">
                         <h1 className="home-title">Willkommen zurück</h1>
                         <p className="home-subtitle">Wonach suchst du heute?</p>
                     </div>
-                )}
+                </div>
                 
                 <form onSubmit={handleSearch} className="home-search-wrapper" style={{ marginBottom: '2rem' }}>
                     <div className="home-search-container">
@@ -222,59 +258,61 @@ export default function Home() {
                             </button>
                         )}
                     </div>
-                </form>
 
-                <div className="w-full">
-                    {loading && (
-                        <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                            <div className="spinner" style={{ marginBottom: '1rem' }}></div>
-                            <p className="text-muted">Suche nach "{query}"...</p>
-                        </div>
-                    )}
-                    
-                    {error && (
-                        <div className="glass-panel animate-fade-in-up" style={{ padding: '1.5rem', textAlign: 'center', borderColor: 'var(--color-destructive)', color: 'var(--color-destructive)' }}>
-                            {error}
-                        </div>
-                    )}
-                    
-                    {!loading && !error && results.length > 0 && (
-                        <div className="grid grid-cols-2 gap-4 animate-fade-in-up" style={{ paddingBottom: '6rem' }}>
-                            {results.map((product) => {
-                                const displayPrice = calculatePrice(product, currentUser);
-
-                                return (
-                                    <div key={product.id} className="glass-panel product-card">
-                                        <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
-                                        <div style={{ flex: 1, padding: '0.5rem 0' }}>
-                                            <h3 className="product-title">{product.name}</h3>
-                                            <p className="product-price" style={{ marginTop: '0.25rem' }}>
-                                                {formatPrice(displayPrice)}
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="btn w-full btn-primary"
-                                            onClick={() => handleAdd(product)}
-                                            disabled={addedId === product.id}
-                                        >
-                                            {addedId === product.id
-                                                ? <Check size={16} />
-                                                : <><ShoppingCart size={16} /> Hinzufügen</>
-                                            }
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                    
-                    {!loading && !error && results.length === 0 && query && (
-                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
+                    {query && results.length === 0 && (animPhase === 'idle' || animPhase === 'keyboard_hiding' || animPhase === 'fading_out') && (
+                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)', transition: 'opacity 0.4s ease', opacity: isFadingOrDone ? 0 : 1 }}>
                             <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
-                </div>
+                </form>
+
+                {animPhase === 'done' && (
+                    <div className="w-full">
+                        {loading && (
+                            <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                                <div className="spinner" style={{ marginBottom: '1rem' }}></div>
+                                <p className="text-muted">Suche nach "{query}"...</p>
+                            </div>
+                        )}
+                        
+                        {error && (
+                            <div className="glass-panel animate-fade-in-up" style={{ padding: '1.5rem', textAlign: 'center', borderColor: 'var(--color-destructive)', color: 'var(--color-destructive)' }}>
+                                {error}
+                            </div>
+                        )}
+                        
+                        {!loading && !error && results.length > 0 && (
+                            <div className="grid grid-cols-2 gap-4 animate-fade-in-up" style={{ paddingBottom: '6rem' }}>
+                                {results.map((product) => {
+                                    const displayPrice = calculatePrice(product, currentUser);
+
+                                    return (
+                                        <div key={product.id} className="glass-panel product-card">
+                                            <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
+                                            <div style={{ flex: 1, padding: '0.5rem 0' }}>
+                                                <h3 className="product-title">{product.name}</h3>
+                                                <p className="product-price" style={{ marginTop: '0.25rem' }}>
+                                                    {formatPrice(displayPrice)}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn w-full btn-primary"
+                                                onClick={() => handleAdd(product)}
+                                                disabled={addedId === product.id}
+                                            >
+                                                {addedId === product.id
+                                                    ? <Check size={16} />
+                                                    : <><ShoppingCart size={16} /> Hinzufügen</>
+                                                }
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
