@@ -11,8 +11,8 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
-    const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'fading_out_results', 'results'
-    const [isClearing, setIsClearing] = useState(false);
+    const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
+    const [isFadingOutGrid, setIsFadingOutGrid] = useState(false);
     const titleWrapperRef = useRef(null);
     const hintWrapperRef = useRef(null);
 
@@ -44,24 +44,27 @@ export default function Home() {
         const input = document.querySelector('.home-search-input');
         if (input) input.blur();
 
-        if (searchPhase === 'results' || searchPhase === 'waiting_for_results' || searchPhase === 'fading_out_results') {
+        if (searchPhase === 'results' || searchPhase === 'waiting_for_results') {
             if (searchPhase === 'results') {
-                setSearchPhase('fading_out_results');
+                setIsFadingOutGrid(true);
                 await wait(300);
             }
             setSearchPhase('waiting_for_results');
+            setIsFadingOutGrid(false);
             setLoading(true);
             setError('');
+            
+            // Close keyboard if open when hitting enter again
+            const input = document.querySelector('.home-search-input');
+            if (input) input.blur();
+            
             try {
-                const fetchPromise = handleSearchLogic(query.trim());
-                // Enforce minimum 500ms delay so the loading animation is clean and visible
-                const [products] = await Promise.all([fetchPromise, wait(500)]);
+                const products = await handleSearchLogic(query.trim());
                 setResults(products);
                 setSearchPhase('results');
             } catch(err) {
                 setError(err.message || 'Fehler bei der Suche');
                 setResults([]);
-                setSearchPhase('idle');
             } finally {
                 setLoading(false);
             }
@@ -130,21 +133,18 @@ export default function Home() {
     };
 
     const clearSearch = async () => { 
-        if (isClearing) return;
-        setIsClearing(true);
-        if (searchPhase === 'results' || searchPhase === 'waiting_for_results') {
-            setSearchPhase('fading_out_results');
+        if (searchPhase === 'results') {
+            setIsFadingOutGrid(true);
             await wait(300);
         }
         setQuery(''); 
         setResults([]); 
         setError(''); 
+        setIsFadingOutGrid(false);
         setSearchPhase('idle');
+        
         const input = document.querySelector('.home-search-input');
-        if (input) {
-            setTimeout(() => input.focus(), 50);
-        }
-        setIsClearing(false);
+        if (input) input.focus();
     };
 
     const handleAdd = (product) => {
@@ -323,7 +323,7 @@ export default function Home() {
 
                 <div className="w-full">
                     {searchPhase === 'waiting_for_results' && (
-                        <div className="animate-fade-in-up" style={{ textAlign: 'center', padding: '2rem 0' }}>
+                        <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                             <div className="spinner" style={{ marginBottom: '1rem' }}></div>
                             <p className="text-muted">Suche nach "{query}"...</p>
                         </div>
@@ -343,8 +343,8 @@ export default function Home() {
                         </div>
                     )}
                     
-                    {(searchPhase === 'results' || searchPhase === 'fading_out_results') && !error && (
-                        <div className={`grid grid-cols-2 gap-4 animate-fade-in-up ${searchPhase === 'fading_out_results' ? 'fade-out' : ''}`} style={{ paddingBottom: '6rem' }}>
+                    {searchPhase === 'results' && !error && (
+                        <div className={`grid grid-cols-2 gap-4 animate-fade-in-up ${isFadingOutGrid ? 'fade-out' : ''}`} style={{ paddingBottom: '6rem' }}>
                             {results.map((product) => {
                                 const displayPrice = calculatePrice(product, currentUser);
 
