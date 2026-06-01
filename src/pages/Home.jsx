@@ -62,8 +62,6 @@ export default function Home() {
         setLoading(true);
         setError('');
         
-        const input = document.querySelector('.home-search-input');
-        
         let scrollYBeforeBlur = 0;
         const isMobile = window.innerWidth <= 768;
         
