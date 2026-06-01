@@ -445,68 +445,15 @@ body {
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-    background: transparent; /* Background handled by ::after */
+    background: transparent;
     border: none;
     z-index: 10;
-    transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
 }
 
-/* Ensure children (icon, input) sit above the solid background */
+/* Ensure children (icon, input) sit above the background */
 .home-search-container > * {
     position: relative;
     z-index: 1;
-}
-
-/* The Solid Grey Box (Behind text, above glow) */
-.home-search-container::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    background: #181818; /* Darker grey */
-    z-index: -1;
-    transition: all 0.4s ease;
-}
-
-/* Rainbow Aurora Glow (Behind the solid box) */
-.home-search-container::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    right: 2px;
-    bottom: 2px;
-    border-radius: 9999px;
-    background: linear-gradient(90deg, #ff0055, #ff3322, #ff6600, #eebb22, #ddcc33, #88ee55, #00eecc, #33bbdd, #6688cc, #5566aa, #7755cc, #9933ee, #cc00ff, #ee00aa, #ff0077, #ff0055);
-    background-size: 400% 100%;
-    z-index: -2; /* Deepest layer */
-    opacity: 0;
-    filter: blur(18px);
-    transition: opacity 0.4s ease;
-}
-
-.home-search-container:focus-within {
-    transform: translateY(-2px);
-}
-
-/* Activate glow on focus */
-.home-search-container:focus-within::before {
-    opacity: 0.8; /* Softer overall intensity */
-    animation: rainbow-glow 16s linear infinite;
-}
-
-/* Activate subtle inner rainbow over the gold-grey box */
-.home-search-container:focus-within::after {
-    background: linear-gradient(90deg, rgba(255,0,85,0.05), rgba(255,51,34,0.05), rgba(255,102,0,0.05), rgba(238,187,34,0.05), rgba(221,204,51,0.05), rgba(136,238,85,0.05), rgba(0,238,204,0.05), rgba(51,187,221,0.05), rgba(102,136,204,0.05), rgba(85,102,170,0.05), rgba(119,85,204,0.05), rgba(153,51,238,0.05), rgba(204,0,255,0.05), rgba(238,0,170,0.05), rgba(255,0,119,0.05), rgba(255,0,85,0.05)), #2b271d;
-    background-size: 400% 100%;
-    animation: rainbow-glow 16s linear infinite;
-}
-
-@keyframes rainbow-glow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 400% 50%; }
 }
 
 .home-search-input {
