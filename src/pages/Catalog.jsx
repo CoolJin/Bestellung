@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, X, ShoppingCart, Check, Star } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { handleSearchLogic } from '../services/search';
 import { useAppContext } from '../context/AppContext';
 import { calculatePrice, calculateVK, formatPrice } from '../services/pricing';
@@ -12,6 +13,17 @@ export default function Catalog({ mode = 'cart' }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    useEffect(() => {
+        const q = searchParams.get('q');
+        if (q) {
+            setQuery(q);
+            performSearch(q);
+            // Optionally remove the query from URL after initial load
+            setSearchParams({});
+        }
+    }, []);
 
     const performSearch = async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }

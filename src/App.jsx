@@ -1,11 +1,11 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
-import { Search, ShoppingCart, User, LayoutDashboard, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, User, LayoutDashboard, LogOut, Home as HomeIcon } from 'lucide-react';
 import './styles/design-system.css';
 
-// Lazy loading could be added here, but importing directly for simplicity
 import Login from './pages/Login';
+import Home from './pages/Home';
 import Catalog from './pages/Catalog';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
@@ -22,6 +22,10 @@ const Navigation = () => {
         <nav className="bottom-nav">
             {currentUser.role === 'user' ? (
                 <>
+                    <NavLink to="/home" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <HomeIcon size={20} />
+                        <span>Home</span>
+                    </NavLink>
                     <NavLink to="/catalog" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Search size={20} />
                         <span>Suchen</span>
@@ -71,7 +75,7 @@ const ProtectedRoute = ({ children, roleRequired }) => {
     if (!currentUser) return <Navigate to="/login" />;
     
     if (roleRequired && currentUser.role !== roleRequired) {
-        return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/catalog'} />;
+        return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/home'} />;
     }
     
     return children;
@@ -90,15 +94,16 @@ const AppContent = () => {
         <HashRouter>
             <div className="page-content">
                 <Routes>
-                    <Route path="/login" element={currentUser ? <Navigate to={currentUser.role === 'admin' ? '/admin' : '/catalog'} /> : <Login />} />
+                    <Route path="/login" element={currentUser ? <Navigate to={currentUser.role === 'admin' ? '/admin' : '/home'} /> : <Login />} />
                     
+                    <Route path="/home" element={<ProtectedRoute roleRequired="user"><Home /></ProtectedRoute>} />
                     <Route path="/catalog" element={<ProtectedRoute roleRequired="user"><Catalog /></ProtectedRoute>} />
                     <Route path="/cart" element={<ProtectedRoute roleRequired="user"><Cart /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roleRequired="user"><Profile /></ProtectedRoute>} />
                     
                     <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><Admin /></ProtectedRoute>} />
                     
-                    <Route path="*" element={<Navigate to={currentUser ? (currentUser.role === 'admin' ? '/admin' : '/catalog') : '/login'} />} />
+                    <Route path="*" element={<Navigate to={currentUser ? (currentUser.role === 'admin' ? '/admin' : '/home') : '/login'} />} />
                 </Routes>
             </div>
             <Navigation />
