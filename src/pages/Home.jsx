@@ -210,6 +210,8 @@ export default function Home() {
                 }
             }
         }, 50); // Short delay to let React render the DOM change
+    }, [isHintVisible]);
+
     useEffect(() => {
         if (!query && animPhase !== 'idle') {
             setAnimPhase('idle');
