@@ -315,9 +315,28 @@ body {
 
 @media (max-width: 768px) {
     .home-container {
-        /* Use a fixed, large enough padding so we can always scroll it exactly where we want */
         padding-top: 120px; 
+        transition: padding-top 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    .home-container.is-searching {
+        padding-top: 40px;
+    }
+}
+
+.home-titles-wrapper {
+    transition: opacity 0.4s ease, max-height 1s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 1s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 300px;
+    opacity: 1;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+.home-titles-wrapper.fading-out {
+    opacity: 0;
+}
+.home-titles-wrapper.scrolling-up {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
 }
 
 .aurora-bg {
