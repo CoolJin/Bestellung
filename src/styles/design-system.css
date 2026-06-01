@@ -314,11 +314,11 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 60vh;
+    height: 50vh;
     overflow: hidden;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 0.8;
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
 }
@@ -326,38 +326,43 @@ body {
 .aurora-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.8;
-    animation: aurora-float 15s infinite alternate ease-in-out;
+    filter: blur(70px);
+    opacity: 0.9;
+    animation: aurora-float 15s infinite alternate ease-in-out, rainbow-hue 10s infinite linear;
 }
 
 .aurora-1 {
-    top: -10%;
-    left: -10%;
-    width: 300px;
+    top: -20%;
+    left: 10%;
+    width: 400px;
     height: 300px;
-    background: var(--color-accent);
+    background: #ff0055;
     animation-delay: 0s;
 }
 
 .aurora-2 {
-    top: 10%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: #4a00e0;
+    top: -30%;
+    right: 10%;
+    width: 500px;
+    height: 350px;
+    background: #00ffcc;
     animation-delay: -5s;
-    animation-duration: 18s;
+    animation-duration: 18s, 10s;
 }
 
 .aurora-3 {
-    top: 30%;
-    left: 20%;
+    top: 10%;
+    left: 30%;
     width: 350px;
-    height: 350px;
-    background: #8e2de2;
+    height: 250px;
+    background: #5500ff;
     animation-delay: -10s;
-    animation-duration: 20s;
+    animation-duration: 20s, 10s;
+}
+
+@keyframes rainbow-hue {
+    0% { filter: blur(70px) hue-rotate(0deg); }
+    100% { filter: blur(70px) hue-rotate(360deg); }
 }
 
 @keyframes aurora-float {
@@ -365,10 +370,10 @@ body {
         transform: translate(0, 0) scale(1);
     }
     50% {
-        transform: translate(10%, 15%) scale(1.1);
+        transform: translate(15%, 10%) scale(1.1);
     }
     100% {
-        transform: translate(-10%, -10%) scale(0.9);
+        transform: translate(-10%, -5%) scale(0.9);
     }
 }
 
@@ -404,23 +409,48 @@ body {
 
 /* Premium Glowing Pill Search Bar */
 .home-search-container {
-    background: rgba(20, 20, 20, 0.6);
+    background: rgba(20, 20, 20, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
     padding: 0.85rem 1.5rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 2;
+}
+
+/* Rainbow Animated Glow */
+.home-search-container::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff, #ff0000);
+    background-size: 200% 100%;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    filter: blur(8px);
 }
 
 .home-search-container:focus-within {
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 0 25px 2px rgba(142, 45, 226, 0.5), 0 4px 20px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px) scale(1.01);
+    border-color: transparent;
+    transform: translateY(-2px) scale(1.02);
+}
+
+.home-search-container:focus-within::before {
+    opacity: 1;
+    animation: rainbow-glow 3s linear infinite;
+}
+
+@keyframes rainbow-glow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
 }
 
 .home-search-input {

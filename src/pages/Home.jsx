@@ -34,7 +34,6 @@ export default function Home() {
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             className="home-search-input"
-                            autoFocus
                         />
                     </div>
                 </form>
