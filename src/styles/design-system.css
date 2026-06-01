@@ -327,13 +327,13 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 35vh;
+    height: 45vh;
     overflow: hidden;
     z-index: 0;
     pointer-events: none;
     opacity: 0.8;
-    mask-image: radial-gradient(150% 100% at top center, black 30%, transparent 100%);
-    -webkit-mask-image: radial-gradient(150% 100% at top center, black 30%, transparent 100%);
+    mask-image: radial-gradient(120% 120% at top center, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(120% 120% at top center, black 40%, transparent 100%);
     transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
     will-change: transform;
 }
@@ -348,32 +348,31 @@ body {
 }
 
 .aurora-1 {
-    top: -20vh;
+    top: -15vh;
     left: -5vw;
-    width: 60vw;
+    width: 55vw;
     height: 40vh;
     background: #ff0055;
-    animation: aurora-float 15s infinite alternate ease-in-out, rainbow-1 20s infinite linear;
+    animation: aurora-float 20s infinite alternate ease-in-out, rainbow-1 20s infinite linear;
 }
 
 .aurora-2 {
-    top: -20vh;
+    top: -15vh;
     right: -5vw;
-    width: 60vw;
+    width: 55vw;
     height: 40vh;
     background: #00ffcc;
-    animation: aurora-float 18s infinite alternate ease-in-out, rainbow-2 20s infinite linear;
-    animation-delay: -5s;
+    animation: aurora-float 20s infinite alternate ease-in-out, rainbow-2 20s infinite linear;
 }
 
 .aurora-3 {
-    top: -15vh; /* Dips slightly lower in the center */
+    top: -5vh; /* Dips down in the center */
     left: 20vw;
     width: 60vw;
     height: 45vh;
     background: #5500ff;
-    animation: aurora-float 20s infinite alternate ease-in-out, rainbow-3 20s infinite linear;
-    animation-delay: -10s;
+    animation: aurora-float 15s infinite alternate ease-in-out, rainbow-3 20s infinite linear;
+    animation-delay: -5s;
 }
 
 @keyframes rainbow-1 {
