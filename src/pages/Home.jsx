@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search as SearchIcon, X, ShoppingCart, Check } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
@@ -46,8 +46,14 @@ export default function Home() {
         setTimeout(() => setAddedId(null), 1200);
     };
 
+    const animationFrameRef = useRef(null);
+
     // Custom 1-second smooth scroll function
     const smoothScrollTo = (targetPosition, duration) => {
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+
         const startPosition = window.scrollY;
         const distance = targetPosition - startPosition;
         let startTime = null;
@@ -65,11 +71,13 @@ export default function Home() {
             window.scrollTo(0, startPosition + distance * ease);
             
             if (timeElapsed < duration) {
-                requestAnimationFrame(animation);
+                animationFrameRef.current = requestAnimationFrame(animation);
+            } else {
+                animationFrameRef.current = null;
             }
         };
         
-        requestAnimationFrame(animation);
+        animationFrameRef.current = requestAnimationFrame(animation);
     };
 
     // Mobile Keyboard UX Fixes
@@ -79,16 +87,9 @@ export default function Home() {
                 const wrapper = document.querySelector('.home-search-wrapper');
                 if (wrapper) {
                     const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
-                    
-                    // We use visualViewport to know exactly where the keyboard starts
                     const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                    
-                    // The exact space in pixels between the bottom of the search bar and the top of the keyboard.
-                    // Set to 40px as requested.
                     const desiredGap = 40; 
-                    
                     const targetScrollY = absoluteBottom - viewportHeight + desiredGap;
-                    
                     smoothScrollTo(Math.max(0, targetScrollY), 1000); // 1000ms = 1 second
                 }
             }, 300);
@@ -102,6 +103,34 @@ export default function Home() {
             }, 100);
         }
     };
+
+    useEffect(() => {
+        if (window.innerWidth > 768) return;
+        
+        // Ensure input is focused so we only adjust if keyboard is open
+        const isFocused = document.activeElement === document.querySelector('.home-search-input');
+        if (!isFocused) return;
+
+        setTimeout(() => {
+            if (query && results.length === 0 && !loading && !error) {
+                const hintText = document.querySelector('.enter-to-search-text');
+                if (hintText && window.visualViewport) {
+                    const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
+                    const viewportHeight = window.visualViewport.height;
+                    const targetScrollY = absoluteBottom - viewportHeight + 30; // 30px gap for hint text
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                }
+            } else if (!query && results.length === 0) {
+                const wrapper = document.querySelector('.home-search-wrapper');
+                if (wrapper && window.visualViewport) {
+                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const viewportHeight = window.visualViewport.height;
+                    const targetScrollY = absoluteBottom - viewportHeight + 40; // Revert to 40px gap for search bar
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                }
+            }
+        }, 50); // Short delay to let React render the DOM change
+    }, [query, results.length, loading, error]);
 
     return (
         <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
@@ -185,7 +214,7 @@ export default function Home() {
                     )}
                     
                     {!loading && !error && results.length === 0 && query && (
-                        <div className="animate-fade-in-up" style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-muted)' }}>
+                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-muted)' }}>
                             <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
