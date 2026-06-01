@@ -318,7 +318,6 @@ export default function Home() {
                                 onClick={triggerSearch}
                             />
                             <input
-                                ref={inputRef}
                                 type="text"
                                 placeholder="Produkte suchen..."
                                 value={query}
