@@ -47,7 +47,7 @@ export default function Home() {
         if (searchPhase === 'results' || searchPhase === 'waiting_for_results') {
             if (searchPhase === 'results') {
                 setIsFadingOutGrid(true);
-                await wait(300);
+                await wait(500);
             }
             setSearchPhase('waiting_for_results');
             setIsFadingOutGrid(false);
@@ -133,15 +133,15 @@ export default function Home() {
     };
 
     const clearSearch = async () => { 
-        if (searchPhase === 'results') {
+        if (searchPhase === 'results' || searchPhase === 'waiting_for_results') {
             setIsFadingOutGrid(true);
-            await wait(300);
+            await wait(500); // Wait 500ms for fade out as requested
         }
         setQuery(''); 
         setResults([]); 
         setError(''); 
         setIsFadingOutGrid(false);
-        setSearchPhase('idle');
+        // We no longer set searchPhase to 'idle' so the search bar stays at the top!
         
         const input = document.querySelector('.home-search-input');
         if (input) input.focus();
@@ -344,7 +344,13 @@ export default function Home() {
                     )}
                     
                     {searchPhase === 'results' && !error && (
-                        <div className={`grid grid-cols-2 gap-4 animate-fade-in-up ${isFadingOutGrid ? 'fade-out' : ''}`} style={{ paddingBottom: '6rem' }}>
+                        <div className="grid grid-cols-2 gap-4 animate-fade-in-up" 
+                             style={{ 
+                                 paddingBottom: '6rem',
+                                 transition: 'opacity 0.5s ease',
+                                 opacity: isFadingOutGrid ? 0 : 1,
+                                 pointerEvents: isFadingOutGrid ? 'none' : 'auto'
+                             }}>
                             {results.map((product) => {
                                 const displayPrice = calculatePrice(product, currentUser);
 
