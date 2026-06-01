@@ -46,17 +46,41 @@ export default function Home() {
         setTimeout(() => setAddedId(null), 1200);
     };
 
+    // Custom 1-second smooth scroll function
+    const smoothScrollTo = (targetPosition, duration) => {
+        const startPosition = window.scrollY;
+        const distance = targetPosition - startPosition;
+        let startTime = null;
+
+        const animation = (currentTime) => {
+            if (startTime === null) startTime = currentTime;
+            const timeElapsed = currentTime - startTime;
+            const progress = Math.min(timeElapsed / duration, 1);
+            
+            // Ease-in-out cubic easing
+            const ease = progress < 0.5 
+                ? 4 * progress * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                
+            window.scrollTo(0, startPosition + distance * ease);
+            
+            if (timeElapsed < duration) {
+                requestAnimationFrame(animation);
+            }
+        };
+        
+        requestAnimationFrame(animation);
+    };
+
     // Mobile Keyboard UX Fixes
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
-            // Wait for mobile keyboard to fully animate up
             setTimeout(() => {
                 const wrapper = document.querySelector('.home-search-wrapper');
                 if (wrapper) {
-                    // Calculate a position that leaves a perfect gap above the keyboard
-                    // Since it's near the top, scrolling to 0 or a slight offset ensures it's perfectly framed
-                    const yOffset = wrapper.getBoundingClientRect().top + window.scrollY - 80;
-                    window.scrollTo({ top: Math.max(0, yOffset), behavior: 'smooth' });
+                    // Halved the offset to reduce the gap below the text input by roughly 50%
+                    const yOffset = wrapper.getBoundingClientRect().top + window.scrollY - 40; 
+                    smoothScrollTo(Math.max(0, yOffset), 1000); // 1000ms = 1 second
                 }
             }, 300);
         }
@@ -64,9 +88,8 @@ export default function Home() {
 
     const handleBlur = () => {
         if (window.innerWidth <= 768) {
-            // Smoothly scroll back to the absolute top when keyboard collapses
             setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                smoothScrollTo(0, 1000); // 1000ms = 1 second
             }, 100);
         }
     };
