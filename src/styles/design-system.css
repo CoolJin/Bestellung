@@ -436,22 +436,9 @@ body {
     transition: opacity 0.3s ease;
 }
 
-/* The Sharp Border */
-.home-search-container::before {
-    /* Use mask to hollow out the center so it ONLY draws the 3px border */
-    padding: 3px; 
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-}
-
 /* The Outer Glow */
 .home-search-container::after {
     filter: blur(35px) brightness(1.3); 
-    /* Mask out the inside of the glow as well, to prevent inward bleeding */
-    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
 }
 
 .home-search-container:focus-within {
