@@ -117,7 +117,7 @@ export default function Home() {
                 if (hintText && window.visualViewport) {
                     const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
-                    const targetScrollY = absoluteBottom - viewportHeight + 30; // 30px gap for hint text
+                    const targetScrollY = absoluteBottom - viewportHeight + 10; // 10px gap for hint text
                     smoothScrollTo(Math.max(0, targetScrollY), 1000);
                 }
             } else if (!query && results.length === 0) {
