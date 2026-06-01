@@ -84,13 +84,19 @@ export default function Home() {
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
+                const hintText = document.querySelector('.enter-to-search-text');
                 const wrapper = document.querySelector('.home-search-wrapper');
-                if (wrapper) {
+                
+                if (hintText && window.visualViewport) {
+                    const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
+                    const viewportHeight = window.visualViewport.height;
+                    const targetScrollY = absoluteBottom - viewportHeight + 10; 
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                } else if (wrapper && window.visualViewport) {
                     const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
-                    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                    const desiredGap = 40; 
-                    const targetScrollY = absoluteBottom - viewportHeight + desiredGap;
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000); // 1000ms = 1 second
+                    const viewportHeight = window.visualViewport.height;
+                    const targetScrollY = absoluteBottom - viewportHeight + 40;
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
                 }
             }, 300);
         }
@@ -105,6 +111,35 @@ export default function Home() {
     };
 
     const isHintVisible = !!(query && results.length === 0 && !loading && !error);
+
+    useEffect(() => {
+        if (window.innerWidth > 768) return;
+        if (!window.visualViewport) return;
+
+        let resizeTimeout;
+        const handleResize = () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const isFocused = document.activeElement === document.querySelector('.home-search-input');
+                if (!isFocused) return;
+
+                const viewportHeight = window.visualViewport.height;
+                const innerHeight = window.innerHeight;
+
+                // If viewport is close to innerHeight, the keyboard was hidden manually by the user
+                if (viewportHeight > innerHeight * 0.85) {
+                    smoothScrollTo(0, 1000);
+                    document.activeElement.blur(); // Remove focus since keyboard is gone
+                }
+            }, 150);
+        };
+
+        window.visualViewport.addEventListener('resize', handleResize);
+        return () => {
+            clearTimeout(resizeTimeout);
+            window.visualViewport.removeEventListener('resize', handleResize);
+        };
+    }, []);
 
     useEffect(() => {
         if (window.innerWidth > 768) return;
