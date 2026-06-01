@@ -409,7 +409,7 @@ body {
 
 /* Premium Glowing Pill Search Bar */
 .home-search-container {
-    background: #0a0a0a; /* Ensure completely solid black inside */
+    position: relative;
     border-radius: 9999px;
     padding: 0.85rem 1.5rem;
     display: flex;
@@ -417,34 +417,41 @@ body {
     gap: 0.75rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-    position: relative;
-    z-index: 2;
+    background: transparent; /* Background handled by ::after */
     border: none;
+    z-index: 10;
 }
 
-/* Rainbow Aurora Glow (Behind the container) */
+/* Ensure children (icon, input) sit above the solid background */
+.home-search-container > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* The Solid Black Box (Behind text, above glow) */
+.home-search-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: #0a0a0a;
+    z-index: -1;
+}
+
+/* Rainbow Aurora Glow (Behind the solid box) */
 .home-search-container::before {
     content: "";
     position: absolute;
-    /* Extends slightly outside the container */
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
     border-radius: 9999px;
-    
-    /* Rainbow colors matching the Aurora theme */
     background: linear-gradient(90deg, #ff0055, #ff7f00, #ffff00, #00ffcc, #0000ff, #5500ff, #8b00ff, #ff0055);
     background-size: 200% 100%;
-    
-    /* Place exactly behind the solid background */
-    z-index: -1;
-    
-    /* Invisible by default */
+    z-index: -2; /* Deepest layer */
     opacity: 0;
-    
-    /* Soft glow blur */
-    filter: blur(12px);
+    filter: blur(15px);
     transition: opacity 0.4s ease;
 }
 
@@ -455,7 +462,7 @@ body {
 /* Activate glow on focus */
 .home-search-container:focus-within::before {
     opacity: 1;
-    animation: rainbow-glow 3s linear infinite;
+    animation: rainbow-glow 8s linear infinite; /* Slower animation */
 }
 
 @keyframes rainbow-glow {
