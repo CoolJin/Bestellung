@@ -84,8 +84,8 @@ export default function Home() {
                     const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
                     
                     // The exact space in pixels between the bottom of the search bar and the top of the keyboard.
-                    // We set this very tight (15px) to effectively halve/minimize the gap as requested.
-                    const desiredGap = 15; 
+                    // Set to 40px as requested.
+                    const desiredGap = 40; 
                     
                     const targetScrollY = absoluteBottom - viewportHeight + desiredGap;
                     
