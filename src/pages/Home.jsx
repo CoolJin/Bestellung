@@ -223,7 +223,7 @@ export default function Home() {
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
                 {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
-                    <div className={`hero-texts-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
+                    <div className={`hero-texts-wrapper hero-title-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
                         <div className={`hero-texts animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
                             <h1 className="home-title">Willkommen zurück</h1>
                             <p className="home-subtitle">Wonach suchst du heute?</p>
@@ -271,7 +271,7 @@ export default function Home() {
                     )}
                     
                     {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && query && results.length === 0 && (
-                        <div className={`hero-texts-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
+                        <div className={`hero-texts-wrapper hero-hint-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
                             <div className={`hero-texts animate-fade-in-up enter-to-search-text ${searchPhase !== 'idle' ? 'fade-out' : ''}`} style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
                                 <p>Drücke Enter um zu suchen.</p>
                             </div>
