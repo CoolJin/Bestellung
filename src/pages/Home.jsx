@@ -12,6 +12,24 @@ export default function Home() {
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
     const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
+    const titleWrapperRef = useRef(null);
+    const hintWrapperRef = useRef(null);
+
+    useEffect(() => {
+        if (searchPhase === 'fading_text') {
+            if (titleWrapperRef.current) titleWrapperRef.current.style.height = `${titleWrapperRef.current.offsetHeight}px`;
+            if (hintWrapperRef.current) hintWrapperRef.current.style.height = `${hintWrapperRef.current.offsetHeight}px`;
+        } else if (searchPhase === 'moving_bar') {
+            if (titleWrapperRef.current) {
+                void titleWrapperRef.current.offsetHeight;
+                titleWrapperRef.current.style.height = '0px';
+            }
+            if (hintWrapperRef.current) {
+                void hintWrapperRef.current.offsetHeight;
+                hintWrapperRef.current.style.height = '0px';
+            }
+        }
+    }, [searchPhase]);
 
     const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
@@ -223,7 +241,7 @@ export default function Home() {
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
                 {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
-                    <div className={`hero-texts-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
+                    <div ref={titleWrapperRef} className={`hero-texts-wrapper`}>
                         <div className={`hero-texts animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
                             <h1 className="home-title">Willkommen zurück</h1>
                             <p className="home-subtitle">Wonach suchst du heute?</p>
@@ -271,7 +289,7 @@ export default function Home() {
                     )}
                     
                     {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && query && results.length === 0 && (
-                        <div className={`hero-texts-wrapper ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'collapse' : ''}`}>
+                        <div ref={hintWrapperRef} className={`hero-texts-wrapper`}>
                             <div className={`hero-texts animate-fade-in-up enter-to-search-text ${searchPhase !== 'idle' ? 'fade-out' : ''}`} style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
                                 <p>Drücke Enter um zu suchen.</p>
                             </div>

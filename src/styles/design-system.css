@@ -564,12 +564,7 @@ body {
 }
 
 .hero-texts-wrapper {
-    max-height: 200px; /* Safe upper bound for texts */
     overflow: hidden;
-    transition: max-height 1s cubic-bezier(0.45, 0, 0.55, 1);
-}
-
-.hero-texts-wrapper.collapse {
-    max-height: 0 !important;
+    transition: height 1s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
