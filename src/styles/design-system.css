@@ -299,14 +299,13 @@ body {
 
 /* Home Page & Aurora Effect */
 .home-container {
-    position: relative;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    overflow: hidden;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 30vh 2rem 2rem 2rem;
+    position: relative;
 }
 
 .aurora-bg {
@@ -429,10 +428,10 @@ body {
 .home-search-container {
     position: relative;
     border-radius: 9999px;
-    padding: 0.85rem 1.5rem;
+    padding: 1.25rem 2rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1.2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
     background: transparent; /* Background handled by ::after */
@@ -466,8 +465,8 @@ body {
     right: 2px;
     bottom: 2px;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #ff0055, #ff5500, #ffaa00, #00eecc, #3366ff, #6622ff, #aa00ff, #ff0055);
-    background-size: 200% 100%;
+    background: linear-gradient(90deg, #ff0055, #ff3333, #ff7700, #ffaa00, #aaff00, #00eecc, #0099ff, #3366ff, #5533ff, #6622ff, #aa00ff, #ff00aa, #ff0055);
+    background-size: 400% 100%;
     z-index: -2; /* Deepest layer */
     opacity: 0;
     filter: blur(18px);
@@ -481,26 +480,26 @@ body {
 /* Activate glow on focus */
 .home-search-container:focus-within::before {
     opacity: 0.8; /* Softer overall intensity */
-    animation: rainbow-glow 8s linear infinite; /* Slower animation */
+    animation: rainbow-glow 12s linear infinite; /* Slower animation */
 }
 
 /* Activate subtle inner rainbow over the grey box */
 .home-search-container:focus-within::after {
-    background: linear-gradient(90deg, rgba(255,0,85,0.05), rgba(255,170,0,0.05), rgba(0,238,204,0.05), rgba(102,34,255,0.05), rgba(255,0,85,0.05)), #181818;
-    background-size: 200% 100%;
-    animation: rainbow-glow 8s linear infinite;
+    background: linear-gradient(90deg, rgba(255,0,85,0.05), rgba(255,51,51,0.05), rgba(255,119,0,0.05), rgba(255,170,0,0.05), rgba(170,255,0,0.05), rgba(0,238,204,0.05), rgba(0,153,255,0.05), rgba(51,102,255,0.05), rgba(85,51,255,0.05), rgba(102,34,255,0.05), rgba(170,0,255,0.05), rgba(255,0,170,0.05), rgba(255,0,85,0.05)), #181818;
+    background-size: 400% 100%;
+    animation: rainbow-glow 12s linear infinite;
 }
 
 @keyframes rainbow-glow {
     0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
+    100% { background-position: 400% 50%; }
 }
 
 .home-search-input {
     background: transparent;
     border: none;
     color: white;
-    font-size: 1.15rem;
+    font-size: 1.3rem;
     width: 100%;
     outline: none;
 }

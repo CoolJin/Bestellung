@@ -27,7 +27,7 @@ export default function Home() {
                 
                 <form onSubmit={handleSearch} className="home-search-wrapper">
                     <div className="home-search-container">
-                        <SearchIcon size={20} className="search-icon" style={{ color: 'rgba(255,255,255,0.7)' }} />
+                        <SearchIcon size={26} className="search-icon" style={{ color: 'rgba(255,255,255,0.7)' }} />
                         <input
                             type="text"
                             placeholder="Produkte suchen..."
