@@ -333,6 +333,9 @@ body {
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
+    will-change: transform;
+}
+
 /* Animated 3D Dotted grid overlay for parallax effect */
 .aurora-bg::after {
     content: "";
