@@ -315,7 +315,7 @@ body {
 
 @media (max-width: 768px) {
     .home-container {
-        padding-top: 15vh; /* Much higher on mobile */
+        padding-top: 14vh; /* Even higher on mobile */
     }
     .home-container.has-results {
         padding-top: 2vh;
@@ -482,8 +482,8 @@ body {
     right: 2px;
     bottom: 2px;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #ff0055, #ff5500, #ffaa00, #00eecc, #3366ff, #6622ff, #aa00ff, #ff0055);
-    background-size: 200% 100%;
+    background: linear-gradient(90deg, #ff0055, #ff3322, #ff6600, #eebb22, #ddcc33, #88ee55, #00eecc, #33bbdd, #6688cc, #5566aa, #7755cc, #9933ee, #cc00ff, #ee00aa, #ff0077, #ff0055);
+    background-size: 400% 100%;
     z-index: -2; /* Deepest layer */
     opacity: 0;
     filter: blur(18px);
@@ -502,14 +502,14 @@ body {
 
 /* Activate subtle inner rainbow over the gold-grey box */
 .home-search-container:focus-within::after {
-    background: linear-gradient(90deg, rgba(255,0,85,0.05), rgba(255,85,0,0.05), rgba(255,170,0,0.05), rgba(0,238,204,0.05), rgba(51,102,255,0.05), rgba(102,34,255,0.05), rgba(170,0,255,0.05), rgba(255,0,85,0.05)), #2b271d;
-    background-size: 200% 100%;
+    background: linear-gradient(90deg, rgba(255,0,85,0.05), rgba(255,51,34,0.05), rgba(255,102,0,0.05), rgba(238,187,34,0.05), rgba(221,204,51,0.05), rgba(136,238,85,0.05), rgba(0,238,204,0.05), rgba(51,187,221,0.05), rgba(102,136,204,0.05), rgba(85,102,170,0.05), rgba(119,85,204,0.05), rgba(153,51,238,0.05), rgba(204,0,255,0.05), rgba(238,0,170,0.05), rgba(255,0,119,0.05), rgba(255,0,85,0.05)), #2b271d;
+    background-size: 400% 100%;
     animation: rainbow-glow 8s linear infinite;
 }
 
 @keyframes rainbow-glow {
     0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
+    100% { background-position: 400% 50%; }
 }
 
 .home-search-input {
