@@ -78,9 +78,18 @@ export default function Home() {
             setTimeout(() => {
                 const wrapper = document.querySelector('.home-search-wrapper');
                 if (wrapper) {
-                    // Halved the offset to reduce the gap below the text input by roughly 50%
-                    const yOffset = wrapper.getBoundingClientRect().top + window.scrollY - 40; 
-                    smoothScrollTo(Math.max(0, yOffset), 1000); // 1000ms = 1 second
+                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    
+                    // We use visualViewport to know exactly where the keyboard starts
+                    const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                    
+                    // The exact space in pixels between the bottom of the search bar and the top of the keyboard.
+                    // We set this very tight (15px) to effectively halve/minimize the gap as requested.
+                    const desiredGap = 15; 
+                    
+                    const targetScrollY = absoluteBottom - viewportHeight + desiredGap;
+                    
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000); // 1000ms = 1 second
                 }
             }, 300);
         }
