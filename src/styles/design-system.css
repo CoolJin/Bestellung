@@ -564,16 +564,9 @@ body {
 }
 
 .hero-texts-wrapper {
+    max-height: 200px; /* Safe upper bound for texts */
     overflow: hidden;
     transition: max-height 1s cubic-bezier(0.45, 0, 0.55, 1);
-}
-
-.hero-title-wrapper {
-    max-height: 85px; /* Exact tight fit to prevent transition delay */
-}
-
-.hero-hint-wrapper {
-    max-height: 75px; /* Exact tight fit to prevent transition delay */
 }
 
 .hero-texts-wrapper.collapse {
