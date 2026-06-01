@@ -298,29 +298,41 @@ export default function Home() {
                     </div>
                 )}
                 
-                <form onSubmit={handleSearch} className="home-search-wrapper" style={{ marginBottom: '2rem' }}>
-                    <div className="home-search-container">
-                        <SearchIcon 
-                            className="home-search-icon" 
-                            size={24} 
-                            style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} 
-                            onClick={triggerSearch}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Produkte suchen..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                            className="home-search-input"
-                        />
-                        {query && (
-                            <button type="button" onClick={clearSearch} style={{ position: 'absolute', right: '1.5rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', zIndex: 10 }}>
-                                <X size={24} />
-                            </button>
-                        )}
-                    </div>
+                <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                    <GlassSurface 
+                        className="home-search-wrapper" 
+                        width="100%" 
+                        height="auto" 
+                        borderRadius={50} 
+                        style={{ 
+                            maxWidth: '600px', 
+                            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' 
+                        }}
+                    >
+                        <div className="home-search-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <SearchIcon 
+                                className="home-search-icon" 
+                                size={24} 
+                                style={{ position: 'absolute', left: '1rem', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} 
+                                onClick={triggerSearch}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Produkte suchen..."
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                className="home-search-input"
+                                style={{ width: '100%', background: 'transparent', border: 'none', padding: '1rem 3rem', color: 'white', outline: 'none' }}
+                            />
+                            {query && (
+                                <button type="button" onClick={clearSearch} style={{ position: 'absolute', right: '1.5rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', zIndex: 10 }}>
+                                    <X size={20} />
+                                </button>
+                            )}
+                        </div>
+                    </GlassSurface>
                 </form>
 
                 <div className="w-full">
