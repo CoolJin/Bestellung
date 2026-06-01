@@ -314,25 +314,25 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 50vh;
+    height: 80vh;
     overflow: hidden;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.8;
-    mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+    opacity: 0.85;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 70%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 70%);
 }
 
 .aurora-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(70px);
-    opacity: 0.9;
+    filter: blur(140px);
+    opacity: 1;
     animation: aurora-float 15s infinite alternate ease-in-out, rainbow-hue 10s infinite linear;
 }
 
 .aurora-1 {
-    top: -20vh;
+    top: -25vh;
     left: -10vw;
     width: 60vw;
     height: 50vh;
@@ -343,26 +343,26 @@ body {
 .aurora-2 {
     top: -25vh;
     right: -10vw;
-    width: 70vw;
-    height: 60vh;
+    width: 60vw;
+    height: 50vh;
     background: #00ffcc;
     animation-delay: -5s;
     animation-duration: 18s, 10s;
 }
 
 .aurora-3 {
-    top: -10vh;
+    top: -25vh;
     left: 20vw;
     width: 60vw;
-    height: 45vh;
+    height: 50vh;
     background: #5500ff;
     animation-delay: -10s;
     animation-duration: 20s, 10s;
 }
 
 @keyframes rainbow-hue {
-    0% { filter: blur(70px) hue-rotate(0deg); }
-    100% { filter: blur(70px) hue-rotate(360deg); }
+    0% { filter: blur(140px) hue-rotate(0deg); }
+    100% { filter: blur(140px) hue-rotate(360deg); }
 }
 
 @keyframes aurora-float {
@@ -409,16 +409,14 @@ body {
 
 /* Premium Glowing Pill Search Bar */
 .home-search-container {
-    background: rgba(15, 15, 15, 0.95);
+    background: var(--color-surface); /* Solid background to completely hide inner glow */
     border-radius: 9999px;
     padding: 0.85rem 1.5rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     position: relative;
     z-index: 2;
     border: none;
@@ -429,7 +427,7 @@ body {
 .home-search-container::after {
     content: "";
     position: absolute;
-    inset: -2px;
+    inset: -3px; /* Thickness of the glowing border */
     border-radius: 9999px;
     background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff, #ff0000);
     background-size: 200% 100%;
@@ -439,7 +437,7 @@ body {
 }
 
 .home-search-container::after {
-    filter: blur(15px);
+    filter: blur(20px); /* Wide outer glow */
 }
 
 .home-search-container:focus-within {
