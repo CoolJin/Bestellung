@@ -8,10 +8,8 @@ export default function Home() {
     const { addToCart, currentUser } = useAppContext();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [addedId, setAddedId] = useState(null);
     const [animPhase, setAnimPhase] = useState('idle'); // idle | keyboard_hiding | fading_out | scrolling | done
+    const isSearchingRef = useRef(false);
 
     const performSearch = async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }
@@ -31,6 +29,8 @@ export default function Home() {
     const triggerSearch = () => {
         if (animPhase === 'fading_out' || animPhase === 'scrolling') return; // Prevent double trigger
 
+        isSearchingRef.current = true;
+        
         const input = document.querySelector('.home-search-input');
         if (input) input.blur();
 
@@ -42,12 +42,7 @@ export default function Home() {
                 setAnimPhase('keyboard_hiding');
                 setTimeout(() => {
                     setAnimPhase('scrolling');
-                    const wrapper = document.querySelector('.home-search-wrapper');
-                    if (wrapper) {
-                        const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
-                        const targetScrollY = absoluteTop - 40;
-                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                    }
+                    smoothScrollTo(0, 1000); // Scroll to absolute top!
                     setTimeout(() => setAnimPhase('done'), 1000);
                 }, 300);
             } else {
@@ -57,12 +52,7 @@ export default function Home() {
                     setAnimPhase('fading_out');
                     setTimeout(() => {
                         setAnimPhase('scrolling');
-                        const wrapper = document.querySelector('.home-search-wrapper');
-                        if (wrapper) {
-                            const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
-                            const targetScrollY = absoluteTop - 40;
-                            smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                        }
+                        smoothScrollTo(0, 1000); // Scroll to absolute top!
                         setTimeout(() => setAnimPhase('done'), 1000);
                     }, 400); // 400ms CSS fade duration
                 }, 300); // 300ms keyboard hide duration
@@ -146,7 +136,7 @@ export default function Home() {
     const handleBlur = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                if (results.length === 0 && !loading) {
+                if (results.length === 0 && !isSearchingRef.current) {
                     smoothScrollTo(0, 1000);
                 }
             }, 100);
@@ -216,13 +206,29 @@ export default function Home() {
         if (!query && animPhase !== 'idle') {
             setAnimPhase('idle');
             setResults([]);
+            isSearchingRef.current = false;
         }
     }, [query, animPhase]);
 
     const isFadingOrDone = animPhase !== 'idle' && animPhase !== 'keyboard_hiding';
+    const isScrollingOrDone = animPhase === 'scrolling' || animPhase === 'done';
+
+    const containerStyle = window.innerWidth <= 768 ? {
+        paddingTop: isScrollingOrDone ? '40px' : '120px',
+        transition: 'padding-top 1s cubic-bezier(0.4, 0, 0.2, 1)'
+    } : {};
+
+    const titleWrapperStyle = {
+        transition: 'opacity 0.4s ease, max-height 1s cubic-bezier(0.4, 0, 0.2, 1), margin-bottom 1s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: isFadingOrDone ? 0 : 1,
+        pointerEvents: isFadingOrDone ? 'none' : 'auto',
+        maxHeight: isScrollingOrDone ? '0px' : '300px',
+        marginBottom: isScrollingOrDone ? '0px' : '2rem',
+        overflow: 'hidden'
+    };
 
     return (
-        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
+        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`} style={containerStyle}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -230,8 +236,12 @@ export default function Home() {
             </div>
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ transition: 'opacity 0.4s ease', opacity: isFadingOrDone ? 0 : 1, pointerEvents: isFadingOrDone ? 'none' : 'auto' }}>
+                <div style={titleWrapperStyle}>
                     <div className="animate-fade-in-up">
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '9999px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00eecc', boxShadow: '0 0 10px #00eecc' }}></div>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 500, letterSpacing: '0.05em', color: 'rgba(255,255,255,0.8)' }}>SYSTEM BEREIT</span>
+                        </div>
                         <h1 className="home-title">Willkommen zurück</h1>
                         <p className="home-subtitle">Wonach suchst du heute?</p>
                     </div>
@@ -261,11 +271,23 @@ export default function Home() {
                         )}
                     </div>
 
-                    {query && results.length === 0 && (animPhase === 'idle' || animPhase === 'keyboard_hiding' || animPhase === 'fading_out') && (
-                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)', transition: 'opacity 0.4s ease', opacity: isFadingOrDone ? 0 : 1 }}>
-                            <p>Drücke Enter um zu suchen.</p>
-                        </div>
-                    )}
+                    {/* Keeps the hint text in the DOM but hidden so it doesn't cause sudden height jumps */}
+                    <div 
+                        className="enter-to-search-text" 
+                        style={{ 
+                            textAlign: 'center', 
+                            paddingTop: '2rem', 
+                            color: 'var(--color-muted)', 
+                            transition: 'opacity 0.4s ease, max-height 1s cubic-bezier(0.4, 0, 0.2, 1), padding-top 1s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            opacity: (query && results.length === 0 && !isFadingOrDone) ? 1 : 0,
+                            maxHeight: isScrollingOrDone ? '0px' : '100px',
+                            paddingTop: isScrollingOrDone ? '0px' : '2rem',
+                            overflow: 'hidden',
+                            pointerEvents: 'none'
+                        }}
+                    >
+                        <p>Drücke Enter um zu suchen.</p>
+                    </div>
                 </form>
 
                 {animPhase === 'done' && (
