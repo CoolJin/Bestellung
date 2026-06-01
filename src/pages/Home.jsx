@@ -304,7 +304,18 @@ export default function Home() {
                         className="home-search-wrapper" 
                         width="100%" 
                         height="auto" 
-                        borderRadius={9999} 
+                        borderRadius={50} 
+                        borderWidth={0.07}
+                        backgroundOpacity={0.15}
+                        brightness={60}
+                        saturation={1}
+                        opacity={1}
+                        blur={15}
+                        displace={1}
+                        distortionScale={-180}
+                        redOffset={0}
+                        greenOffset={10}
+                        blueOffset={20}
                         style={{ 
                             maxWidth: '600px', 
                             boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' 
