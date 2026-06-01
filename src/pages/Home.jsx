@@ -133,11 +133,13 @@ export default function Home() {
     };
 
     const clearSearch = async () => { 
+        setQuery(''); // Clear text and X button instantly
+        
         if (searchPhase === 'results' || searchPhase === 'waiting_for_results') {
             setIsFadingOutGrid(true);
             await wait(500); // Wait 500ms for fade out as requested
         }
-        setQuery(''); 
+        
         setResults([]); 
         setError(''); 
         setIsFadingOutGrid(false);
@@ -344,11 +346,9 @@ export default function Home() {
                     )}
                     
                     {searchPhase === 'results' && !error && (
-                        <div className="grid grid-cols-2 gap-4 animate-fade-in-up" 
+                        <div className={`grid grid-cols-2 gap-4 ${isFadingOutGrid ? 'animate-fade-out' : 'animate-fade-in-up'}`} 
                              style={{ 
                                  paddingBottom: '6rem',
-                                 transition: 'opacity 0.5s ease',
-                                 opacity: isFadingOutGrid ? 0 : 1,
                                  pointerEvents: isFadingOutGrid ? 'none' : 'auto'
                              }}>
                             {results.map((product) => {
