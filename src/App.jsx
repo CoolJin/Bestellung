@@ -6,7 +6,6 @@ import './styles/design-system.css';
 
 import Login from './pages/Login';
 import Home from './pages/Home';
-import Catalog from './pages/Catalog';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
@@ -25,10 +24,6 @@ const Navigation = () => {
                     <NavLink to="/home" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
                         <HomeIcon size={20} />
                         <span>Home</span>
-                    </NavLink>
-                    <NavLink to="/catalog" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-                        <Search size={20} />
-                        <span>Suchen</span>
                     </NavLink>
                     <NavLink to="/cart" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
                         <div style={{ position: 'relative' }}>
@@ -97,7 +92,6 @@ const AppContent = () => {
                     <Route path="/login" element={currentUser ? <Navigate to={currentUser.role === 'admin' ? '/admin' : '/home'} /> : <Login />} />
                     
                     <Route path="/home" element={<ProtectedRoute roleRequired="user"><Home /></ProtectedRoute>} />
-                    <Route path="/catalog" element={<ProtectedRoute roleRequired="user"><Catalog /></ProtectedRoute>} />
                     <Route path="/cart" element={<ProtectedRoute roleRequired="user"><Cart /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roleRequired="user"><Profile /></ProtectedRoute>} />
                     
