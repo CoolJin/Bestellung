@@ -333,17 +333,27 @@ body {
     mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
     transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
-    will-change: transform;
-}
-
-/* Dotted grid overlay for parallax effect */
+/* Animated 3D Dotted grid overlay for parallax effect */
 .aurora-bg::after {
     content: "";
     position: absolute;
-    inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    inset: -20%; /* Extra space to allow panning without showing edges */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.25) 1.5px, transparent 1.5px);
     background-size: 32px 32px;
     z-index: 10;
+    animation: grid-float 20s infinite alternate ease-in-out;
+}
+
+@keyframes grid-float {
+    0% {
+        transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: perspective(1000px) rotateX(-5deg) rotateY(5deg) translate3d(-2%, 3%, 50px) scale(1.05);
+    }
+    100% {
+        transform: perspective(1000px) rotateX(2deg) rotateY(2deg) translate3d(2%, -2%, -50px) scale(1.1);
+    }
 }
 
 .aurora-blob {
