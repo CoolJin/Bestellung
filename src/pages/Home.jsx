@@ -4,7 +4,6 @@ import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
 import GlassSurface from '../components/GlassSurface';
-import DotGrid from '../components/DotGrid';
 
 export default function Home() {
     const { addToCart, currentUser } = useAppContext();
@@ -288,13 +287,6 @@ export default function Home() {
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
                 <div className="aurora-blob aurora-3"></div>
-                <DotGrid
-                    dotSize={8}
-                    gap={52}
-                    baseColor="#ffffff"
-                    activeColor="#ffffff"
-                    className="aurora-dot-grid"
-                />
             </div>
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
@@ -313,7 +305,7 @@ export default function Home() {
                         width="100%" 
                         height="auto" 
                         borderRadius={50} 
-                        borderWidth={0.07}
+                        borderWidth={0.2}
                         backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
@@ -321,9 +313,9 @@ export default function Home() {
                         blur={15}
                         displace={1}
                         distortionScale={-180}
-                        redOffset={0}
-                        greenOffset={10}
-                        blueOffset={20}
+                        redOffset={30}
+                        greenOffset={40}
+                        blueOffset={50}
                         style={{ 
                             maxWidth: '600px', 
                             boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' 
