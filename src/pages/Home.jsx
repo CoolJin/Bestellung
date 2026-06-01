@@ -46,6 +46,31 @@ export default function Home() {
         setTimeout(() => setAddedId(null), 1200);
     };
 
+    // Mobile Keyboard UX Fixes
+    const handleFocus = () => {
+        if (window.innerWidth <= 768) {
+            // Wait for mobile keyboard to fully animate up
+            setTimeout(() => {
+                const wrapper = document.querySelector('.home-search-wrapper');
+                if (wrapper) {
+                    // Calculate a position that leaves a perfect gap above the keyboard
+                    // Since it's near the top, scrolling to 0 or a slight offset ensures it's perfectly framed
+                    const yOffset = wrapper.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({ top: Math.max(0, yOffset), behavior: 'smooth' });
+                }
+            }, 300);
+        }
+    };
+
+    const handleBlur = () => {
+        if (window.innerWidth <= 768) {
+            // Smoothly scroll back to the absolute top when keyboard collapses
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+        }
+    };
+
     return (
         <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
             <div className="aurora-bg">
@@ -70,6 +95,8 @@ export default function Home() {
                             placeholder="Produkte suchen..."
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
                             className="home-search-input"
                         />
                         {query && (
