@@ -304,20 +304,21 @@ export default function Home() {
                         className="home-search-wrapper" 
                         width="100%" 
                         height="auto" 
-                        borderRadius={50} 
+                        borderRadius={9999} 
                         style={{ 
                             maxWidth: '600px', 
                             boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)' 
                         }}
                     >
-                        <div className="home-search-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <div className="home-search-container" style={{ width: '100%' }}>
                             <SearchIcon 
                                 className="home-search-icon" 
                                 size={24} 
-                                style={{ position: 'absolute', left: '1rem', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} 
+                                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer', flexShrink: 0 }} 
                                 onClick={triggerSearch}
                             />
                             <input
+                                ref={inputRef}
                                 type="text"
                                 placeholder="Produkte suchen..."
                                 value={query}
@@ -325,11 +326,10 @@ export default function Home() {
                                 onFocus={handleFocus}
                                 onBlur={handleBlur}
                                 className="home-search-input"
-                                style={{ width: '100%', background: 'transparent', border: 'none', padding: '1rem 3rem', color: 'white', outline: 'none' }}
                             />
                             {query && (
-                                <button type="button" onClick={clearSearch} style={{ position: 'absolute', right: '1.5rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', zIndex: 10 }}>
-                                    <X size={20} />
+                                <button type="button" onClick={clearSearch} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', zIndex: 10, flexShrink: 0, padding: 0 }}>
+                                    <X size={24} />
                                 </button>
                             )}
                         </div>
