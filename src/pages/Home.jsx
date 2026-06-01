@@ -305,7 +305,7 @@ export default function Home() {
                         width="100%" 
                         height="auto" 
                         borderRadius={50} 
-                        borderWidth={0.2}
+                        borderWidth={0.15}
                         backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
@@ -318,7 +318,7 @@ export default function Home() {
                         blueOffset={50}
                         style={{ 
                             maxWidth: '600px', 
-                            boxShadow: '0 8px 32px 0 rgba(255, 255, 255, 0.15)' 
+                            boxShadow: '0 8px 32px 0 rgba(255, 255, 255, 0.2)' 
                         }}
                     >
                         <div className="home-search-container" style={{ width: '100%' }}>
