@@ -446,14 +446,15 @@ body {
     z-index: 1;
 }
 
-/* The Solid Black Box (Behind text, above glow) */
+/* The Solid Grey Box (Behind text, above glow) */
 .home-search-container::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: #0a0a0a;
+    background: #2a2a2a; /* Dark-to-mid grey */
     z-index: -1;
+    transition: all 0.4s ease;
 }
 
 /* Rainbow Aurora Glow (Behind the solid box) */
@@ -481,6 +482,13 @@ body {
 .home-search-container:focus-within::before {
     opacity: 1;
     animation: rainbow-glow 8s linear infinite; /* Slower animation */
+}
+
+/* Activate subtle inner rainbow over the grey box */
+.home-search-container:focus-within::after {
+    background: linear-gradient(90deg, rgba(255,0,85,0.15), rgba(255,170,0,0.15), rgba(0,238,204,0.15), rgba(102,34,255,0.15), rgba(255,0,85,0.15)), #2a2a2a;
+    background-size: 200% 100%;
+    animation: rainbow-glow 8s linear infinite;
 }
 
 @keyframes rainbow-glow {
