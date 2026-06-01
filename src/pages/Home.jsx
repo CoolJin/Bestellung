@@ -326,11 +326,24 @@ export default function Home() {
                                 onBlur={handleBlur}
                                 className="home-search-input"
                             />
-                            {query && (
-                                <button type="button" onClick={clearSearch} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', zIndex: 10, flexShrink: 0, padding: 0 }}>
-                                    <X size={24} />
-                                </button>
-                            )}
+                            <button 
+                                type="button" 
+                                onClick={clearSearch} 
+                                style={{ 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    color: 'rgba(255,255,255,0.5)', 
+                                    cursor: query ? 'pointer' : 'default', 
+                                    zIndex: 10, 
+                                    flexShrink: 0, 
+                                    padding: 0,
+                                    opacity: query ? 1 : 0,
+                                    pointerEvents: query ? 'auto' : 'none',
+                                    transition: 'opacity 0.2s ease'
+                                }}
+                            >
+                                <X size={24} />
+                            </button>
                         </div>
                     </GlassSurface>
                 </form>
