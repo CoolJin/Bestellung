@@ -14,7 +14,7 @@ export default function Home() {
     };
 
     return (
-        <div className="home-container">
+        <div className="home-container page-transition">
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -26,15 +26,14 @@ export default function Home() {
                 <p className="home-subtitle">Wonach suchst du heute?</p>
                 
                 <form onSubmit={handleSearch} className="home-search-wrapper">
-                    <div className="search-bar" style={{ borderRadius: '50px', padding: '0.75rem 1.5rem', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-                        <SearchIcon size={20} className="search-icon" />
+                    <div className="home-search-container">
+                        <SearchIcon size={20} className="search-icon" style={{ color: 'rgba(255,255,255,0.7)' }} />
                         <input
                             type="text"
                             placeholder="Produkte suchen..."
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            className="search-input"
-                            style={{ fontSize: '1.1rem' }}
+                            className="home-search-input"
                             autoFocus
                         />
                     </div>

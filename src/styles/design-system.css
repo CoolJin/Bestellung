@@ -402,3 +402,53 @@ body {
     position: relative;
 }
 
+/* Premium Glowing Pill Search Bar */
+.home-search-container {
+    background: rgba(20, 20, 20, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.home-search-container:focus-within {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 25px 2px rgba(142, 45, 226, 0.5), 0 4px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px) scale(1.01);
+}
+
+.home-search-input {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.15rem;
+    width: 100%;
+    outline: none;
+}
+
+.home-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Page Transitions */
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page-transition {
+    animation: pageFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+

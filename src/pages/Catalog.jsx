@@ -57,7 +57,7 @@ export default function Catalog({ mode = 'cart' }) {
     };
 
     return (
-        <div className="container">
+        <div className="container page-transition">
             <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-primary)', paddingTop: '1rem', paddingBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                     <SearchIcon size={20} style={{ position: 'absolute', left: '1rem', color: 'var(--color-muted)' }} />
