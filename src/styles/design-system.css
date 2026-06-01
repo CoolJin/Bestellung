@@ -315,11 +315,8 @@ body {
 
 @media (max-width: 768px) {
     .home-container {
-        padding-top: 14vh; /* Even higher on mobile */
-        transition: padding 1s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .home-container.has-results {
-        padding-top: calc(40px + 10vh); /* Offsets the -10vh margin to leave exactly 40px gap */
+        /* Use a fixed, large enough padding so we can always scroll it exactly where we want */
+        padding-top: 120px; 
     }
 }
 
@@ -417,7 +414,6 @@ body {
     width: 100%;
     max-width: 600px;
     text-align: center;
-    margin-top: -10vh;
 }
 
 .home-title {

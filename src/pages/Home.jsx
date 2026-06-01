@@ -11,7 +11,6 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
-    const [hasTriggeredSearch, setHasTriggeredSearch] = useState(false);
 
     const performSearch = async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }
@@ -28,31 +27,30 @@ export default function Home() {
         }
     };
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        
-        setHasTriggeredSearch(true);
-        
-        if (window.innerWidth <= 768) {
-            // Instantly sync the 1-second scroll to top with the CSS layout transition
-            smoothScrollTo(0, 1000); 
-        }
+    const triggerSearch = () => {
+        const input = document.querySelector('.home-search-input');
+        if (input) input.blur();
 
         performSearch(query.trim());
-        
-        // Remove focus from input to hide mobile keyboard
-        const activeElement = document.activeElement;
-        if (activeElement) {
-            activeElement.blur();
+
+        if (window.innerWidth <= 768) {
+            const wrapper = document.querySelector('.home-search-wrapper');
+            if (wrapper) {
+                const absoluteTop = wrapper.getBoundingClientRect().top + window.scrollY;
+                const targetScrollY = absoluteTop - 40;
+                smoothScrollTo(Math.max(0, targetScrollY), 1000);
+            }
         }
     };
 
-    const clearSearch = () => { 
-        setQuery(''); 
-        setResults([]); 
-        setError(''); 
-        setHasTriggeredSearch(false);
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (e.key === 'Enter' || e.type === 'submit') {
+            triggerSearch();
+        }
     };
+
+    const clearSearch = () => { setQuery(''); setResults([]); setError(''); };
 
     const handleAdd = (product) => {
         addToCart(product, 1);
@@ -64,11 +62,6 @@ export default function Home() {
 
     // Custom 1-second smooth scroll function
     const smoothScrollTo = (targetPosition, duration) => {
-        if (animationFrameRef.current && scrollTargetRef.current === targetPosition) {
-            return;
-        }
-        scrollTargetRef.current = targetPosition;
-
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
         }
@@ -93,7 +86,6 @@ export default function Home() {
                 animationFrameRef.current = requestAnimationFrame(animation);
             } else {
                 animationFrameRef.current = null;
-                scrollTargetRef.current = null;
             }
         };
         
@@ -125,12 +117,14 @@ export default function Home() {
     const handleBlur = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                smoothScrollTo(0, 1000); // 1000ms = 1 second
+                if (results.length === 0 && !loading) {
+                    smoothScrollTo(0, 1000);
+                }
             }, 100);
         }
     };
 
-    const isHintVisible = !!(query && results.length === 0 && !loading && !error && !hasTriggeredSearch);
+    const isHintVisible = !!(query && results.length === 0 && !loading && !error);
 
     useEffect(() => {
         if (window.innerWidth > 768) return;
@@ -190,7 +184,7 @@ export default function Home() {
     }, [isHintVisible]);
 
     return (
-        <div className={`home-container page-transition ${(results.length > 0 || hasTriggeredSearch) ? 'has-results' : ''}`}>
+        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -207,18 +201,17 @@ export default function Home() {
                 
                 <form onSubmit={handleSearch} className="home-search-wrapper" style={{ marginBottom: '2rem' }}>
                     <div className="home-search-container">
-                        <SearchIcon size={26} className="search-icon" style={{ color: 'rgba(255,255,255,0.7)' }} />
+                        <SearchIcon 
+                            className="home-search-icon" 
+                            size={24} 
+                            style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }} 
+                            onClick={triggerSearch}
+                        />
                         <input
                             type="text"
                             placeholder="Produkte suchen..."
                             value={query}
-                            onChange={(e) => {
-                                setQuery(e.target.value);
-                                if (e.target.value === '') {
-                                    setResults([]);
-                                    setHasTriggeredSearch(false);
-                                }
-                            }}
+                            onChange={(e) => setQuery(e.target.value)}
                             onFocus={handleFocus}
                             onBlur={handleBlur}
                             className="home-search-input"
@@ -276,17 +269,8 @@ export default function Home() {
                         </div>
                     )}
                     
-                    {query && results.length === 0 && (
-                        <div 
-                            className="enter-to-search-text" 
-                            style={{ 
-                                textAlign: 'center', 
-                                paddingTop: '2rem', 
-                                color: 'var(--color-muted)',
-                                transition: 'opacity 0.5s ease',
-                                opacity: (!loading && !error && !hasTriggeredSearch) ? 1 : 0
-                            }}
-                        >
+                    {!loading && !error && results.length === 0 && query && (
+                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
                             <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
