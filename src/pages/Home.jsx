@@ -3,6 +3,7 @@ import { Search as SearchIcon, X, ShoppingCart, Check } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
+import GlassSurface from '../components/GlassSurface';
 
 export default function Home() {
     const { addToCart, currentUser } = useAppContext();
