@@ -11,6 +11,7 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
+    const [hasTriggeredSearch, setHasTriggeredSearch] = useState(false);
 
     const performSearch = async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }
@@ -29,6 +30,14 @@ export default function Home() {
 
     const handleSearch = (e) => {
         e.preventDefault();
+        
+        setHasTriggeredSearch(true);
+        
+        if (window.innerWidth <= 768) {
+            // Instantly sync the 1-second scroll to top with the CSS layout transition
+            smoothScrollTo(0, 1000); 
+        }
+
         performSearch(query.trim());
         
         // Remove focus from input to hide mobile keyboard
@@ -38,7 +47,12 @@ export default function Home() {
         }
     };
 
-    const clearSearch = () => { setQuery(''); setResults([]); setError(''); };
+    const clearSearch = () => { 
+        setQuery(''); 
+        setResults([]); 
+        setError(''); 
+        setHasTriggeredSearch(false);
+    };
 
     const handleAdd = (product) => {
         addToCart(product, 1);
@@ -50,6 +64,11 @@ export default function Home() {
 
     // Custom 1-second smooth scroll function
     const smoothScrollTo = (targetPosition, duration) => {
+        if (animationFrameRef.current && scrollTargetRef.current === targetPosition) {
+            return;
+        }
+        scrollTargetRef.current = targetPosition;
+
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
         }
@@ -74,6 +93,7 @@ export default function Home() {
                 animationFrameRef.current = requestAnimationFrame(animation);
             } else {
                 animationFrameRef.current = null;
+                scrollTargetRef.current = null;
             }
         };
         
@@ -110,7 +130,7 @@ export default function Home() {
         }
     };
 
-    const isHintVisible = !!(query && results.length === 0 && !loading && !error);
+    const isHintVisible = !!(query && results.length === 0 && !loading && !error && !hasTriggeredSearch);
 
     useEffect(() => {
         if (window.innerWidth > 768) return;
@@ -170,7 +190,7 @@ export default function Home() {
     }, [isHintVisible]);
 
     return (
-        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
+        <div className={`home-container page-transition ${(results.length > 0 || hasTriggeredSearch) ? 'has-results' : ''}`}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -192,7 +212,13 @@ export default function Home() {
                             type="text"
                             placeholder="Produkte suchen..."
                             value={query}
-                            onChange={(e) => setQuery(e.target.value)}
+                            onChange={(e) => {
+                                setQuery(e.target.value);
+                                if (e.target.value === '') {
+                                    setResults([]);
+                                    setHasTriggeredSearch(false);
+                                }
+                            }}
                             onFocus={handleFocus}
                             onBlur={handleBlur}
                             className="home-search-input"
@@ -250,8 +276,17 @@ export default function Home() {
                         </div>
                     )}
                     
-                    {!loading && !error && results.length === 0 && query && (
-                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
+                    {query && results.length === 0 && (
+                        <div 
+                            className="enter-to-search-text" 
+                            style={{ 
+                                textAlign: 'center', 
+                                paddingTop: '2rem', 
+                                color: 'var(--color-muted)',
+                                transition: 'opacity 0.5s ease',
+                                opacity: (!loading && !error && !hasTriggeredSearch) ? 1 : 0
+                            }}
+                        >
                             <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
