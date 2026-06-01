@@ -337,12 +337,9 @@ body {
 }
 
 /* Animated 3D Dotted grid overlay for parallax effect */
-.aurora-bg::after {
-    content: "";
+.aurora-dot-grid {
     position: absolute;
     inset: -50%; /* Massive extra space to allow extreme 3D panning */
-    background-image: radial-gradient(rgba(255, 255, 255, 0.8) 4px, transparent 5px);
-    background-size: 60px 60px;
     z-index: 10;
     mix-blend-mode: overlay;
     animation: grid-float 20s infinite alternate ease-in-out;
