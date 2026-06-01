@@ -328,7 +328,6 @@ body {
     border-radius: 50%;
     filter: blur(180px) brightness(1.2);
     opacity: 1;
-    animation: aurora-float 15s infinite alternate ease-in-out, rainbow-hue 10s infinite linear;
 }
 
 .aurora-1 {
@@ -337,7 +336,7 @@ body {
     width: 70vw;
     height: 60vh;
     background: #ff0055;
-    animation-delay: 0s;
+    animation: aurora-float 15s infinite alternate ease-in-out, rainbow-1 20s infinite linear;
 }
 
 .aurora-2 {
@@ -346,8 +345,8 @@ body {
     width: 70vw;
     height: 60vh;
     background: #00ffcc;
+    animation: aurora-float 18s infinite alternate ease-in-out, rainbow-2 20s infinite linear;
     animation-delay: -5s;
-    animation-duration: 18s, 10s;
 }
 
 .aurora-3 {
@@ -356,13 +355,32 @@ body {
     width: 70vw;
     height: 60vh;
     background: #5500ff;
+    animation: aurora-float 20s infinite alternate ease-in-out, rainbow-3 20s infinite linear;
     animation-delay: -10s;
-    animation-duration: 20s, 10s;
 }
 
-@keyframes rainbow-hue {
-    0% { filter: blur(180px) brightness(1.2) hue-rotate(0deg); }
-    100% { filter: blur(180px) brightness(1.2) hue-rotate(360deg); }
+@keyframes rainbow-1 {
+    0% { background: #ff0055; }
+    25% { background: #ffaa00; } /* Soft orange-yellow */
+    50% { background: #00eecc; }
+    75% { background: #6622ff; } /* Soft purple-blue */
+    100% { background: #ff0055; }
+}
+
+@keyframes rainbow-2 {
+    0% { background: #00eecc; }
+    25% { background: #6622ff; }
+    50% { background: #ff0055; }
+    75% { background: #ffaa00; }
+    100% { background: #00eecc; }
+}
+
+@keyframes rainbow-3 {
+    0% { background: #6622ff; }
+    25% { background: #ff0055; }
+    50% { background: #ffaa00; }
+    75% { background: #00eecc; }
+    100% { background: #6622ff; }
 }
 
 @keyframes aurora-float {
@@ -447,7 +465,7 @@ body {
     right: -4px;
     bottom: -4px;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #ff0055, #ff7f00, #ffff00, #00ffcc, #0000ff, #5500ff, #8b00ff, #ff0055);
+    background: linear-gradient(90deg, #ff0055, #ff5500, #ffaa00, #00eecc, #3366ff, #6622ff, #aa00ff, #ff0055);
     background-size: 200% 100%;
     z-index: -2; /* Deepest layer */
     opacity: 0;
