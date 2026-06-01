@@ -304,8 +304,22 @@ body {
     align-items: center;
     justify-content: flex-start;
     min-height: 100vh;
-    padding: 2rem;
+    padding: 25vh 2rem 2rem 2rem;
     position: relative;
+    transition: padding 0.5s ease;
+}
+
+.home-container.has-results {
+    padding-top: 5vh;
+}
+
+@media (max-width: 768px) {
+    .home-container {
+        padding-top: 15vh; /* Much higher on mobile */
+    }
+    .home-container.has-results {
+        padding-top: 2vh;
+    }
 }
 
 .aurora-bg {
@@ -317,9 +331,11 @@ body {
     overflow: hidden;
     z-index: 0;
     pointer-events: none;
-    opacity: 1;
-    mask-image: linear-gradient(to bottom, black 0%, transparent 85%);
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 85%);
+    opacity: 0.8;
+    mask-image: radial-gradient(ellipse at top, black 40%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at top, black 40%, transparent 80%);
+    transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
+    will-change: transform;
 }
 
 .aurora-blob {
@@ -327,6 +343,8 @@ body {
     border-radius: 50%;
     filter: blur(180px) brightness(1.2);
     opacity: 1;
+    transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
+    will-change: transform, filter;
 }
 
 .aurora-1 {
@@ -437,6 +455,7 @@ body {
     background: transparent; /* Background handled by ::after */
     border: none;
     z-index: 10;
+    transform: translate3d(0, 0, 0); /* Fix iOS rendering bug */
 }
 
 /* Ensure children (icon, input) sit above the solid background */

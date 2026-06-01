@@ -47,7 +47,7 @@ export default function Home() {
     };
 
     return (
-        <div className="home-container page-transition" style={{ justifyContent: results.length > 0 ? 'flex-start' : 'flex-start', paddingTop: results.length > 0 ? '5vh' : '30vh', transition: 'padding 0.5s ease' }}>
+        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
