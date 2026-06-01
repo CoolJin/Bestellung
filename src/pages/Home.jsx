@@ -104,6 +104,8 @@ export default function Home() {
         }
     };
 
+    const isHintVisible = !!(query && results.length === 0 && !loading && !error);
+
     useEffect(() => {
         if (window.innerWidth > 768) return;
         
@@ -112,7 +114,7 @@ export default function Home() {
         if (!isFocused) return;
 
         setTimeout(() => {
-            if (query && results.length === 0 && !loading && !error) {
+            if (isHintVisible) {
                 const hintText = document.querySelector('.enter-to-search-text');
                 if (hintText && window.visualViewport) {
                     const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
@@ -130,7 +132,7 @@ export default function Home() {
                 }
             }
         }, 50); // Short delay to let React render the DOM change
-    }, [query, results.length, loading, error]);
+    }, [isHintVisible]);
 
     return (
         <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
@@ -214,7 +216,7 @@ export default function Home() {
                     )}
                     
                     {!loading && !error && results.length === 0 && query && (
-                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-muted)' }}>
+                        <div className="animate-fade-in-up enter-to-search-text" style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
                             <p>Drücke Enter um zu suchen.</p>
                         </div>
                     )}
