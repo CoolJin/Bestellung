@@ -61,6 +61,21 @@ export default function Home() {
 
         setLoading(true);
         setError('');
+        
+        const input = document.querySelector('.home-search-input');
+        
+        let scrollYBeforeBlur = 0;
+        const isMobile = window.innerWidth <= 768;
+        
+        if (isMobile) {
+            // Lock body to prevent native mobile browser scroll-bounce when keyboard closes
+            scrollYBeforeBlur = window.scrollY;
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollYBeforeBlur}px`;
+            document.body.style.width = '100%';
+        }
+
+        if (input) input.blur();
         setSearchPhase('fading_text');
 
         try {
@@ -68,6 +83,15 @@ export default function Home() {
 
             const animationPromise = (async () => {
                 await wait(500); // Wait for texts to fade out
+                
+                if (isMobile) {
+                    // Unlock body and restore scroll instantly before starting our smooth scroll
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.width = '';
+                    window.scrollTo(0, scrollYBeforeBlur);
+                }
+
                 setSearchPhase('moving_bar');
                 
                 // We scroll to exactly 0 (top of the page) as requested.
