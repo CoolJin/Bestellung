@@ -318,7 +318,7 @@ export default function Home() {
                         blueOffset={50}
                         style={{ 
                             maxWidth: '600px', 
-                            boxShadow: '0 8px 32px 0 rgba(255, 255, 255, 0.2)' 
+                            boxShadow: '0 0 40px 4px rgba(255, 255, 255, 0.2)' 
                         }}
                     >
                         <div className="home-search-container" style={{ width: '100%' }}>
