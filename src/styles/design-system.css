@@ -452,7 +452,7 @@ body {
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: #2a2a2a; /* Dark-to-mid grey */
+    background: #181818; /* Darker grey */
     z-index: -1;
     transition: all 0.4s ease;
 }
@@ -461,16 +461,16 @@ body {
 .home-search-container::before {
     content: "";
     position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
     border-radius: 9999px;
     background: linear-gradient(90deg, #ff0055, #ff5500, #ffaa00, #00eecc, #3366ff, #6622ff, #aa00ff, #ff0055);
     background-size: 200% 100%;
     z-index: -2; /* Deepest layer */
     opacity: 0;
-    filter: blur(15px);
+    filter: blur(18px);
     transition: opacity 0.4s ease;
 }
 
@@ -480,13 +480,13 @@ body {
 
 /* Activate glow on focus */
 .home-search-container:focus-within::before {
-    opacity: 1;
+    opacity: 0.8; /* Softer overall intensity */
     animation: rainbow-glow 8s linear infinite; /* Slower animation */
 }
 
 /* Activate subtle inner rainbow over the grey box */
 .home-search-container:focus-within::after {
-    background: linear-gradient(90deg, rgba(255,0,85,0.15), rgba(255,170,0,0.15), rgba(0,238,204,0.15), rgba(102,34,255,0.15), rgba(255,0,85,0.15)), #2a2a2a;
+    background: linear-gradient(90deg, rgba(255,0,85,0.15), rgba(255,170,0,0.15), rgba(0,238,204,0.15), rgba(102,34,255,0.15), rgba(255,0,85,0.15)), #181818;
     background-size: 200% 100%;
     animation: rainbow-glow 8s linear infinite;
 }
