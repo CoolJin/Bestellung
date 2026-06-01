@@ -336,6 +336,16 @@ body {
     will-change: transform;
 }
 
+/* Dotted grid overlay for parallax effect */
+.aurora-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 32px 32px;
+    z-index: 10;
+}
+
 .aurora-blob {
     position: absolute;
     border-radius: 50%;
