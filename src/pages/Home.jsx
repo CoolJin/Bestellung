@@ -170,7 +170,7 @@ export default function Home() {
     }, [isHintVisible]);
 
     return (
-        <div className={`home-container page-transition ${results.length > 0 ? 'has-results' : ''}`}>
+        <div className={`home-container page-transition ${results.length > 0 || loading ? 'has-results' : ''}`}>
             <div className="aurora-bg">
                 <div className="aurora-blob aurora-1"></div>
                 <div className="aurora-blob aurora-2"></div>
@@ -178,12 +178,10 @@ export default function Home() {
             </div>
             
             <div className="home-content" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
-                {results.length === 0 && !loading && (
-                    <div className="animate-fade-in-up">
-                        <h1 className="home-title">Willkommen zurück</h1>
-                        <p className="home-subtitle">Wonach suchst du heute?</p>
-                    </div>
-                )}
+                <div className={`home-title-wrapper ${results.length > 0 || loading ? 'hidden' : 'animate-fade-in-up'}`}>
+                    <h1 className="home-title">Willkommen zurück</h1>
+                    <p className="home-subtitle">Wonach suchst du heute?</p>
+                </div>
                 
                 <form onSubmit={handleSearch} className="home-search-wrapper" style={{ marginBottom: '2rem' }}>
                     <div className="home-search-container">
