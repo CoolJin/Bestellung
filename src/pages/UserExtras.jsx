@@ -1,9 +1,7 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { calculateVK, formatPrice } from '../services/pricing';
-import { ArrowLeft, ShoppingCart, Check } from 'lucide-react';
-import GlassSurface from '../components/GlassSurface';
+import { ArrowLeft } from 'lucide-react';
 
 export default function UserExtras() {
     const navigate = useNavigate();
