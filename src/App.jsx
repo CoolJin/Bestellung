@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import UserExtras from './pages/UserExtras';
 
 const Navigation = () => {
     const { currentUser, cart, logout } = useAppContext();
@@ -94,6 +95,7 @@ const AppContent = () => {
                     <Route path="/home" element={<ProtectedRoute roleRequired="user"><Home /></ProtectedRoute>} />
                     <Route path="/cart" element={<ProtectedRoute roleRequired="user"><Cart /></ProtectedRoute>} />
                     <Route path="/profile" element={<ProtectedRoute roleRequired="user"><Profile /></ProtectedRoute>} />
+                    <Route path="/extras" element={<ProtectedRoute roleRequired="user"><UserExtras /></ProtectedRoute>} />
                     
                     <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><Admin /></ProtectedRoute>} />
                     
