@@ -416,54 +416,57 @@ export default function Home() {
                             })}
                         </div>
                     )}
+
+                    {/* Extras Button */}
+                    {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            marginTop: '100px', // Adjusted to be nicely centered beneath the search bar without going off-screen
+                            zIndex: 20
+                        }} className={`animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
+                            <GlassSurface
+                                width="auto"
+                                height="auto"
+                                borderRadius={50}
+                                borderWidth={0.15}
+                                backgroundOpacity={0.15}
+                                brightness={60}
+                                saturation={1}
+                                opacity={1}
+                                blur={15}
+                                displace={1}
+                                distortionScale={-180}
+                                redOffset={30}
+                                greenOffset={40}
+                                blueOffset={50}
+                            >
+                                <button
+                                    onClick={() => navigate('/extras')}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--color-foreground)',
+                                        padding: '0.75rem 1.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        fontSize: '1rem',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        width: '100%',
+                                        height: '100%'
+                                    }}
+                                >
+                                    <Star size={18} color="var(--color-accent)" />
+                                    Verfügbare Extras
+                                </button>
+                            </GlassSurface>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Floating Extras Button */}
-            {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
-                <div style={{
-                    position: 'fixed',
-                    bottom: '100px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 20
-                }} className={`animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
-                    <GlassSurface
-                        borderRadius={50}
-                        borderWidth={0.15}
-                        backgroundOpacity={0.15}
-                        brightness={60}
-                        saturation={1}
-                        opacity={1}
-                        blur={15}
-                        displace={1}
-                        distortionScale={-180}
-                        redOffset={30}
-                        greenOffset={40}
-                        blueOffset={50}
-                    >
-                        <button
-                            onClick={() => navigate('/extras')}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--color-foreground)',
-                                padding: '0.75rem 1.5rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                fontSize: '1rem',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            <Star size={18} color="var(--color-accent)" />
-                            Verfügbare Extras
-                        </button>
-                    </GlassSurface>
-                </div>
-            )}
         </div>
     );
 }
