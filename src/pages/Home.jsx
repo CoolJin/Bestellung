@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search as SearchIcon, X, ShoppingCart, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
-import StarButton from '../components/ui/star-button';
 import GlassSurface from '../components/GlassSurface';
+import { ShinyButton } from '../components/ui/shiny-button';
+import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
-    const { addToCart, currentUser } = useAppContext();
+    const { addToCart, currentUser, adminExtras } = useAppContext();
     const navigate = useNavigate();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
@@ -361,6 +361,27 @@ export default function Home() {
                     </GlassSurface>
                 </form>
 
+                {/* Extras Button */}
+                <div 
+                    style={{ 
+                        position: 'fixed', 
+                        bottom: '15%', 
+                        left: '50%', 
+                        transform: 'translateX(-50%)',
+                        zIndex: 50,
+                        opacity: searchPhase === 'idle' ? 1 : 0,
+                        pointerEvents: searchPhase === 'idle' ? 'auto' : 'none',
+                        transition: 'opacity 0.5s ease',
+                    }}
+                >
+                    <ShinyButton 
+                        activeGlow={adminExtras && adminExtras.length > 0} 
+                        onClick={() => navigate('/extras')}
+                    >
+                        Verfügbare Extras
+                    </ShinyButton>
+                </div>
+
                 <div className="w-full">
                     {searchPhase === 'waiting_for_results' && (
                         <div style={{ textAlign: 'center', padding: '2rem 0' }}>
@@ -415,20 +436,6 @@ export default function Home() {
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
-
-                    {/* Extras Button */}
-                    {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            marginTop: '100px', // Adjusted to be nicely centered beneath the search bar without going off-screen
-                            zIndex: 20
-                        }} className={`animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
-                            <StarButton onClick={() => navigate('/extras')}>
-                                Verfügbare Extras
-                            </StarButton>
                         </div>
                     )}
                 </div>
