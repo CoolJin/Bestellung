@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search as SearchIcon, X, ShoppingCart, Check } from 'lucide-react';
+import { Search as SearchIcon, X, ShoppingCart, Check, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
@@ -7,6 +8,7 @@ import GlassSurface from '../components/GlassSurface';
 
 export default function Home() {
     const { addToCart, currentUser } = useAppContext();
+    const navigate = useNavigate();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -416,6 +418,52 @@ export default function Home() {
                     )}
                 </div>
             </div>
+
+            {/* Floating Extras Button */}
+            {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '100px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 20
+                }} className={`animate-fade-in-up ${searchPhase !== 'idle' ? 'fade-out' : ''}`}>
+                    <GlassSurface
+                        borderRadius={50}
+                        borderWidth={0.15}
+                        backgroundOpacity={0.15}
+                        brightness={60}
+                        saturation={1}
+                        opacity={1}
+                        blur={15}
+                        displace={1}
+                        distortionScale={-180}
+                        redOffset={30}
+                        greenOffset={40}
+                        blueOffset={50}
+                    >
+                        <button
+                            onClick={() => navigate('/extras')}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-foreground)',
+                                padding: '0.75rem 1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <Star size={18} color="var(--color-accent)" />
+                            Verfügbare Extras
+                        </button>
+                    </GlassSurface>
+                </div>
+            )}
         </div>
     );
 }
