@@ -364,7 +364,24 @@ export default function Home() {
                                                 onClick={(e) => { e.preventDefault(); navigate('/extras'); }} 
                                                 className="btn btn-frosted-gold w-full"
                                             >
-                                                <span className="btn-laser-glow"></span>
+                                                <svg 
+                                                    className="btn-laser-svg" 
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <defs>
+                                                        <filter id="laser-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+                                                            <feGaussianBlur stdDeviation="2" result="blur" />
+                                                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                                        </filter>
+                                                    </defs>
+                                                    <rect 
+                                                        x="1" y="1" 
+                                                        width="calc(100% - 2px)" height="calc(100% - 2px)" 
+                                                        rx="24" ry="24" 
+                                                        pathLength="100"
+                                                        filter="url(#laser-glow-filter)"
+                                                    />
+                                                </svg>
                                                 <span>Verfügbare Extras</span>
                                             </button>
                                         </div>

@@ -158,41 +158,33 @@ body {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.btn-laser-glow {
+.btn-laser-svg {
   position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 2px;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   pointer-events: none;
-  opacity: 0;
   z-index: 0;
-  overflow: hidden;
+  border-radius: inherit;
 }
 
-.btn-laser-glow::before {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 300%; height: 300%;
-  background: conic-gradient(from 0deg, transparent 0%, transparent 80%, rgba(255,255,255,0.6) 95%, #ffffff 100%);
-  transform: translate(-50%, -50%) rotate(0deg);
+.btn-laser-svg rect {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  stroke-dasharray: 20 100;
+  stroke-dashoffset: 20;
+  opacity: 0;
 }
 
-.btn-frosted-gold:hover .btn-laser-glow {
-  opacity: 1;
+.btn-frosted-gold:hover .btn-laser-svg rect {
+  animation: laser-trace 0.6s linear forwards;
 }
 
-.btn-frosted-gold:hover .btn-laser-glow::before {
-  animation: laser-spin 0.6s linear forwards;
-}
-
-@keyframes laser-spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
-  85% { opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(360deg); opacity: 0; }
+@keyframes laser-trace {
+  0% { stroke-dashoffset: 20; opacity: 0; }
+  5% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
 }
 
 .btn-danger {
