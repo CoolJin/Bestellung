@@ -276,18 +276,19 @@ export default function Home() {
     // Scroll after banner expands
     useEffect(() => {
         if (showExtrasBanner && window.innerWidth <= 768) {
-            const isFocused = document.activeElement === document.querySelector('.home-search-input');
-            if (isFocused) {
-                setTimeout(() => {
+            const timer = setTimeout(() => {
+                const isFocused = document.activeElement === document.querySelector('.home-search-input');
+                if (isFocused) {
                     const wrapper = document.querySelector('.home-search-wrapper');
                     if (wrapper && window.visualViewport) {
                         const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
-                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                        smoothScrollTo(Math.max(0, targetScrollY), 600);
                     }
-                }, 1050);
-            }
+                }
+            }, 1050);
+            return () => clearTimeout(timer);
         }
     }, [showExtrasBanner]);
 
