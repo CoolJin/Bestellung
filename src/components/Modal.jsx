@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-
-export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", confirmColor = "primary", isDanger = false }) {
-    
+export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", confirmColor = "primary", isDanger = false, cancelText = "Abbrechen" }) {
     // Prevent scrolling when modal is open
     useEffect(() => {
         if (isOpen) {
@@ -70,7 +68,7 @@ export default function Modal({ isOpen, title, children, onClose, onConfirm, con
                     justifyContent: 'flex-end',
                     gap: '0.75rem'
                 }}>
-                    <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+                    <button className="btn btn-secondary" onClick={onClose}>{cancelText}</button>
                     {onConfirm && (
                         <button 
                             className={`btn ${isDanger ? 'btn-danger' : 'btn-primary'}`} 

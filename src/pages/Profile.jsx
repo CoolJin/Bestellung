@@ -266,6 +266,7 @@ export default function Profile() {
                 isOpen={isLagerModalOpen}
                 title={<span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Package size={20} /> Mein Lager</span>}
                 onClose={() => setIsLagerModalOpen(false)}
+                cancelText="Schließen"
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>

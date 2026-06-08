@@ -518,6 +518,7 @@ export default function Admin() {
                 onClose={closeModal}
                 onConfirm={confirmModal}
                 isDanger={modalConfig.type === 'delete_user'}
+                cancelText={modalConfig.type === 'track_inventory' ? 'Schließen' : 'Abbrechen'}
             >
                 {renderModalContent()}
             </Modal>
