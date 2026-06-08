@@ -169,23 +169,43 @@ body {
 
 .btn-laser-svg rect {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: rgba(255, 255, 255, 0.8);
   stroke-width: 4px;
-  stroke-dasharray: 20 100;
-  stroke-dashoffset: 20;
+  stroke-dasharray: 0 100;
+  stroke-dashoffset: 0;
   opacity: 0;
   filter: blur(3px);
 }
 
 .btn-frosted-gold:hover .btn-laser-svg rect {
-  animation: laser-trace 2s linear forwards;
+  animation: laser-trace 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes laser-trace {
-  0% { stroke-dashoffset: 20; opacity: 0; }
-  5% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { stroke-dashoffset: -100; opacity: 0; }
+  0% { 
+    stroke-dashoffset: 0; 
+    stroke-dasharray: 0 100; 
+    opacity: 0; 
+  }
+  5% {
+    opacity: 1;
+  }
+  20% { 
+    stroke-dashoffset: 0; 
+    stroke-dasharray: 20 100; 
+  }
+  80% { 
+    stroke-dashoffset: -80; 
+    stroke-dasharray: 20 100; 
+  }
+  95% {
+    opacity: 1;
+  }
+  100% { 
+    stroke-dashoffset: -100; 
+    stroke-dasharray: 0 100; 
+    opacity: 0; 
+  }
 }
 
 .btn-danger {
