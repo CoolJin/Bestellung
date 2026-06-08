@@ -362,10 +362,9 @@ export default function Home() {
                                             <button 
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); navigate('/extras'); }} 
-                                                className="btn btn-secondary w-full" 
-                                                style={{ borderRadius: '25px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                                                className="btn btn-frosted-gold w-full"
                                             >
-                                                Verfügbare Extras
+                                                <span>Verfügbare Extras</span>
                                             </button>
                                         </div>
                                     </motion.div>
