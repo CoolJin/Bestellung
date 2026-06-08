@@ -368,18 +368,11 @@ export default function Home() {
                                                     className="btn-laser-svg" 
                                                     xmlns="http://www.w3.org/2000/svg"
                                                 >
-                                                    <defs>
-                                                        <filter id="laser-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
-                                                            <feGaussianBlur stdDeviation="2" result="blur" />
-                                                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                                        </filter>
-                                                    </defs>
                                                     <rect 
-                                                        x="1" y="1" 
-                                                        width="calc(100% - 2px)" height="calc(100% - 2px)" 
-                                                        rx="24" ry="24" 
+                                                        x="0" y="0" 
+                                                        width="100%" height="100%" 
+                                                        rx="25" ry="25" 
                                                         pathLength="100"
-                                                        filter="url(#laser-glow-filter)"
                                                     />
                                                 </svg>
                                                 <span>Verfügbare Extras</span>
