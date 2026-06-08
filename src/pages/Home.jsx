@@ -358,7 +358,7 @@ export default function Home() {
                                         transition={{ duration: 1 }}
                                         style={{ overflow: 'hidden' }}
                                     >
-                                        <div style={{ padding: '0 2rem 1.25rem 2rem', display: 'flex', justifyContent: 'center' }}>
+                                        <div style={{ padding: '1rem 2rem 1.25rem 2rem', display: 'flex', justifyContent: 'center' }}>
                                             <button 
                                                 type="button"
                                                 onClick={(e) => { e.preventDefault(); navigate('/extras'); }} 
