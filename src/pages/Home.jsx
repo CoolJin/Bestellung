@@ -17,9 +17,26 @@ export default function Home() {
     const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
     const [isFadingOutGrid, setIsFadingOutGrid] = useState(false);
     const [showExtrasBanner, setShowExtrasBanner] = useState(false);
+    const [baseRadius, setBaseRadius] = useState(32);
     const titleWrapperRef = useRef(null);
     const hintWrapperRef = useRef(null);
+    const searchContainerRef = useRef(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const updateRadius = () => {
+            if (searchContainerRef.current) {
+                const height = searchContainerRef.current.offsetHeight;
+                if (height > 0) {
+                    setBaseRadius(height / 2);
+                }
+            }
+        };
+        // Small delay to ensure styles are applied
+        setTimeout(updateRadius, 50);
+        window.addEventListener('resize', updateRadius);
+        return () => window.removeEventListener('resize', updateRadius);
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -297,7 +314,7 @@ export default function Home() {
                         className="home-search-wrapper" 
                         width="100%" 
                         height="auto" 
-                        borderRadius={32} 
+                        borderRadius={baseRadius} 
                         borderWidth={0.15}
                         backgroundOpacity={0.15}
                         brightness={60}
@@ -314,7 +331,7 @@ export default function Home() {
                         }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                            <div className="home-search-container" style={{ width: '100%' }}>
+                            <div className="home-search-container" style={{ width: '100%' }} ref={searchContainerRef}>
                                 <SearchIcon 
                                     className="home-search-icon" 
                                     size={24} 
