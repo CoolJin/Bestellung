@@ -364,6 +364,7 @@ export default function Home() {
                                                 onClick={(e) => { e.preventDefault(); navigate('/extras'); }} 
                                                 className="btn btn-frosted-gold w-full"
                                             >
+                                                <span className="btn-laser-glow"></span>
                                                 <span>Verfügbare Extras</span>
                                             </button>
                                         </div>
