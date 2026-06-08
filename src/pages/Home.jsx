@@ -297,7 +297,7 @@ export default function Home() {
                         className="home-search-wrapper" 
                         width="100%" 
                         height="auto" 
-                        borderRadius={100} 
+                        borderRadius={32} 
                         borderWidth={0.15}
                         backgroundOpacity={0.15}
                         brightness={60}
