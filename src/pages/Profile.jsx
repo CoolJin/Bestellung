@@ -87,15 +87,24 @@ export default function Profile() {
         }
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadges = (order) => {
         const base = { padding: '0.2rem 0.6rem', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' };
-        switch (status) {
-            case 'open':       return <span style={{ ...base, background: 'rgba(59,130,246,0.12)', color: '#60a5fa' }}>Offen</span>;
-            case 'processing': return <span style={{ ...base, background: 'rgba(234,179,8,0.12)', color: '#facc15' }}>In Bearbeitung</span>;
-            case 'completed':  return <span style={{ ...base, background: 'rgba(34,197,94,0.12)', color: '#4ade80' }}>Abgeschlossen</span>;
-            case 'cancelled':  return <span style={{ ...base, background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>Abgelehnt</span>;
-            default:           return <span style={{ ...base, background: 'rgba(255,255,255,0.08)', color: 'var(--color-muted)' }}>{status}</span>;
+        const badges = [];
+
+        switch (order.status) {
+            case 'open':       badges.push(<span key="status" style={{ ...base, background: 'rgba(59,130,246,0.12)', color: '#60a5fa' }}>Offen</span>); break;
+            case 'processing': badges.push(<span key="status" style={{ ...base, background: 'rgba(234,179,8,0.12)', color: '#facc15' }}>In Bearbeitung</span>); break;
+            case 'ordered':    badges.push(<span key="status" style={{ ...base, background: 'rgba(168,85,247,0.12)', color: '#c084fc' }}>Bestellt</span>); break;
+            case 'completed':  badges.push(<span key="status" style={{ ...base, background: 'rgba(34,197,94,0.12)', color: '#4ade80' }}>Bezahlt</span>); break;
+            case 'cancelled':  badges.push(<span key="status" style={{ ...base, background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>Abgelehnt</span>); break;
+            default:           badges.push(<span key="status" style={{ ...base, background: 'rgba(255,255,255,0.08)', color: 'var(--color-muted)' }}>{order.status}</span>); break;
         }
+
+        if (order.status === 'ordered' && order.paymentStatus !== 'paid') {
+            badges.push(<span key="payment" style={{ ...base, background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>Nicht bezahlt</span>);
+        }
+
+        return <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'flex-start' }}>{badges}</div>;
     };
 
     const activeOrders  = myOrders.filter(o => !(o.archivedBy || []).includes(currentUser.username));
@@ -115,7 +124,7 @@ export default function Profile() {
                             {new Date(order.date).toLocaleString('de-DE')}
                         </div>
                     </div>
-                    {getStatusBadge(order.status)}
+                    {getStatusBadges(order)}
                 </div>
 
                 {/* Items */}
@@ -154,13 +163,11 @@ export default function Profile() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {(order.status === 'open' || order.status === 'processing') && !isArchived && (
+                    {order.status === 'open' && !isArchived && (
                         <>
-                            {order.status === 'open' && (
-                                <button className="btn btn-secondary" onClick={() => handleAction(order.id, 'edit')}>
-                                    <Edit2 size={15} /> Bearbeiten
-                                </button>
-                            )}
+                            <button className="btn btn-secondary" onClick={() => handleAction(order.id, 'edit')}>
+                                <Edit2 size={15} /> Bearbeiten
+                            </button>
                             <button className="btn btn-danger" onClick={() => handleAction(order.id, 'cancel')}>
                                 <Trash2 size={15} /> Stornieren
                             </button>

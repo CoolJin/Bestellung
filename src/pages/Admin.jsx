@@ -51,8 +51,12 @@ export default function Admin() {
         }
     };
 
-    const handleOrderAction = async (id, status) => {
-        await DB.updateOrder(id, { status });
+    const handleOrderAction = async (id, status, paymentStatus = null) => {
+        const updates = { status };
+        if (paymentStatus) {
+            updates.paymentStatus = paymentStatus;
+        }
+        await DB.updateOrder(id, updates);
         fetchAllData();
     };
     
@@ -133,18 +137,18 @@ export default function Admin() {
         allOrders = allOrders.filter(o => o.user === selectedUserFilter);
     }
 
-    const activeOrders = allOrders.filter(o => !o.adminArchived && ['open', 'processing'].includes(o.status));
+    const activeOrders = allOrders.filter(o => !o.adminArchived && ['open', 'processing', 'ordered'].includes(o.status));
     const completedOrders = allOrders.filter(o => !o.adminArchived && o.status === 'completed');
     const cancelledOrders = allOrders.filter(o => !o.adminArchived && o.status === 'cancelled');
     const archivedOrders = allOrders.filter(o => o.adminArchived);
 
     const getStatusLabel = (status) => {
-        const map = { open: 'Offen', processing: 'In Bearbeitung', completed: 'Abgeschlossen', cancelled: 'Abgelehnt' };
+        const map = { open: 'Offen', processing: 'In Bearbeitung', ordered: 'Bestellt', completed: 'Bezahlt', cancelled: 'Abgelehnt' };
         return map[status] || status;
     };
 
     const getStatusColor = (status) => {
-        const map = { open: 'rgba(59,130,246,0.15)', processing: 'rgba(234,179,8,0.15)', completed: 'rgba(34,197,94,0.15)', cancelled: 'rgba(239,68,68,0.15)' };
+        const map = { open: 'rgba(59,130,246,0.15)', processing: 'rgba(234,179,8,0.15)', ordered: 'rgba(168,85,247,0.15)', completed: 'rgba(34,197,94,0.15)', cancelled: 'rgba(239,68,68,0.15)' };
         return map[status] || 'rgba(255,255,255,0.1)';
     };
 
@@ -208,10 +212,18 @@ export default function Admin() {
                     {!order.adminArchived && order.status === 'processing' && (
                         <>
                             <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.25rem' }}>
-                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed')}><CheckCircle size={16} /> Abschließen</button>
+                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'ordered', 'unpaid')}><CheckCircle size={16} /> Bestellt</button>
                                 <button className="btn btn-secondary" style={{ padding: '0 0.5rem' }} onClick={() => handleOrderAction(order.id, 'open')} title="Zurück zu Offen"><RotateCcw size={16} /></button>
                             </div>
-                            <button className="btn btn-danger" onClick={() => handleOrderAction(order.id, 'cancelled')}><XCircle size={16} /> Ablehnen</button>
+                        </>
+                    )}
+
+                    {!order.adminArchived && order.status === 'ordered' && (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.25rem' }}>
+                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed', 'paid')}><CheckCircle size={16} /> Als bezahlt markieren</button>
+                                <button className="btn btn-secondary" style={{ padding: '0 0.5rem' }} onClick={() => handleOrderAction(order.id, 'processing')} title="Zurück zu Bearbeitung"><RotateCcw size={16} /></button>
+                            </div>
                         </>
                     )}
 
@@ -223,7 +235,7 @@ export default function Admin() {
 
                     {!order.adminArchived && order.status === 'completed' && (
                         <>
-                            <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'processing')} title="Zurück in Bearbeitung"><RotateCcw size={16} /> Rückgängig</button>
+                            <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'ordered', 'unpaid')} title="Zurück zu Bestellt"><RotateCcw size={16} /> Rückgängig</button>
                         </>
                     )}
 
