@@ -256,6 +256,24 @@ export default function Home() {
         };
     }, []);
 
+    // Scroll after banner expands
+    useEffect(() => {
+        if (showExtrasBanner && window.innerWidth <= 768) {
+            const isFocused = document.activeElement === document.querySelector('.home-search-input');
+            if (isFocused) {
+                setTimeout(() => {
+                    const wrapper = document.querySelector('.home-search-wrapper');
+                    if (wrapper && window.visualViewport) {
+                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                        const viewportHeight = window.visualViewport.height;
+                        const targetScrollY = absoluteBottom - viewportHeight + 40;
+                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                    }
+                }, 1050);
+            }
+        }
+    }, [showExtrasBanner]);
+
     return (
         <div className={`home-container page-transition ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'search-active' : ''}`}>
             <div className="aurora-bg">
@@ -380,16 +398,16 @@ export default function Home() {
                              }}>
                             {results.map((product) => {
                                 const displayPrice = calculatePrice(product, currentUser);
-                                const isExtra = adminExtras.some(e => 
+                                const extraItem = adminExtras.find(e => 
                                     e.id === product.id || 
                                     (e.name && product.name && e.name.trim().toLowerCase() === product.name.trim().toLowerCase())
                                 );
 
                                 return (
                                     <div key={product.id} className="glass-panel product-card" style={{ position: 'relative' }}>
-                                        {isExtra && (
+                                        {extraItem && (
                                             <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'var(--color-accent)', color: 'var(--color-accent-fg)', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10, boxShadow: 'var(--shadow-sm)' }}>
-                                                Extra Item
+                                                {extraItem.quantity || 1}x verfügbar in Extras
                                             </div>
                                         )}
                                         <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
