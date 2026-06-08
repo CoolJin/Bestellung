@@ -6,7 +6,7 @@ import { calculatePrice, formatPrice } from '../services/pricing';
 import { motion } from 'framer-motion';
 
 export default function UserExtras() {
-    const { adminExtras, fetchAllData } = useAppContext();
+    const { adminExtras, fetchAllData, currentUser } = useAppContext();
     const navigate = useNavigate();
 
     // Ensure data is fresh
@@ -33,7 +33,7 @@ export default function UserExtras() {
                     </div>
                 ) : (
                     adminExtras.map((product) => {
-                        const displayPrice = calculatePrice(product.price);
+                        const displayPrice = calculatePrice(product, currentUser);
                         
                         return (
                             <motion.div 
