@@ -205,15 +205,9 @@ export default function Home() {
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                const hintText = document.querySelector('.enter-to-search-text');
                 const wrapper = document.querySelector('.home-search-wrapper');
                 
-                if (hintText && window.visualViewport) {
-                    const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
-                    const viewportHeight = window.visualViewport.height;
-                    const targetScrollY = absoluteBottom - viewportHeight + 10; 
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                } else if (wrapper && window.visualViewport) {
+                if (wrapper && window.visualViewport) {
                     const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
@@ -232,8 +226,6 @@ export default function Home() {
             }, 100);
         }
     };
-
-    const isHintVisible = !!(query && results.length === 0 && !loading && !error);
 
     useEffect(() => {
         if (window.innerWidth > 768) return;
@@ -263,34 +255,6 @@ export default function Home() {
             window.visualViewport.removeEventListener('resize', handleResize);
         };
     }, []);
-
-    useEffect(() => {
-        if (window.innerWidth > 768) return;
-        
-        // Ensure input is focused so we only adjust if keyboard is open
-        const isFocused = document.activeElement === document.querySelector('.home-search-input');
-        if (!isFocused) return;
-
-        setTimeout(() => {
-            if (isHintVisible) {
-                const hintText = document.querySelector('.enter-to-search-text');
-                if (hintText && window.visualViewport) {
-                    const absoluteBottom = hintText.getBoundingClientRect().bottom + window.scrollY;
-                    const viewportHeight = window.visualViewport.height;
-                    const targetScrollY = absoluteBottom - viewportHeight + 10; // 10px gap for hint text
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                }
-            } else if (!query && results.length === 0) {
-                const wrapper = document.querySelector('.home-search-wrapper');
-                if (wrapper && window.visualViewport) {
-                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
-                    const viewportHeight = window.visualViewport.height;
-                    const targetScrollY = absoluteBottom - viewportHeight + 40; // Revert to 40px gap for search bar
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                }
-            }
-        }, 50); // Short delay to let React render the DOM change
-    }, [isHintVisible]);
 
     return (
         <div className={`home-container page-transition ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'search-active' : ''}`}>
@@ -407,14 +371,7 @@ export default function Home() {
                         </div>
                     )}
                     
-                    {(searchPhase === 'idle' || searchPhase === 'fading_text' || searchPhase === 'moving_bar') && query && results.length === 0 && (
-                        <div ref={hintWrapperRef} className={`hero-texts-wrapper`}>
-                            <div className={`hero-texts animate-fade-in-up enter-to-search-text ${searchPhase !== 'idle' ? 'fade-out' : ''}`} style={{ textAlign: 'center', paddingTop: '2rem', color: 'var(--color-muted)' }}>
-                                <p>Drücke Enter um zu suchen.</p>
-                            </div>
-                        </div>
-                    )}
-                    
+
                     {searchPhase === 'results' && !error && (
                         <div className={`grid grid-cols-2 gap-4 ${isFadingOutGrid ? 'animate-fade-out' : 'animate-fade-in-up'}`} 
                              style={{ 
@@ -423,7 +380,10 @@ export default function Home() {
                              }}>
                             {results.map((product) => {
                                 const displayPrice = calculatePrice(product, currentUser);
-                                const isExtra = adminExtras.some(e => e.id === product.id);
+                                const isExtra = adminExtras.some(e => 
+                                    e.id === product.id || 
+                                    (e.name && product.name && e.name.trim().toLowerCase() === product.name.trim().toLowerCase())
+                                );
 
                                 return (
                                     <div key={product.id} className="glass-panel product-card" style={{ position: 'relative' }}>

@@ -15,7 +15,7 @@ export default function UserExtras() {
     }, [fetchAllData]);
 
     return (
-        <div className="page-fade-in" style={{ padding: '1rem', paddingBottom: '80px', maxWidth: '800px', margin: '0 auto' }}>
+        <div className="page-fade-in" style={{ padding: '3rem 1rem 80px 1rem', maxWidth: '800px', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
                 <button 
                     onClick={() => navigate('/home')} 
@@ -26,7 +26,7 @@ export default function UserExtras() {
                 <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Verfügbare Extras</h1>
             </div>
 
-            <div className="catalog-grid">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {adminExtras.length === 0 ? (
                     <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-muted)', gridColumn: '1 / -1' }}>
                         <p>Momentan sind keine Extras verfügbar.</p>
@@ -38,7 +38,7 @@ export default function UserExtras() {
                         return (
                             <motion.div 
                                 key={product.id} 
-                                className="product-card"
+                                className="glass-panel product-card"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.3 }}
