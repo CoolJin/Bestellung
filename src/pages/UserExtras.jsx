@@ -67,10 +67,6 @@ export default function UserExtras() {
                                                 Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{product.quantity || 1}</strong>
                                             </div>
                                         </div>
-                                        
-                                        <div className="btn btn-secondary w-full" style={{ opacity: 0.5, cursor: 'not-allowed', textAlign: 'center' }}>
-                                            Nur Ansicht
-                                        </div>
                                     </div>
                                 </div>
                             </motion.div>

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
-    const { addToCart, currentUser } = useAppContext();
+    const { addToCart, currentUser, adminExtras = [] } = useAppContext();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -373,6 +373,7 @@ export default function Home() {
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
                                         exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 1 }}
                                         style={{ overflow: 'hidden' }}
                                     >
                                         <div style={{ padding: '0 2rem 1.25rem 2rem', display: 'flex', justifyContent: 'center' }}>
@@ -422,9 +423,15 @@ export default function Home() {
                              }}>
                             {results.map((product) => {
                                 const displayPrice = calculatePrice(product, currentUser);
+                                const isExtra = adminExtras.some(e => e.id === product.id);
 
                                 return (
-                                    <div key={product.id} className="glass-panel product-card">
+                                    <div key={product.id} className="glass-panel product-card" style={{ position: 'relative' }}>
+                                        {isExtra && (
+                                            <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'var(--color-accent)', color: 'var(--color-accent-fg)', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10, boxShadow: 'var(--shadow-sm)' }}>
+                                                Extra Item
+                                            </div>
+                                        )}
                                         <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
                                         <div style={{ flex: 1, padding: '0.5rem 0' }}>
                                             <h3 className="product-title">{product.name}</h3>
