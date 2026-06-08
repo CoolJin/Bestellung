@@ -195,6 +195,16 @@ export default function Admin() {
                                     ) : (
                                         <span style={{ color: 'var(--color-foreground)' }}>{item.name}</span>
                                     )}
+                                    {item.delivered > 0 && (
+                                        <span style={{ 
+                                            marginLeft: '0.5rem', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: '600',
+                                            color: item.delivered >= item.quantity ? '#4ade80' : 'var(--color-accent)' 
+                                        }}>
+                                            ({item.delivered}/{item.quantity} abgegeben)
+                                        </span>
+                                    )}
                                 </span>
                                 <span>{Number(item.originalPrice || item.price || 0).toFixed(2)} €/Stk</span>
                             </div>

@@ -119,13 +119,13 @@ export default function Profile() {
             (order.items || []).forEach(item => {
                 const remaining = (item.quantity || 0) - (item.delivered || 0);
                 if (remaining > 0) {
-                    if (!itemsMap[item.name]) itemsMap[item.name] = 0;
-                    itemsMap[item.name] += remaining;
+                    if (!itemsMap[item.name]) itemsMap[item.name] = { count: 0, image: item.image };
+                    itemsMap[item.name].count += remaining;
                 }
             });
         });
 
-        return Object.entries(itemsMap).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count);
+        return Object.entries(itemsMap).map(([name, data]) => ({ name, count: data.count, image: data.image })).sort((a,b) => b.count - a.count);
     };
 
     const renderOrderCard = (order) => {
@@ -264,12 +264,12 @@ export default function Profile() {
             {/* Lager Modal */}
             <Modal
                 isOpen={isLagerModalOpen}
-                title="📦 Mein Lager"
+                title={<span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Package size={20} /> Mein Lager</span>}
                 onClose={() => setIsLagerModalOpen(false)}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                        Hier siehst du alle bestellten Dosen, die noch nicht an dich ausgehändigt wurden.
+                        Hier siehst du alle bestellten Produkte, die noch nicht an dich ausgehändigt wurden.
                     </p>
                     
                     {getStorageItems().length === 0 ? (
@@ -278,9 +278,16 @@ export default function Profile() {
                         </div>
                     ) : (
                         getStorageItems().map((item, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
-                                <span style={{ fontWeight: '600' }}>{item.name}</span>
-                                <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count} {item.count === 1 ? 'Dose' : 'Dosen'}</span>
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    {item.image ? (
+                                        <img src={item.image} alt={item.name} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+                                    )}
+                                    <span style={{ fontWeight: '600' }}>{item.name}</span>
+                                </div>
+                                <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count}x</span>
                             </div>
                         ))
                     )}
