@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
-export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", confirmColor = "primary", isDanger = false, cancelText = "Abbrechen" }) {
-    // Prevent scrolling when modal is open
+import { X } from 'lucide-react';export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", confirmColor = "primary", isDanger = false, cancelText = "Abbrechen", centerButtons = false }) {// Prevent scrolling when modal is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -65,7 +63,7 @@ export default function Modal({ isOpen, title, children, onClose, onConfirm, con
                     background: 'rgba(255,255,255,0.02)',
                     borderTop: '1px solid var(--color-border)',
                     display: 'flex',
-                    justifyContent: 'flex-end',
+                    justifyContent: centerButtons ? 'center' : 'flex-end',
                     gap: '0.75rem'
                 }}>
                     <button className="btn btn-secondary" onClick={onClose}>{cancelText}</button>
