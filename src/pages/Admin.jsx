@@ -4,7 +4,7 @@ import { DB } from '../services/db';
 import Catalog from './Catalog';
 import AdminExtras from './AdminExtras';
 import Modal from '../components/Modal';
-import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink } from 'lucide-react';
+import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package } from 'lucide-react';
 
 export default function Admin() {
     const { orders, fetchAllData } = useAppContext();
@@ -22,6 +22,7 @@ export default function Admin() {
     const [pw1, setPw1] = useState('');
     const [pw2, setPw2] = useState('');
     const [confirmPw, setConfirmPw] = useState('');
+    const [inventoryDraft, setInventoryDraft] = useState(null);
     
     // Admin user create state
     const [newUsername, setNewUsername] = useState('');
@@ -71,6 +72,9 @@ export default function Admin() {
 
     const openModal = (title, type, data) => {
         setPw1(''); setPw2(''); setConfirmPw('');
+        if (type === 'track_inventory') {
+            setInventoryDraft(JSON.parse(JSON.stringify(data.order.items || [])));
+        }
         setModalConfig({ isOpen: true, title, type, data });
     };
     
@@ -105,6 +109,10 @@ export default function Admin() {
             }
             else if (type === 'delete_order') {
                 await DB.updateOrder(data.orderId, { deletedByAdmin: true });
+                fetchAllData();
+            }
+            else if (type === 'track_inventory') {
+                await DB.updateOrder(data.order.id, { items: inventoryDraft });
                 fetchAllData();
             }
             else if (type === 'pw_error' || type === 'pw_wrong') {
@@ -239,6 +247,12 @@ export default function Admin() {
                         </>
                     )}
 
+                    {!order.adminArchived && (order.status === 'ordered' || order.status === 'completed') && (
+                        <button className="btn btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => openModal('Lager Tracken', 'track_inventory', { order })}>
+                            <Package size={16} /> Lager Tracken
+                        </button>
+                    )}
+
                     {!order.adminArchived && order.status === 'cancelled' && (
                         <>
                             <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'open')}><RotateCcw size={16} /> Erneut öffnen</button>
@@ -277,6 +291,37 @@ export default function Admin() {
                 <p>Möchten Sie den Benutzer <strong>{data?.username}</strong> wirklich löschen?</p>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-destructive)' }}>Bitte geben Sie zur Bestätigung das <strong>aktuelle Passwort</strong> dieses Benutzers ein.</p>
                 <input type="text" placeholder="Passwort eingeben" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} className="form-input" />
+            </div>
+        );
+        if (type === 'track_inventory') return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ color: 'var(--color-muted)' }}>Bestellung <strong>{data?.order?.id}</strong></p>
+                {(inventoryDraft || []).map((item, idx) => {
+                    const delivered = item.delivered || 0;
+                    return (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: '600' }}>{item.name}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Bestellt: {item.quantity} Dosen</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} disabled={delivered <= 0} onClick={() => {
+                                    const draft = [...inventoryDraft];
+                                    draft[idx].delivered = Math.max(0, delivered - 1);
+                                    setInventoryDraft(draft);
+                                }}>-</button>
+                                <span style={{ minWidth: '40px', textAlign: 'center', fontWeight: '700', color: delivered >= item.quantity ? '#4ade80' : 'var(--color-foreground)' }}>
+                                    {delivered} / {item.quantity}
+                                </span>
+                                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem' }} disabled={delivered >= item.quantity} onClick={() => {
+                                    const draft = [...inventoryDraft];
+                                    draft[idx].delivered = Math.min(item.quantity, delivered + 1);
+                                    setInventoryDraft(draft);
+                                }}>+</button>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         );
         return null;

@@ -11,6 +11,7 @@ export default function Profile() {
 
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
+    const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });
@@ -110,6 +111,23 @@ export default function Profile() {
     const activeOrders  = myOrders.filter(o => !(o.archivedBy || []).includes(currentUser.username));
     const archivedOrders = myOrders.filter(o =>  (o.archivedBy || []).includes(currentUser.username));
 
+    const getStorageItems = () => {
+        const storageOrders = myOrders.filter(o => o.status === 'ordered' || o.status === 'completed');
+        const itemsMap = {};
+
+        storageOrders.forEach(order => {
+            (order.items || []).forEach(item => {
+                const remaining = (item.quantity || 0) - (item.delivered || 0);
+                if (remaining > 0) {
+                    if (!itemsMap[item.name]) itemsMap[item.name] = 0;
+                    itemsMap[item.name] += remaining;
+                }
+            });
+        });
+
+        return Object.entries(itemsMap).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count);
+    };
+
     const renderOrderCard = (order) => {
         const isArchived = (order.archivedBy || []).includes(currentUser.username);
         const total = Number(order.total || 0);
@@ -203,7 +221,12 @@ export default function Profile() {
 
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Mein Profil</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
+                <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
+                    <Package size={18} /> Mein Lager
+                </button>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {activeOrders.length === 0 && archivedOrders.length === 0 ? (
@@ -236,6 +259,32 @@ export default function Profile() {
                 isDanger={confirm.isDanger}
             >
                 <p>{confirm.message}</p>
+            </Modal>
+
+            {/* Lager Modal */}
+            <Modal
+                isOpen={isLagerModalOpen}
+                title="📦 Mein Lager"
+                onClose={() => setIsLagerModalOpen(false)}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                        Hier siehst du alle bestellten Dosen, die noch nicht an dich ausgehändigt wurden.
+                    </p>
+                    
+                    {getStorageItems().length === 0 ? (
+                        <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-muted)' }}>
+                            Dein Lager ist leer.
+                        </div>
+                    ) : (
+                        getStorageItems().map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                <span style={{ fontWeight: '600' }}>{item.name}</span>
+                                <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count} {item.count === 1 ? 'Dose' : 'Dosen'}</span>
+                            </div>
+                        ))
+                    )}
+                </div>
             </Modal>
         </div>
     );

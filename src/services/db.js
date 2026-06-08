@@ -132,6 +132,7 @@ export const DB = {
         if (orderData.deletedByAdmin !== undefined) dbUpdate.deleted_by_admin = orderData.deletedByAdmin;
         if (orderData.archivedBy !== undefined) dbUpdate.archived_by = orderData.archivedBy;
         if (orderData.adminArchived !== undefined) dbUpdate.admin_archived = orderData.adminArchived;
+        if (orderData.items !== undefined) dbUpdate.items = orderData.items;
 
         await supabaseClient.from('orders').update(dbUpdate).eq('id', id);
     },
