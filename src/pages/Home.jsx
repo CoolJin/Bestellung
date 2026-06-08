@@ -365,7 +365,7 @@ export default function Home() {
                 <div 
                     style={{ 
                         position: 'fixed', 
-                        bottom: '15%', 
+                        top: 'calc(50% + 150px)', 
                         left: '50%', 
                         transform: 'translateX(-50%)',
                         zIndex: 50,
