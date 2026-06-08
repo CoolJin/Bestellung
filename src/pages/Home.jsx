@@ -4,12 +4,11 @@ import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
 import GlassSurface from '../components/GlassSurface';
-import { ShinyButton } from '../components/ui/shiny-button';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
-    const { addToCart, currentUser, adminExtras } = useAppContext();
-    const navigate = useNavigate();
+    const { addToCart, currentUser } = useAppContext();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -17,8 +16,17 @@ export default function Home() {
     const [addedId, setAddedId] = useState(null);
     const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
     const [isFadingOutGrid, setIsFadingOutGrid] = useState(false);
+    const [showExtrasBanner, setShowExtrasBanner] = useState(false);
     const titleWrapperRef = useRef(null);
     const hintWrapperRef = useRef(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setShowExtrasBanner(true);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         if (searchPhase === 'fading_text') {
@@ -323,64 +331,66 @@ export default function Home() {
                             maxWidth: '600px'
                         }}
                     >
-                        <div className="home-search-container" style={{ width: '100%' }}>
-                            <SearchIcon 
-                                className="home-search-icon" 
-                                size={24} 
-                                style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer', flexShrink: 0 }} 
-                                onClick={triggerSearch}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Produkte suchen..."
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                onFocus={handleFocus}
-                                onBlur={handleBlur}
-                                className="home-search-input"
-                            />
-                            <button 
-                                type="button" 
-                                onClick={clearSearch} 
-                                style={{ 
-                                    background: 'none', 
-                                    border: 'none', 
-                                    color: 'rgba(255,255,255,0.5)', 
-                                    cursor: query ? 'pointer' : 'default', 
-                                    zIndex: 10, 
-                                    flexShrink: 0, 
-                                    padding: 0,
-                                    opacity: query ? 1 : 0,
-                                    pointerEvents: query ? 'auto' : 'none',
-                                    transition: 'opacity 0.2s ease'
-                                }}
-                            >
-                                <X size={24} />
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            <div className="home-search-container" style={{ width: '100%' }}>
+                                <SearchIcon 
+                                    className="home-search-icon" 
+                                    size={24} 
+                                    style={{ color: 'rgba(255,255,255,0.7)', cursor: 'pointer', flexShrink: 0 }} 
+                                    onClick={triggerSearch}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Produkte suchen..."
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onFocus={handleFocus}
+                                    onBlur={handleBlur}
+                                    className="home-search-input"
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={clearSearch} 
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        color: 'rgba(255,255,255,0.5)', 
+                                        cursor: query ? 'pointer' : 'default', 
+                                        zIndex: 10, 
+                                        flexShrink: 0, 
+                                        padding: 0,
+                                        opacity: query ? 1 : 0,
+                                        pointerEvents: query ? 'auto' : 'none',
+                                        transition: 'opacity 0.2s ease'
+                                    }}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <AnimatePresence>
+                                {showExtrasBanner && searchPhase === 'idle' && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        <div style={{ padding: '0 2rem 1.25rem 2rem', display: 'flex', justifyContent: 'center' }}>
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); navigate('/extras'); }} 
+                                                className="btn btn-secondary w-full" 
+                                                style={{ borderRadius: '25px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                                            >
+                                                Verfügbare Extras
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </GlassSurface>
                 </form>
-
-                {/* Extras Button */}
-                <div 
-                    style={{ 
-                        position: 'fixed', 
-                        top: 'calc(50% + 150px)', 
-                        left: '50%', 
-                        transform: 'translateX(-50%)',
-                        zIndex: 50,
-                        opacity: searchPhase === 'idle' ? 1 : 0,
-                        pointerEvents: searchPhase === 'idle' ? 'auto' : 'none',
-                        transition: 'opacity 0.5s ease',
-                    }}
-                >
-                    <ShinyButton 
-                        activeGlow={adminExtras && adminExtras.length > 0} 
-                        onClick={() => navigate('/extras')}
-                    >
-                        Verfügbare Extras
-                    </ShinyButton>
-                </div>
 
                 <div className="w-full">
                     {searchPhase === 'waiting_for_results' && (

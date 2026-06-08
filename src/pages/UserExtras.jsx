@@ -1,63 +1,83 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import React, { useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { calculatePrice, formatPrice } from '../services/pricing';
+import { motion } from 'framer-motion';
 
 export default function UserExtras() {
-    const { adminExtras, currentUser } = useAppContext();
+    const { adminExtras, fetchAllData } = useAppContext();
     const navigate = useNavigate();
 
+    // Ensure data is fresh
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div className="page-fade-in" style={{ padding: '1rem', paddingBottom: '80px', maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
                 <button 
-                    onClick={() => navigate(-1)} 
-                    style={{ background: 'none', border: 'none', color: 'var(--color-fg)', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => navigate('/home')} 
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.5rem' }}
                 >
-                    <ChevronLeft size={24} />
+                    <ArrowLeft size={24} />
                 </button>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Verfügbare Extras</h2>
+                <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Verfügbare Extras</h1>
             </div>
 
-            {(!adminExtras || adminExtras.length === 0) ? (
-                <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-muted)' }}>
-                    <p style={{ fontSize: '1.1rem' }}>Aktuell sind keine Extras verfügbar.</p>
-                </div>
-            ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                    {adminExtras.map((product, idx) => {
-                        const price = calculatePrice(product, currentUser);
+            <div className="catalog-grid">
+                {adminExtras.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-muted)', gridColumn: '1 / -1' }}>
+                        <p>Momentan sind keine Extras verfügbar.</p>
+                    </div>
+                ) : (
+                    adminExtras.map((product) => {
+                        const displayPrice = calculatePrice(product.price);
                         
                         return (
-                            <div key={idx} className="glass-panel product-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                    <div style={{ width: '80px', height: '80px', flexShrink: 0, borderRadius: 'var(--radius)', overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
-                                        <img 
-                                            src={product.image || '/placeholder-image.png'} 
-                                            alt={product.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        />
+                            <motion.div 
+                                key={product.id} 
+                                className="product-card"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <div className="product-image-container">
+                                    {product.image ? (
+                                        <img src={product.image} alt={product.name} className="product-image" />
+                                    ) : (
+                                        <div className="product-image-placeholder">Kein Bild</div>
+                                    )}
+                                </div>
+                                <div className="product-info">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                        <h3 className="product-name">{product.name}</h3>
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.25rem', lineHeight: '1.2' }}>{product.name}</h3>
-                                        <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>{product.brand || 'Extra'}</p>
+                                    {product.description && <p className="product-description">{product.description}</p>}
+                                    
+                                    <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1rem' }}>
+                                            <div>
+                                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                                                    {formatPrice(displayPrice)}
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>
+                                                Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{product.quantity || 1}</strong>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="btn btn-secondary w-full" style={{ opacity: 0.5, cursor: 'not-allowed', textAlign: 'center' }}>
+                                            Nur Ansicht
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-accent)' }}>
-                                        {formatPrice(price)}
-                                    </span>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--color-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.6rem', borderRadius: '12px' }}>
-                                        Anzahl verfügbar: <strong style={{ color: 'var(--color-fg)' }}>{product.quantity || 0}</strong>
-                                    </span>
-                                </div>
-                            </div>
+                            </motion.div>
                         );
-                    })}
-                </div>
-            )}
+                    })
+                )}
+            </div>
         </div>
     );
 }
