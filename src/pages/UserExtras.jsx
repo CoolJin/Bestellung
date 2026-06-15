@@ -1,43 +1,62 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { calculatePrice, formatPrice } from '../services/pricing';
 import { motion } from 'framer-motion';
 import { DB } from '../services/db';
+import Modal from '../components/Modal';
 
 export default function UserExtras() {
     const { adminExtras, fetchAllData, currentUser, orders } = useAppContext();
     const navigate = useNavigate();
+
+    // Confirm modal state
+    const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
+
+    const showConfirm = (title, message, onConfirm, isDanger = false) => {
+        setConfirm({ open: true, title, message, onConfirm, isDanger });
+    };
+
+    const closeConfirm = () => setConfirm({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
+
+    const executeConfirm = async () => {
+        if (confirm.onConfirm) await confirm.onConfirm();
+        closeConfirm();
+    };
 
     // Ensure data is fresh
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
 
-    const handleRequestExtra = async (product) => {
-        if (!window.confirm(`Möchtest du 1x ${product.name} aus den Extras anfragen?`)) return;
-        try {
-            const reqOrder = {
-                id: 'REQ-' + Date.now(),
-                user: currentUser.username,
-                status: 'request_open',
-                total: 0,
-                items: [{ name: product.name, quantity: 1, source: 'extra' }],
-                date: new Date().toISOString(),
-                paid: false,
-                adminNote: '',
-                note: 'Automatische Produktanfrage',
-                deletedByAdmin: false,
-                adminArchived: false,
-                archivedBy: []
-            };
-            await DB.saveOrder(reqOrder);
-            alert(`Anfrage für 1x ${product.name} wurde gesendet!`);
-            fetchAllData();
-        } catch (err) {
-            alert('Fehler beim Senden der Anfrage: ' + err.message);
-        }
+    const handleRequestExtra = (product) => {
+        showConfirm(
+            "Produktanfrage",
+            `Möchtest du 1x ${product.name} aus den Extras anfragen?`,
+            async () => {
+                try {
+                    const reqOrder = {
+                        id: 'REQ-' + Date.now(),
+                        user: currentUser.username,
+                        status: 'request_open',
+                        total: 0,
+                        items: [{ name: product.name, quantity: 1, source: 'extra' }],
+                        date: new Date().toISOString(),
+                        paid: false,
+                        adminNote: '',
+                        note: 'Automatische Produktanfrage',
+                        deletedByAdmin: false,
+                        adminArchived: false,
+                        archivedBy: []
+                    };
+                    await DB.saveOrder(reqOrder);
+                    fetchAllData();
+                } catch (err) {
+                    console.error('Fehler beim Senden der Anfrage:', err);
+                }
+            }
+        );
     };
 
     return (
@@ -76,11 +95,11 @@ export default function UserExtras() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.3 }}
-                                style={{ opacity: availableQty <= 0 ? 0.5 : 1 }}
+                                style={{ opacity: availableQty <= 0 ? 0.7 : 1 }}
                             >
                                 <div className="product-image-container">
                                     {product.image ? (
-                                        <img src={product.image} alt={product.name} className="product-image" style={{ filter: availableQty <= 0 ? 'grayscale(100%)' : 'none' }} />
+                                        <img src={product.image} alt={product.name} className="product-image" />
                                     ) : (
                                         <div className="product-image-placeholder">Kein Bild</div>
                                     )}
@@ -109,7 +128,7 @@ export default function UserExtras() {
                                                         <Send size={14} /> 1x Anfragen
                                                     </button>
                                                 ) : (
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: '600', padding: '0.25rem 0' }}>Ausverkauft</span>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: '600', padding: '0.25rem 0' }}>Bereits angefragt</span>
                                                 )}
                                             </div>
                                         </div>
@@ -120,6 +139,18 @@ export default function UserExtras() {
                     })
                 )}
             </div>
+
+            <Modal
+                isOpen={confirm.open}
+                title={confirm.title}
+                onClose={closeConfirm}
+                onConfirm={confirm.onConfirm ? executeConfirm : null}
+                confirmText={confirm.onConfirm ? "Bestätigen" : null}
+                cancelText={confirm.onConfirm ? "Abbrechen" : "Schließen"}
+                isDanger={confirm.isDanger}
+            >
+                <p>{confirm.message}</p>
+            </Modal>
         </div>
     );
 }

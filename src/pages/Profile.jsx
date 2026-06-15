@@ -36,29 +36,33 @@ export default function Profile() {
         return true;
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    const handleRequestProduct = async (item) => {
-        if (!window.confirm(`Möchtest du 1x ${item.name} aus deinem Lager anfragen?`)) return;
-        try {
-            const reqOrder = {
-                id: 'REQ-' + Date.now(),
-                user: currentUser.username,
-                status: 'request_open',
-                total: 0,
-                items: [{ name: item.name, quantity: 1, source: 'lager' }],
-                date: new Date().toISOString(),
-                paid: false,
-                adminNote: '',
-                note: 'Automatische Produktanfrage',
-                deletedByAdmin: false,
-                adminArchived: false,
-                archivedBy: []
-            };
-            await DB.saveOrder(reqOrder);
-            alert(`Anfrage für 1x ${item.name} wurde gesendet!`);
-            fetchAllData();
-        } catch (err) {
-            alert('Fehler beim Senden der Anfrage: ' + err.message);
-        }
+    const handleRequestProduct = (item) => {
+        showConfirm(
+            "Produktanfrage",
+            `Möchtest du 1x ${item.name} aus deinem Lager anfragen?`,
+            async () => {
+                try {
+                    const reqOrder = {
+                        id: 'REQ-' + Date.now(),
+                        user: currentUser.username,
+                        status: 'request_open',
+                        total: 0,
+                        items: [{ name: item.name, quantity: 1, source: 'lager' }],
+                        date: new Date().toISOString(),
+                        paid: false,
+                        adminNote: '',
+                        note: 'Automatische Produktanfrage',
+                        deletedByAdmin: false,
+                        adminArchived: false,
+                        archivedBy: []
+                    };
+                    await DB.saveOrder(reqOrder);
+                    fetchAllData();
+                } catch (err) {
+                    console.error('Fehler beim Senden der Anfrage:', err);
+                }
+            }
+        );
     };
 
     const doAction = async (orderId, action) => {

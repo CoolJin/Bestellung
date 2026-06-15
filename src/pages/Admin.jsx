@@ -111,6 +111,15 @@ export default function Admin({ tab = 'orders' }) {
         }
     };
     
+    const handleRejectRequest = async (reqId) => {
+        try {
+            await DB.deleteOrder(reqId);
+            fetchAllData();
+        } catch (err) {
+            alert("Fehler beim Ablehnen der Anfrage: " + err.message);
+        }
+    };
+    
     const handleArchiveToggle = async (id, isArchived) => {
         await DB.updateOrder(id, { adminArchived: isArchived });
         fetchAllData();
@@ -435,13 +444,23 @@ export default function Admin({ tab = 'orders' }) {
                                             </span>
                                         </div>
                                     </div>
-                                    <button 
-                                        className="btn btn-primary" 
-                                        style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                        onClick={() => handleCompleteRequest(req)}
-                                    >
-                                        <CheckCircle size={16} /> Erledigt
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-danger)' }}
+                                            onClick={() => handleRejectRequest(req.id)}
+                                            title="Anfrage löschen/ablehnen"
+                                        >
+                                            <XCircle size={16} /> Ablehnen
+                                        </button>
+                                        <button 
+                                            className="btn btn-primary" 
+                                            style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                            onClick={() => handleCompleteRequest(req)}
+                                        >
+                                            <CheckCircle size={16} /> Erledigt
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                             {requests.length === 0 && <p className="text-muted text-center" style={{ padding: '1rem' }}>Keine offenen Anfragen.</p>}
