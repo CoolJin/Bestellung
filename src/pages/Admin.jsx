@@ -8,7 +8,7 @@ import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOf
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin({ tab = 'orders' }) {
-    const { orders, fetchAllData } = useAppContext();
+    const { orders, fetchAllData, adminExtras, currentUser } = useAppContext();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [selectedUserFilter, setSelectedUserFilter] = useState('');
@@ -60,6 +60,55 @@ export default function Admin({ tab = 'orders' }) {
         }
         await DB.updateOrder(id, updates);
         fetchAllData();
+    };
+
+    const handleCompleteRequest = async (req) => {
+        try {
+            const item = req.items[0];
+            
+            if (item.source === 'extra') {
+                const currentExtras = [...adminExtras];
+                const extraIdx = currentExtras.findIndex(e => e.name === item.name);
+                if (extraIdx !== -1) {
+                    currentExtras[extraIdx].quantity = (currentExtras[extraIdx].quantity || 1) - item.quantity;
+                    if (currentExtras[extraIdx].quantity <= 0) {
+                        currentExtras.splice(extraIdx, 1);
+                    }
+                    await DB.saveAdminExtras(currentExtras, currentUser.username);
+                }
+            } else if (item.source === 'lager') {
+                const userOrders = orders.filter(o => 
+                    o.user === req.user && 
+                    !o.adminArchived && 
+                    ['open', 'processing', 'ordered', 'completed'].includes(o.status)
+                ).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                let deducted = false;
+                for (const o of userOrders) {
+                    let found = false;
+                    const updatedItems = o.items.map(i => {
+                        if (!deducted && i.name === item.name) {
+                            const delivered = i.delivered || 0;
+                            if (delivered < i.quantity) {
+                                found = true;
+                                deducted = true;
+                                return { ...i, delivered: delivered + item.quantity };
+                            }
+                        }
+                        return i;
+                    });
+                    
+                    if (found) {
+                        await DB.updateOrder(o.id, { items: updatedItems });
+                        break;
+                    }
+                }
+            }
+
+            await handleOrderAction(req.id, 'request_completed');
+        } catch (err) {
+            alert("Fehler beim Abschließen der Anfrage: " + err.message);
+        }
     };
     
     const handleArchiveToggle = async (id, isArchived) => {
@@ -389,7 +438,7 @@ export default function Admin({ tab = 'orders' }) {
                                     <button 
                                         className="btn btn-primary" 
                                         style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                                        onClick={() => handleOrderAction(req.id, 'request_completed')}
+                                        onClick={() => handleCompleteRequest(req)}
                                     >
                                         <CheckCircle size={16} /> Erledigt
                                     </button>

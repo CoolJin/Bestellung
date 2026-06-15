@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { DB } from '../services/db';
 
 export default function UserExtras() {
-    const { adminExtras, fetchAllData, currentUser } = useAppContext();
+    const { adminExtras, fetchAllData, currentUser, orders } = useAppContext();
     const navigate = useNavigate();
 
     // Ensure data is fresh
@@ -61,6 +61,14 @@ export default function UserExtras() {
                     adminExtras.map((product) => {
                         const displayPrice = calculatePrice(product, currentUser);
                         
+                        const pendingRequestsCount = orders.filter(o => 
+                            o.status === 'request_open' && 
+                            o.items[0]?.source === 'extra' && 
+                            o.items[0]?.name === product.name
+                        ).reduce((sum, o) => sum + (o.items[0]?.quantity || 1), 0);
+                        
+                        const availableQty = (product.quantity || 1) - pendingRequestsCount;
+                        
                         return (
                             <motion.div 
                                 key={product.id} 
@@ -68,10 +76,11 @@ export default function UserExtras() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.3 }}
+                                style={{ opacity: availableQty <= 0 ? 0.5 : 1 }}
                             >
                                 <div className="product-image-container">
                                     {product.image ? (
-                                        <img src={product.image} alt={product.name} className="product-image" />
+                                        <img src={product.image} alt={product.name} className="product-image" style={{ filter: availableQty <= 0 ? 'grayscale(100%)' : 'none' }} />
                                     ) : (
                                         <div className="product-image-placeholder">Kein Bild</div>
                                     )}
@@ -90,14 +99,18 @@ export default function UserExtras() {
                                                 </div>
                                             </div>
                                             <div style={{ fontSize: '0.875rem', color: 'var(--color-muted)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                                                <span>Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{product.quantity || 1}</strong></span>
-                                                <button 
-                                                    onClick={() => handleRequestExtra(product)}
-                                                    className="btn btn-secondary" 
-                                                    style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-                                                >
-                                                    <Send size={14} /> 1x Anfragen
-                                                </button>
+                                                <span>Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{availableQty}</strong></span>
+                                                {availableQty > 0 ? (
+                                                    <button 
+                                                        onClick={() => handleRequestExtra(product)}
+                                                        className="btn btn-secondary" 
+                                                        style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+                                                    >
+                                                        <Send size={14} /> 1x Anfragen
+                                                    </button>
+                                                ) : (
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: '600', padding: '0.25rem 0' }}>Ausverkauft</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
