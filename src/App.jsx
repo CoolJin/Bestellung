@@ -49,10 +49,17 @@ const Navigation = () => {
                     </NavLink>
                 </>
             ) : (
-                <>
-                    <NavLink to="/admin" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/admin" end className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
                         <LayoutDashboard size={20} />
-                        <span>Dashboard</span>
+                        <span>Bestellungen</span>
+                    </NavLink>
+                    <NavLink to="/admin/users" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <User size={20} />
+                        <span>Benutzer</span>
+                    </NavLink>
+                    <NavLink to="/admin/catalog" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Search size={20} />
+                        <span>Katalog</span>
                     </NavLink>
                 </>
             )}
@@ -101,7 +108,9 @@ const AppContent = () => {
                             <Route path="/profile" element={currentUser && currentUser.role === 'user' ? <Profile /> : <Navigate to="/login" />} />
                             <Route path="/extras" element={currentUser && currentUser.role === 'user' ? <UserExtras /> : <Navigate to="/login" />} />
                             
-                            <Route path="/admin" element={currentUser && currentUser.role === 'admin' ? <Admin /> : <Navigate to="/login" />} />
+                            <Route path="/admin" element={currentUser && currentUser.role === 'admin' ? <Admin tab="orders" /> : <Navigate to="/login" />} />
+                            <Route path="/admin/users" element={currentUser && currentUser.role === 'admin' ? <Admin tab="users" /> : <Navigate to="/login" />} />
+                            <Route path="/admin/catalog" element={currentUser && currentUser.role === 'admin' ? <Admin tab="catalog" /> : <Navigate to="/login" />} />
                         </Routes>
                     </PushGate>
                 </main>

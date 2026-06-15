@@ -5,17 +5,18 @@ import Catalog from './Catalog';
 import AdminExtras from './AdminExtras';
 import Modal from '../components/Modal';
 import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-export default function Admin() {
+export default function Admin({ tab = 'orders' }) {
     const { orders, fetchAllData } = useAppContext();
-    const [activeTab, setActiveTab] = useState('orders');
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [selectedUserFilter, setSelectedUserFilter] = useState('');
     const [expandedUser, setExpandedUser] = useState(null);
     const [revealedPasswords, setRevealedPasswords] = useState({});
     
     // Order Accordions
-    const [openOrderSections, setOpenOrderSections] = useState({ active: true, cancelled: false, archived: false });
+    const [openOrderSections, setOpenOrderSections] = useState({ requests: true, active: true, cancelled: false, archived: false });
 
     // Modal State
     const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', type: '', data: null });
@@ -129,7 +130,7 @@ export default function Admin() {
 
     const viewUserOrders = (username) => {
         setSelectedUserFilter(username);
-        setActiveTab('orders');
+        navigate('/admin');
     };
 
     const togglePassword = (username) => {
@@ -145,6 +146,7 @@ export default function Admin() {
         allOrders = allOrders.filter(o => o.user === selectedUserFilter);
     }
 
+    const requests = allOrders.filter(o => o.status === 'request_open');
     const activeOrders = allOrders.filter(o => !o.adminArchived && ['open', 'processing', 'ordered', 'completed'].includes(o.status));
     const cancelledOrders = allOrders.filter(o => !o.adminArchived && o.status === 'cancelled');
     const archivedOrders = allOrders.filter(o => o.adminArchived);
@@ -339,32 +341,61 @@ export default function Admin() {
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '1.5rem', letterSpacing: '-0.025em' }}>Dashboard</h1>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                <button className={`btn ${activeTab === 'orders' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('orders')}>Bestellungen</button>
-                <button className={`btn ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('users')}>Benutzer</button>
-                <button className={`btn ${activeTab === 'search' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('search')}>Suche</button>
-                <button className={`btn ${activeTab === 'extras' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('extras')}>Extras</button>
-            </div>
 
-            {activeTab === 'extras' && (
-                <div style={{ marginTop: '-1rem' }}>
-                    <AdminExtras />
+            {tab === 'catalog' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>Produktsuche</h2>
+                        <Catalog mode="extras" />
+                    </div>
+                    <div>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>Extras verwalten</h2>
+                        <AdminExtras />
+                    </div>
                 </div>
             )}
 
-            {activeTab === 'search' && (
-                <div style={{ marginTop: '-1rem' }}>
-                    <Catalog mode="extras" />
-                </div>
-            )}
-
-            {activeTab === 'orders' && (
+            {tab === 'orders' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {selectedUserFilter && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1rem', borderRadius: 'var(--radius)' }}>
                             <span style={{ fontSize: '0.875rem' }}>Filter aktiv: <strong>{selectedUserFilter}</strong></span>
                             <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => setSelectedUserFilter('')}>Filter aufheben</button>
+                        </div>
+                    )}
+
+                    <div className="glass-panel" style={{ padding: '1rem', border: '1px solid var(--color-border)', cursor: 'pointer', borderLeft: requests.length > 0 ? '4px solid var(--color-accent)' : undefined }} onClick={() => toggleSection('requests')}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                Produktanfragen 
+                                {requests.length > 0 && <span style={{ background: 'var(--color-accent)', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem' }}>{requests.length}</span>}
+                            </h3>
+                            {openOrderSections.requests ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                    </div>
+                    {openOrderSections.requests && (
+                        <div style={{ paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {requests.map(req => (
+                                <div key={req.id} className="glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600' }}>{req.user}</div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>
+                                            fragt nach: <strong style={{ color: 'var(--color-text)' }}>{req.items[0]?.quantity}x {req.items[0]?.name}</strong>
+                                            <span style={{ marginLeft: '0.5rem', opacity: 0.7 }}>
+                                                ({req.items[0]?.source === 'lager' ? 'aus eigenem Lager' : 'aus Extras'})
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="btn btn-primary" 
+                                        style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                        onClick={() => handleOrderAction(req.id, 'request_completed')}
+                                    >
+                                        <CheckCircle size={16} /> Erledigt
+                                    </button>
+                                </div>
+                            ))}
+                            {requests.length === 0 && <p className="text-muted text-center" style={{ padding: '1rem' }}>Keine offenen Anfragen.</p>}
                         </div>
                     )}
 
@@ -411,7 +442,7 @@ export default function Admin() {
                 </div>
             )}
 
-            {activeTab === 'users' && (
+            {tab === 'users' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 
@@ -35,6 +35,31 @@ export default function Profile() {
         if (o.archivedBy && o.archivedBy.includes(deletedTag)) return false;
         return true;
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const handleRequestProduct = async (item) => {
+        if (!window.confirm(`Möchtest du 1x ${item.name} aus deinem Lager anfragen?`)) return;
+        try {
+            const reqOrder = {
+                id: 'REQ-' + Date.now(),
+                user: currentUser.username,
+                status: 'request_open',
+                total: 0,
+                items: [{ name: item.name, quantity: 1, source: 'lager' }],
+                date: new Date().toISOString(),
+                paid: false,
+                adminNote: '',
+                note: 'Automatische Produktanfrage',
+                deletedByAdmin: false,
+                adminArchived: false,
+                archivedBy: []
+            };
+            await DB.saveOrder(reqOrder);
+            alert(`Anfrage für 1x ${item.name} wurde gesendet!`);
+            fetchAllData();
+        } catch (err) {
+            alert('Fehler beim Senden der Anfrage: ' + err.message);
+        }
+    };
 
     const doAction = async (orderId, action) => {
         try {
@@ -289,7 +314,17 @@ export default function Profile() {
                                     )}
                                     <span style={{ fontWeight: '600' }}>{item.name}</span>
                                 </div>
-                                <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count}x</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count}x</span>
+                                    <button 
+                                        onClick={() => handleRequestProduct(item)}
+                                        className="btn btn-secondary" 
+                                        style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+                                        title="1x Anfragen"
+                                    >
+                                        <Send size={14} /> Anfragen
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}

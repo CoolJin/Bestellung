@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { calculatePrice, formatPrice } from '../services/pricing';
 import { motion } from 'framer-motion';
+import { DB } from '../services/db';
 
 export default function UserExtras() {
     const { adminExtras, fetchAllData, currentUser } = useAppContext();
@@ -13,6 +14,31 @@ export default function UserExtras() {
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
+
+    const handleRequestExtra = async (product) => {
+        if (!window.confirm(`Möchtest du 1x ${product.name} aus den Extras anfragen?`)) return;
+        try {
+            const reqOrder = {
+                id: 'REQ-' + Date.now(),
+                user: currentUser.username,
+                status: 'request_open',
+                total: 0,
+                items: [{ name: product.name, quantity: 1, source: 'extra' }],
+                date: new Date().toISOString(),
+                paid: false,
+                adminNote: '',
+                note: 'Automatische Produktanfrage',
+                deletedByAdmin: false,
+                adminArchived: false,
+                archivedBy: []
+            };
+            await DB.saveOrder(reqOrder);
+            alert(`Anfrage für 1x ${product.name} wurde gesendet!`);
+            fetchAllData();
+        } catch (err) {
+            alert('Fehler beim Senden der Anfrage: ' + err.message);
+        }
+    };
 
     return (
         <div className="page-fade-in" style={{ padding: '3rem 1rem 80px 1rem', maxWidth: '800px', margin: '0 auto' }}>
@@ -63,8 +89,15 @@ export default function UserExtras() {
                                                     {formatPrice(displayPrice)}
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>
-                                                Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{product.quantity || 1}</strong>
+                                            <div style={{ fontSize: '0.875rem', color: 'var(--color-muted)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                                                <span>Anzahl verfügbar: <strong style={{ color: 'var(--color-text)' }}>{product.quantity || 1}</strong></span>
+                                                <button 
+                                                    onClick={() => handleRequestExtra(product)}
+                                                    className="btn btn-secondary" 
+                                                    style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+                                                >
+                                                    <Send size={14} /> 1x Anfragen
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
