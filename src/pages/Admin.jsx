@@ -15,7 +15,7 @@ export default function Admin() {
     const [revealedPasswords, setRevealedPasswords] = useState({});
     
     // Order Accordions
-    const [openOrderSections, setOpenOrderSections] = useState({ active: true, completed: false, cancelled: false, archived: false });
+    const [openOrderSections, setOpenOrderSections] = useState({ active: true, cancelled: false, archived: false });
 
     // Modal State
     const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', type: '', data: null });
@@ -145,8 +145,7 @@ export default function Admin() {
         allOrders = allOrders.filter(o => o.user === selectedUserFilter);
     }
 
-    const activeOrders = allOrders.filter(o => !o.adminArchived && ['open', 'processing', 'ordered'].includes(o.status));
-    const completedOrders = allOrders.filter(o => !o.adminArchived && o.status === 'completed');
+    const activeOrders = allOrders.filter(o => !o.adminArchived && ['open', 'processing', 'ordered', 'completed'].includes(o.status));
     const cancelledOrders = allOrders.filter(o => !o.adminArchived && o.status === 'cancelled');
     const archivedOrders = allOrders.filter(o => o.adminArchived);
 
@@ -371,29 +370,18 @@ export default function Admin() {
 
                     <div className="glass-panel" style={{ padding: '1rem', border: '1px solid var(--color-border)', cursor: 'pointer' }} onClick={() => toggleSection('active')}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ fontWeight: '600' }}>Aktive Bestellungen ({activeOrders.length})</h3>
+                            <h3 style={{ fontWeight: '600' }}>Bestellungen ({activeOrders.length})</h3>
                             {openOrderSections.active ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </div>
                     </div>
                     {openOrderSections.active && (
                         <div style={{ paddingLeft: '0.5rem' }}>
                             {activeOrders.map(renderOrderCard)}
-                            {activeOrders.length === 0 && <p className="text-muted text-center" style={{ padding: '1rem' }}>Keine aktiven Bestellungen.</p>}
+                            {activeOrders.length === 0 && <p className="text-muted text-center" style={{ padding: '1rem' }}>Keine Bestellungen.</p>}
                         </div>
                     )}
 
-                    <div className="glass-panel" style={{ padding: '1rem', border: '1px solid var(--color-border)', cursor: 'pointer' }} onClick={() => toggleSection('completed')}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ fontWeight: '600' }}>Abgeschlossen ({completedOrders.length})</h3>
-                            {openOrderSections.completed ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                        </div>
-                    </div>
-                    {openOrderSections.completed && (
-                        <div style={{ paddingLeft: '0.5rem' }}>
-                            {completedOrders.map(renderOrderCard)}
-                            {completedOrders.length === 0 && <p className="text-muted text-center" style={{ padding: '1rem' }}>Keine abgeschlossenen Bestellungen.</p>}
-                        </div>
-                    )}
+
 
                     <div className="glass-panel" style={{ padding: '1rem', border: '1px solid var(--color-border)', cursor: 'pointer' }} onClick={() => toggleSection('cancelled')}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
