@@ -1,0 +1,16 @@
+{
+  "name": "Bestellsystem",
+  "short_name": "Bestellsystem",
+  "description": "SNS Bestellsystem",
+  "start_url": "/Bestellung/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#a855f7",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

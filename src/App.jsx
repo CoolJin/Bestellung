@@ -10,6 +10,7 @@ import Cart from './pages/Cart';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import UserExtras from './pages/UserExtras';
+import PushGate from './components/PushGate';
 
 const Navigation = () => {
     const { currentUser, cart, logout } = useAppContext();
@@ -88,21 +89,24 @@ const AppContent = () => {
 
     return (
         <HashRouter>
-            <div className="page-content">
-                <Routes>
-                    <Route path="/login" element={currentUser ? <Navigate to={currentUser.role === 'admin' ? '/admin' : '/home'} /> : <Login />} />
-                    
-                    <Route path="/home" element={<ProtectedRoute roleRequired="user"><Home /></ProtectedRoute>} />
-                    <Route path="/cart" element={<ProtectedRoute roleRequired="user"><Cart /></ProtectedRoute>} />
-                    <Route path="/profile" element={<ProtectedRoute roleRequired="user"><Profile /></ProtectedRoute>} />
-                    <Route path="/extras" element={<ProtectedRoute roleRequired="user"><UserExtras /></ProtectedRoute>} />
-                    
-                    <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><Admin /></ProtectedRoute>} />
-                    
-                    <Route path="*" element={<Navigate to={currentUser ? (currentUser.role === 'admin' ? '/admin' : '/home') : '/login'} />} />
-                </Routes>
+            <div className="app-layout">
+                <main className="main-content">
+                    <PushGate>
+                        <Routes>
+                            <Route path="/" element={currentUser ? <Navigate to={currentUser.role === 'admin' ? "/admin" : "/home"} /> : <Navigate to="/login" />} />
+                            <Route path="/login" element={!currentUser ? <Login /> : <Navigate to={currentUser.role === 'admin' ? "/admin" : "/home"} />} />
+                            
+                            <Route path="/home" element={currentUser && currentUser.role === 'user' ? <Home /> : <Navigate to="/login" />} />
+                            <Route path="/cart" element={currentUser && currentUser.role === 'user' ? <Cart /> : <Navigate to="/login" />} />
+                            <Route path="/profile" element={currentUser && currentUser.role === 'user' ? <Profile /> : <Navigate to="/login" />} />
+                            <Route path="/extras" element={currentUser && currentUser.role === 'user' ? <UserExtras /> : <Navigate to="/login" />} />
+                            
+                            <Route path="/admin" element={currentUser && currentUser.role === 'admin' ? <Admin /> : <Navigate to="/login" />} />
+                        </Routes>
+                    </PushGate>
+                </main>
+                {currentUser && <Navigation />}
             </div>
-            <Navigation />
         </HashRouter>
     );
 };

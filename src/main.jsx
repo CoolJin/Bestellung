@@ -18,6 +18,16 @@ try {
     </React.StrictMode>
   );
   console.log("main.jsx: Render called");
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/Bestellung/sw.js').then(registration => {
+        console.log('SW registered: ', registration);
+      }).catch(registrationError => {
+        console.log('SW registration failed: ', registrationError);
+      });
+    });
+  }
 } catch (e) {
   console.error("main.jsx: Render failed with error:", e);
 }
