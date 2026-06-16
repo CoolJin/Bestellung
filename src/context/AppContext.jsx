@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DB } from '../services/db';
+import { supabaseClient } from '../services/supabase';
 
 const AppContext = createContext();
 
@@ -56,6 +57,37 @@ export const AppProvider = ({ children }) => {
             window.removeEventListener('keypress', handleActivity);
         };
     }, []);
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const channel = supabaseClient.channel('admin_notifications')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+                const newOrder = payload.new;
+                
+                // Fetch data quietly on new orders
+                fetchAllData();
+
+                if (newOrder.status === 'request_open' && currentUser.role === 'admin') {
+                    const pushEnabled = localStorage.getItem('push_enabled_' + currentUser.username) !== 'false';
+                    if (pushEnabled && window.Notification && window.Notification.permission === 'granted') {
+                        const notif = new window.Notification("Neue Produktanfrage!", {
+                            body: `Eine neue Anfrage von ${newOrder.user_id} ist eingegangen.`,
+                            icon: '/Bestellung/favicon.svg'
+                        });
+                        notif.onclick = () => {
+                            window.focus();
+                            notif.close();
+                        };
+                    }
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabaseClient.removeChannel(channel);
+        };
+    }, [currentUser]);
 
     const fetchAllData = async () => {
         const { orders: fetchedOrders, adminExtras: fetchedExtras } = await DB.fetchOrders();

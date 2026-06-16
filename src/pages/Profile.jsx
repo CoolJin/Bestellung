@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, Bell, BellOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 
@@ -12,6 +12,13 @@ export default function Profile() {
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(localStorage.getItem('push_enabled_' + currentUser?.username) !== 'false');
+
+    const togglePush = () => {
+        const newVal = !pushEnabled;
+        setPushEnabled(newVal);
+        localStorage.setItem('push_enabled_' + currentUser?.username, newVal.toString());
+    };
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });
@@ -273,6 +280,30 @@ export default function Profile() {
                 <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
                 <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
                     <Package size={18} /> Mein Lager
+                </button>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {pushEnabled ? <Bell size={20} style={{ color: 'var(--color-accent)' }} /> : <BellOff size={20} style={{ color: 'var(--color-muted)' }} />}
+                    <div>
+                        <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>Geräte-Benachrichtigungen</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Nur für dieses Gerät & diesen Account</div>
+                    </div>
+                </div>
+                <button 
+                    onClick={togglePush}
+                    style={{ 
+                        width: '40px', height: '24px', borderRadius: '12px', 
+                        background: pushEnabled ? 'var(--color-accent)' : 'rgba(255,255,255,0.1)', 
+                        position: 'relative', cursor: 'pointer', border: 'none', transition: 'all 0.3s'
+                    }}
+                >
+                    <div style={{
+                        width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                        position: 'absolute', top: '3px', left: pushEnabled ? '19px' : '3px',
+                        transition: 'all 0.3s'
+                    }} />
                 </button>
             </div>
 
