@@ -188,10 +188,8 @@ export default function Home() {
 
     // Custom 1-second smooth scroll function
     const smoothScrollTo = (targetPosition, duration) => {
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
-
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        
         const startPosition = window.scrollY;
         const distance = targetPosition - startPosition;
         let startTime = null;
@@ -201,7 +199,7 @@ export default function Home() {
             const timeElapsed = currentTime - startTime;
             const progress = Math.min(timeElapsed / duration, 1);
             
-            // Ease-in-out cubic easing
+            // Smoother ease-in-out
             const ease = progress < 0.5 
                 ? 4 * progress * progress * progress 
                 : 1 - Math.pow(-2 * progress + 2, 3) / 2;
@@ -221,16 +219,23 @@ export default function Home() {
     // Mobile Keyboard UX Fixes
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
+            // Wait slightly longer for iOS/Android native keyboard animation to finish completely
             setTimeout(() => {
                 const wrapper = document.querySelector('.home-search-wrapper');
                 
                 if (wrapper && window.visualViewport) {
-                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const rect = wrapper.getBoundingClientRect();
+                    // rect.bottom is relative to viewport. If we want it to be 40px above the keyboard (bottom of visualViewport),
+                    // the target viewport top is current scroll + rect.bottom + 40 - visualViewport.height
+                    const absoluteBottom = rect.bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
-                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                    
+                    if (Math.abs(window.scrollY - targetScrollY) > 10) {
+                        smoothScrollTo(Math.max(0, targetScrollY), 800);
+                    }
                 }
-            }, 300);
+            }, 400);
         }
     };
 
@@ -238,7 +243,7 @@ export default function Home() {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
                 if (searchPhase === 'idle') {
-                    smoothScrollTo(0, 1000);
+                    smoothScrollTo(0, 800);
                 }
             }, 100);
         }
@@ -258,10 +263,21 @@ export default function Home() {
                 const viewportHeight = window.visualViewport.height;
                 const innerHeight = window.innerHeight;
 
-                // If viewport is close to innerHeight, the keyboard was hidden manually by the user
+                // Keyboard hidden manually
                 if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
-                    smoothScrollTo(0, 1000);
-                    document.activeElement.blur(); // Remove focus since keyboard is gone
+                    smoothScrollTo(0, 800);
+                    document.activeElement.blur(); 
+                } else if (searchPhase === 'idle') {
+                    // Keyboard size changed (e.g. predictive text opened) while focused
+                    const wrapper = document.querySelector('.home-search-wrapper');
+                    if (wrapper) {
+                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                        const targetScrollY = absoluteBottom - viewportHeight + 40;
+                        // Only scroll if we are off by more than 10 pixels to prevent micro-jumps
+                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
+                            smoothScrollTo(Math.max(0, targetScrollY), 400);
+                        }
+                    }
                 }
             }, 150);
         };
@@ -271,7 +287,7 @@ export default function Home() {
             clearTimeout(resizeTimeout);
             window.visualViewport.removeEventListener('resize', handleResize);
         };
-    }, []);
+    }, [searchPhase]);
 
     // Scroll after banner expands
     useEffect(() => {
@@ -284,10 +300,12 @@ export default function Home() {
                         const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
-                        smoothScrollTo(Math.max(0, targetScrollY), 600);
+                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
+                            smoothScrollTo(Math.max(0, targetScrollY), 600);
+                        }
                     }
                 }
-            }, 1050);
+            }, 1050); // wait for 1s layout animation to finish
             return () => clearTimeout(timer);
         }
     }, [showExtrasBanner]);
