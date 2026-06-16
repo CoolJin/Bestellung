@@ -55,19 +55,29 @@ export default function PushGate({ children }) {
     if (status === 'denied') {
         return (
             <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', textAlign: 'center', padding: '2rem' }}>
-                <BellOff size={64} style={{ color: 'var(--color-destructive)', marginBottom: '1.5rem' }} />
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Benachrichtigungen blockiert</h1>
-                <p style={{ color: 'var(--color-muted)', marginBottom: '2rem', lineHeight: '1.6' }}>
-                    Du hast die Push-Benachrichtigungen für das Bestellsystem abgelehnt. Um die Seite nutzen zu können, musst du diese Berechtigung in den Einstellungen deines Handys (oder Browsers) wieder zulassen.
+                <BellOff size={64} style={{ color: 'var(--color-danger)', marginBottom: '1.5rem' }} />
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--color-danger)' }}>Benachrichtigungen blockiert</h1>
+                <p style={{ color: 'var(--color-text)', marginBottom: '2rem', lineHeight: '1.6' }}>
+                    Du hast die Push-Benachrichtigungen leider abgelehnt. <strong>Du kannst diese App ohne Benachrichtigungen nicht verwenden!</strong>
                 </p>
-                <div className="glass-panel" style={{ padding: '1.5rem', width: '100%' }}>
-                    <p style={{ fontSize: '0.875rem', fontWeight: '600' }}>So behebst du das Problem:</p>
-                    <ol style={{ fontSize: '0.875rem', color: 'var(--color-muted)', textAlign: 'left', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.5rem' }}>
-                        <li>Gehe in die Einstellungen deines Handys.</li>
-                        <li>Suche nach den Browser-Einstellungen (z.B. Safari oder Chrome).</li>
-                        <li>Setze die Berechtigung für Mitteilungen/Benachrichtigungen auf "Erlauben".</li>
-                        <li>Lade diese Seite neu.</li>
-                    </ol>
+                <div className="glass-panel" style={{ padding: '1.5rem', width: '100%', border: '1px solid var(--color-danger)' }}>
+                    <p style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--color-danger)' }}>So behebst du das Problem:</p>
+                    {isIOS ? (
+                        <ol style={{ fontSize: '0.875rem', color: 'var(--color-muted)', textAlign: 'left', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.5rem' }}>
+                            <li>Öffne die <strong>Einstellungen</strong> deines iPhones.</li>
+                            <li>Scrolle nach unten zu <strong>Mitteilungen</strong>.</li>
+                            <li>Suche nach dem Namen dieser Web-App in der Liste.</li>
+                            <li>Aktiviere den Schalter <strong>Mitteilungen erlauben</strong>.</li>
+                            <li>Lade diese App anschließend neu.</li>
+                        </ol>
+                    ) : (
+                        <ol style={{ fontSize: '0.875rem', color: 'var(--color-muted)', textAlign: 'left', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.5rem' }}>
+                            <li>Tippe oben links neben der Webadresse auf das <strong>Schloss-Symbol</strong>.</li>
+                            <li>Gehe auf <strong>Berechtigungen</strong> oder <strong>Website-Einstellungen</strong>.</li>
+                            <li>Setze den Punkt <strong>Benachrichtigungen</strong> auf <strong>Zulassen</strong>.</li>
+                            <li>Lade diese Seite neu.</li>
+                        </ol>
+                    )}
                 </div>
             </div>
         );
@@ -78,9 +88,14 @@ export default function PushGate({ children }) {
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', textAlign: 'center', padding: '2rem' }}>
             <Bell size={64} style={{ color: 'var(--color-accent)', marginBottom: '1.5rem' }} />
             <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Bleib immer informiert!</h1>
-            <p style={{ color: 'var(--color-muted)', marginBottom: '2rem', lineHeight: '1.6' }}>
-                Um keine wichtigen Updates zu deiner Bestellung zu verpassen, musst du die Push-Benachrichtigungen aktivieren. Das System kann erst danach genutzt werden.
+            <p style={{ color: 'var(--color-muted)', marginBottom: '1rem', lineHeight: '1.6' }}>
+                Um das System nutzen zu können, musst du zwingend Benachrichtigungen aktivieren. 
             </p>
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-danger)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '2rem' }}>
+                <p style={{ color: 'var(--color-danger)', fontSize: '0.875rem', fontWeight: '600', lineHeight: '1.4' }}>
+                    WICHTIG: Wenn du gleich bei der Abfrage auf "Ablehnen" drückst, wirst du komplett aus der App ausgesperrt und musst es umständlich in den Einstellungen reparieren! Drücke unbedingt auf <strong style={{ textDecoration: 'underline' }}>Zulassen</strong>.
+                </p>
+            </div>
 
             {isIOS && !isStandalone ? (
                 <div className="glass-panel" style={{ padding: '1.5rem', width: '100%', position: 'relative' }}>
