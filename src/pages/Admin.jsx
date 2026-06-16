@@ -4,11 +4,11 @@ import { DB } from '../services/db';
 import Catalog from './Catalog';
 import AdminExtras from './AdminExtras';
 import Modal from '../components/Modal';
-import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package } from 'lucide-react';
+import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package, MessageSquare, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin({ tab = 'orders' }) {
-    const { orders, fetchAllData, adminExtras, currentUser } = useAppContext();
+    const { orders, fetchAllData, adminExtras, currentUser, userSettings, saveSettings } = useAppContext();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [selectedUserFilter, setSelectedUserFilter] = useState('');
@@ -29,6 +29,33 @@ export default function Admin({ tab = 'orders' }) {
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [adminMsg, setAdminMsg] = useState('');
+
+    // Discord settings
+    const [discordIdInput, setDiscordIdInput] = useState('');
+    const [isSavingDiscord, setIsSavingDiscord] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+    useEffect(() => {
+        if (currentUser && userSettings[currentUser.username]) {
+            setDiscordIdInput(userSettings[currentUser.username].discordId || '');
+        }
+    }, [currentUser, userSettings]);
+
+    const hasDiscordChanges = currentUser && discordIdInput.trim() !== (userSettings[currentUser.username]?.discordId || '');
+
+    const handleSaveDiscord = async () => {
+        if (!hasDiscordChanges) return;
+        setIsSavingDiscord(true);
+        try {
+            await saveSettings({ discordId: discordIdInput.trim() });
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setIsSavingDiscord(false);
+        }
+    };
 
     useEffect(() => {
         fetchAllData();
@@ -513,6 +540,44 @@ export default function Admin({ tab = 'orders' }) {
             {tab === 'users' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     
+                    <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <MessageSquare size={20} style={{ color: '#5865F2' }} />
+                            <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>Admin Discord Benachrichtigungen</h3>
+                        </div>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                            Verbinde deinen Admin-Account mit Discord, um bei neuen Anfragen direkt eine private Nachricht zu erhalten. 
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                            <input 
+                                type="text" 
+                                value={discordIdInput} 
+                                onChange={(e) => setDiscordIdInput(e.target.value)} 
+                                placeholder="Deine Discord User-ID (z.B. 123456789012345678)" 
+                                style={{ flex: 1, padding: '0.5rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '0.875rem' }} 
+                            />
+                            <button 
+                                onClick={handleSaveDiscord} 
+                                disabled={isSavingDiscord || (!hasDiscordChanges && !saveSuccess)}
+                                className="btn btn-primary" 
+                                style={{ 
+                                    padding: '0 1rem', 
+                                    background: saveSuccess ? 'var(--color-success)' : (hasDiscordChanges ? '#5865F2' : 'var(--color-surface)'),
+                                    color: saveSuccess ? '#000' : 'white',
+                                    border: hasDiscordChanges || saveSuccess ? 'none' : '1px solid var(--color-border)'
+                                }}
+                            >
+                                {isSavingDiscord ? 'Lädt...' : (saveSuccess ? '✅ Gespeichert' : 'Speichern')}
+                            </button>
+                        </div>
+                        <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <Info size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <span>
+                                <strong>So findest du deine ID:</strong> Discord-Einstellungen &gt; Erweitert &gt; Entwicklermodus aktivieren. Danach Rechtsklick auf dein Profilbild und "ID kopieren".
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
                         <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Benutzer erstellen</h3>
                         <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
