@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 
