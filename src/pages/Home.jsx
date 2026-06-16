@@ -398,7 +398,7 @@ export default function Home() {
                                         </div>
                                     </motion.div>
                                 )}
-                                {showExtrasBanner && searchPhase === 'idle' && currentUser && userSettings && userSettings[currentUser.username] && !userSettings[currentUser.username].discordId && (
+                                {showExtrasBanner && searchPhase === 'idle' && currentUser && (!userSettings || !userSettings[currentUser.username] || !userSettings[currentUser.username].discordId) && (
                                     <motion.div
                                         initial={{ height: 0, opacity: 0 }}
                                         animate={{ height: 'auto', opacity: 1 }}
