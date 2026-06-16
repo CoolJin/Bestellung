@@ -310,14 +310,14 @@ export default function Home() {
                     </div>
                 )}
                 
-                <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                    <GlassSurface 
-                        className="home-search-wrapper" 
-                        width="100%" 
-                        height="auto" 
-                        borderRadius={baseRadius} 
-                        borderWidth={0.15}
-                        backgroundOpacity={0.15}
+                <div className="home-search-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+                    <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        <GlassSurface 
+                            width="100%" 
+                            height="auto" 
+                            borderRadius={baseRadius} 
+                            borderWidth={0.15}
+                            backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
                         opacity={1}
@@ -435,6 +435,7 @@ export default function Home() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                </div>
                 </div>
 
                 <div className="w-full">
