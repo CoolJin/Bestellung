@@ -122,7 +122,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                                 <span style={{
                                     position: 'absolute', content: '""', height: '18px', width: '18px',
                                     left: notificationsEnabled ? '22px' : '3px', bottom: '3px',
-                                    backgroundColor: notificationsEnabled ? 'var(--color-background)' : 'white', 
+                                    backgroundColor: notificationsEnabled ? 'var(--color-primary)' : 'white', 
                                     transition: '.3s', borderRadius: '50%'
                                 }}></span>
                             </span>
@@ -147,7 +147,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                             style={{ 
                                 padding: '0.6rem 1.25rem', 
                                 background: saveSuccess ? 'var(--color-success)' : (hasChanges ? 'var(--color-accent)' : 'var(--color-surface)'),
-                                border: hasChanges || saveSuccess ? 'none' : '1px solid var(--color-border)',
+                                border: hasChanges || saveSuccess ? '1px solid transparent' : '1px solid var(--color-border)',
                                 color: hasChanges || saveSuccess ? '#000' : 'var(--color-muted)',
                                 borderRadius: 'var(--radius)',
                                 fontWeight: '600',
