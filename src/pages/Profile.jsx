@@ -2,20 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
 import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare, Info, Bell } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Modal from '../components/Modal';
 import NotificationModal from '../components/NotificationModal';
 
 export default function Profile() {
     const { currentUser, orders, fetchAllData, clearCart, addToCart, userSettings, saveSettings } = useAppContext();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const shouldPulse = currentUser && userSettings && userSettings[currentUser.username] && !userSettings[currentUser.username].discordId;
+    const shouldPulse = location.state?.triggerPulse === true;
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });

@@ -220,9 +220,9 @@ export default function Home() {
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                const wrapper = document.querySelector('.home-search-wrapper');
-                if (wrapper && window.visualViewport) {
-                    const rect = wrapper.getBoundingClientRect();
+                const targetEl = document.querySelector('.home-search-input');
+                if (targetEl && window.visualViewport) {
+                    const rect = targetEl.getBoundingClientRect();
                     const absoluteBottom = rect.bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
@@ -266,10 +266,10 @@ export default function Home() {
                     return;
                 }
 
-                // Focused: maintain 40px gap
-                const wrapper = document.querySelector('.home-search-wrapper');
-                if (wrapper) {
-                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                // Focused: maintain 40px gap from the input field
+                const targetEl = document.querySelector('.home-search-input');
+                if (targetEl) {
+                    const absoluteBottom = targetEl.getBoundingClientRect().bottom + window.scrollY;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
                     if (Math.abs(window.scrollY - targetScrollY) > 5) {
                         smoothScrollTo(Math.max(0, targetScrollY), 1000);
@@ -291,9 +291,9 @@ export default function Home() {
             const timer = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
                 if (isFocused) {
-                    const wrapper = document.querySelector('.home-search-wrapper');
-                    if (wrapper && window.visualViewport) {
-                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const targetEl = document.querySelector('.home-search-input');
+                    if (targetEl && window.visualViewport) {
+                        const absoluteBottom = targetEl.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
                         if (Math.abs(window.scrollY - targetScrollY) > 10) {
@@ -439,7 +439,7 @@ export default function Home() {
                                             </div>
                                         </div>
                                         <button 
-                                            onClick={(e) => { e.preventDefault(); navigate('/profile'); }}
+                                            onClick={(e) => { e.preventDefault(); navigate('/profile', { state: { triggerPulse: true } }); }}
                                             style={{ background: 'var(--color-accent)', color: 'var(--color-primary)', border: 'none', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                         >
                                             Einrichten
