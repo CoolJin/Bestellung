@@ -122,7 +122,8 @@ export default function NotificationModal({ isOpen, onClose }) {
                                 <span style={{
                                     position: 'absolute', content: '""', height: '18px', width: '18px',
                                     left: notificationsEnabled ? '22px' : '3px', bottom: '3px',
-                                    backgroundColor: 'white', transition: '.3s', borderRadius: '50%'
+                                    backgroundColor: notificationsEnabled ? 'var(--color-background)' : 'white', 
+                                    transition: '.3s', borderRadius: '50%'
                                 }}></span>
                             </span>
                         </label>
