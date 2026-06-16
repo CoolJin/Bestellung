@@ -199,10 +199,8 @@ export default function Home() {
             const timeElapsed = currentTime - startTime;
             const progress = Math.min(timeElapsed / duration, 1);
             
-            // Smoother ease-in-out
-            const ease = progress < 0.5 
-                ? 4 * progress * progress * progress 
-                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+            // Cubic ease-out
+            const ease = 1 - Math.pow(1 - progress, 3);
                 
             window.scrollTo(0, startPosition + distance * ease);
             
@@ -220,9 +218,9 @@ export default function Home() {
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                const targetEl = document.querySelector('.home-search-input');
-                if (targetEl && window.visualViewport) {
-                    const rect = targetEl.getBoundingClientRect();
+                const searchContainer = document.querySelector('.home-search-container');
+                if (searchContainer && window.visualViewport) {
+                    const rect = searchContainer.getBoundingClientRect();
                     const absoluteBottom = rect.bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
@@ -266,10 +264,10 @@ export default function Home() {
                     return;
                 }
 
-                // Focused: maintain 40px gap from the input field
-                const targetEl = document.querySelector('.home-search-input');
-                if (targetEl) {
-                    const absoluteBottom = targetEl.getBoundingClientRect().bottom + window.scrollY;
+                // Focused: maintain 40px gap
+                const searchContainer = document.querySelector('.home-search-container');
+                if (searchContainer) {
+                    const absoluteBottom = searchContainer.getBoundingClientRect().bottom + window.scrollY;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
                     if (Math.abs(window.scrollY - targetScrollY) > 5) {
                         smoothScrollTo(Math.max(0, targetScrollY), 1000);
@@ -291,9 +289,9 @@ export default function Home() {
             const timer = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
                 if (isFocused) {
-                    const targetEl = document.querySelector('.home-search-input');
-                    if (targetEl && window.visualViewport) {
-                        const absoluteBottom = targetEl.getBoundingClientRect().bottom + window.scrollY;
+                    const searchContainer = document.querySelector('.home-search-container');
+                    if (searchContainer && window.visualViewport) {
+                        const absoluteBottom = searchContainer.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
                         if (Math.abs(window.scrollY - targetScrollY) > 10) {
@@ -439,7 +437,7 @@ export default function Home() {
                                             </div>
                                         </div>
                                         <button 
-                                            onClick={(e) => { e.preventDefault(); navigate('/profile', { state: { triggerPulse: true } }); }}
+                                            onClick={(e) => { e.preventDefault(); navigate('/profile', { state: { highlightDiscord: true } }); }}
                                             style={{ background: 'var(--color-accent)', color: 'var(--color-primary)', border: 'none', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                         >
                                             Einrichten

@@ -9,14 +9,14 @@ import NotificationModal from '../components/NotificationModal';
 export default function Profile() {
     const { currentUser, orders, fetchAllData, clearCart, addToCart, userSettings, saveSettings } = useAppContext();
     const navigate = useNavigate();
-    const location = useLocation();
 
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const shouldPulse = location.state?.triggerPulse === true;
+    const location = useLocation();
+    const shouldPulse = location.state?.highlightDiscord;
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });

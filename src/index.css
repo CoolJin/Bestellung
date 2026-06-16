@@ -50,6 +50,21 @@
   }
 }
 
+.aurora-blob {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: float 20s infinite ease-in-out alternate;
+}
+
+@media (max-width: 768px) {
+  .aurora-blob {
+    animation: none;
+    filter: blur(30px);
+    opacity: 0.2;
+  }
+}
+
 body {
   margin: 0;
 }
