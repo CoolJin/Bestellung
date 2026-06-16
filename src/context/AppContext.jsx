@@ -71,7 +71,9 @@ export const AppProvider = ({ children }) => {
                 fetchAllData(); // Refresh UI data
 
                 if (newOrder.status === 'request_open') {
-                    // Fetch fresh settings directly from DB to avoid state closure race conditions
+                    const productName = newOrder.items?.[0]?.name || "Unbekanntes Produkt";
+                    const productSource = newOrder.items?.[0]?.source === 'extra' ? 'Extras' : 'Lagerbestand';
+                    
                     const { allSettings } = await DB.fetchOrders();
                     const users = await DB.fetchUsers();
                     const admins = users.filter(u => u.role === 'admin');
@@ -89,7 +91,7 @@ export const AppProvider = ({ children }) => {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     discordId: discordId,
-                                    message: `Neue Produktanfrage von **${newOrder.user_id}**!`,
+                                    message: `Neue Produktanfrage von **${newOrder.user_id}**: **${productName}** (aus ${productSource})!`,
                                     event: 'new_request'
                                 })
                             }).then(res => console.log("Webhook response:", res.status))
@@ -108,11 +110,12 @@ export const AppProvider = ({ children }) => {
                     const { allSettings } = await DB.fetchOrders();
                     const discordId = allSettings[newOrder.user_id]?.discordId;
                     
+                    const productName = newOrder.items?.[0]?.name || "Unbekanntes Produkt";
+                    
                     if (discordId) {
                         let msg = '';
-                        if (newOrder.status === 'request_accepted') msg = `Deine Produktanfrage wurde **akzeptiert**!`;
-                        else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage wurde **abgelehnt**.`;
-                        else if (newOrder.status === 'paid') msg = `Deine Bestellung wurde als **bezahlt** markiert!`;
+                        if (newOrder.status === 'request_accepted') msg = `Dein Produkt **${productName}** ist für dich bereit!`;
+                        else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage für **${productName}** wurde abgelehnt.`;
                         
                         if (msg) {
                             console.log("Sending Webhook for status_update!");
