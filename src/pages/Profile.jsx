@@ -56,9 +56,7 @@ export default function Profile() {
     const myOrders = orders.filter(o => {
         if (o.user !== currentUser.username) return false;
         if (o.deletedByAdmin) return false;
-        if (o.status === 'request_open') return false;
-        if (o.status === 'request_accepted') return false;
-        if (o.status === 'request_denied') return false;
+        if (o.status && o.status.toLowerCase().startsWith('request_')) return false;
         const deletedTag = `DELETED:${currentUser.username}`;
         if (o.archivedBy && o.archivedBy.includes(deletedTag)) return false;
         return true;
