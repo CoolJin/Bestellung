@@ -10,8 +10,8 @@ export default function NotificationModal({ isOpen, onClose }) {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     
-    // Webhook URL für Make.com Verifizierung (ersetzen mit der echten URL)
-    const VERIFY_WEBHOOK_URL = 'DEINE_MAKE_WEBHOOK_URL_HIER';
+    // Webhook URL für Make.com Verifizierung
+    const VERIFY_WEBHOOK_URL = 'https://hook.eu2.make.com/raae69aakag4pwrneiqb5kvqpikyqtij';
     
     const [isVerifying, setIsVerifying] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
