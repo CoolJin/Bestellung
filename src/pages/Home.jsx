@@ -219,23 +219,19 @@ export default function Home() {
     // Mobile Keyboard UX Fixes
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
-            // Wait slightly longer for iOS/Android native keyboard animation to finish completely
             setTimeout(() => {
-                const searchElement = document.getElementById('search-glass-surface');
-                
-                if (searchElement && window.visualViewport) {
-                    const rect = searchElement.getBoundingClientRect();
-                    // rect.bottom is relative to viewport. If we want it to be 40px above the keyboard (bottom of visualViewport),
-                    // the target viewport top is current scroll + rect.bottom + 40 - visualViewport.height
+                const wrapper = document.querySelector('.home-search-wrapper');
+                if (wrapper && window.visualViewport) {
+                    const rect = wrapper.getBoundingClientRect();
                     const absoluteBottom = rect.bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
                     
-                    if (Math.abs(window.scrollY - targetScrollY) > 10) {
-                        smoothScrollTo(Math.max(0, targetScrollY), 800);
+                    if (Math.abs(window.scrollY - targetScrollY) > 5) {
+                        window.scrollTo({ top: Math.max(0, targetScrollY), behavior: 'smooth' });
                     }
                 }
-            }, 400);
+            }, 300);
         }
     };
 
@@ -243,7 +239,7 @@ export default function Home() {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
                 if (searchPhase === 'idle') {
-                    smoothScrollTo(0, 800);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }, 100);
         }
@@ -258,57 +254,56 @@ export default function Home() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
-                if (!isFocused) return;
-
                 const viewportHeight = window.visualViewport.height;
                 const innerHeight = window.innerHeight;
 
-                // Keyboard hidden manually
-                if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
-                    smoothScrollTo(0, 800);
-                    document.activeElement.blur(); 
-                } else if (searchPhase === 'idle') {
-                    // Keyboard size changed (e.g. predictive text opened) while focused
-                    const searchElement = document.getElementById('search-glass-surface');
-                    if (searchElement) {
-                        const absoluteBottom = searchElement.getBoundingClientRect().bottom + window.scrollY;
-                        const targetScrollY = absoluteBottom - viewportHeight + 40;
-                        // Only scroll if we are off by more than 10 pixels to prevent micro-jumps
-                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
-                            smoothScrollTo(Math.max(0, targetScrollY), 400);
-                        }
+                if (!isFocused) {
+                    // Keyboard hidden manually
+                    if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        document.activeElement?.blur(); 
+                    }
+                    return;
+                }
+
+                // Focused: maintain 40px gap when keyboard size changes
+                const wrapper = document.querySelector('.home-search-wrapper');
+                if (wrapper) {
+                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const targetScrollY = absoluteBottom - viewportHeight + 40;
+                    if (Math.abs(window.scrollY - targetScrollY) > 5) {
+                        window.scrollTo({ top: Math.max(0, targetScrollY), behavior: 'smooth' });
                     }
                 }
-            }, 150);
+            }, 50); // Faster reaction
         };
 
         window.visualViewport.addEventListener('resize', handleResize);
+        
+        // Track layout height changes while focused (e.g., banner expanding)
+        const wrapper = document.querySelector('.home-search-wrapper');
+        let prevHeight = wrapper ? wrapper.offsetHeight : 0;
+        const ro = new ResizeObserver((entries) => {
+            const isFocused = document.activeElement === document.querySelector('.home-search-input');
+            if (!isFocused) return;
+            for (let entry of entries) {
+                const newHeight = entry.borderBoxSize ? entry.borderBoxSize[0].blockSize : entry.contentRect.height;
+                const delta = newHeight - prevHeight;
+                prevHeight = newHeight;
+                // Instantly scroll down by the exact pixel growth amount to keep the gap completely frozen
+                if (Math.abs(delta) > 0.5) {
+                    window.scrollBy(0, delta);
+                }
+            }
+        });
+        if (wrapper) ro.observe(wrapper);
+
         return () => {
             clearTimeout(resizeTimeout);
             window.visualViewport.removeEventListener('resize', handleResize);
+            ro.disconnect();
         };
     }, [searchPhase]);
-
-    // Scroll after banner expands
-    useEffect(() => {
-        if (showExtrasBanner && window.innerWidth <= 768) {
-            const timer = setTimeout(() => {
-                const isFocused = document.activeElement === document.querySelector('.home-search-input');
-                if (isFocused) {
-                    const searchElement = document.getElementById('search-glass-surface');
-                    if (searchElement && window.visualViewport) {
-                        const absoluteBottom = searchElement.getBoundingClientRect().bottom + window.scrollY;
-                        const viewportHeight = window.visualViewport.height;
-                        const targetScrollY = absoluteBottom - viewportHeight + 40;
-                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
-                            smoothScrollTo(Math.max(0, targetScrollY), 600);
-                        }
-                    }
-                }
-            }, 1050); // wait for 1s layout animation to finish
-            return () => clearTimeout(timer);
-        }
-    }, [showExtrasBanner]);
 
     return (
         <div className={`home-container page-transition ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'search-active' : ''}`}>
@@ -330,12 +325,11 @@ export default function Home() {
                 
                 <div className="home-search-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
                     <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                        <div id="search-glass-surface" style={{ width: '100%', maxWidth: '600px' }}>
-                            <GlassSurface 
-                                width="100%" 
-                                height="auto" 
-                                borderRadius={baseRadius} 
-                                borderWidth={0.15}
+                        <GlassSurface 
+                            width="100%" 
+                            height="auto" 
+                            borderRadius={baseRadius} 
+                            borderWidth={0.15}
                             backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
@@ -419,9 +413,8 @@ export default function Home() {
                                 )}
                             </AnimatePresence>
                         </div>
-                        </GlassSurface>
-                        </div>
-                    </form>
+                    </GlassSurface>
+                </form>
 
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <AnimatePresence>
@@ -431,7 +424,7 @@ export default function Home() {
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 1, delay: 0.2 }}
-                                style={{ overflow: 'hidden', width: '100%', maxWidth: '600px', marginTop: '1.5rem' }}
+                                style={{ overflow: 'hidden', width: '100%', maxWidth: '600px' }}
                             >
                                 <div style={{ padding: '0 0 2rem 0', display: 'flex', justifyContent: 'center' }}>
                                     <div style={{ width: '100%', background: 'rgba(170, 59, 255, 0.1)', border: '1px solid rgba(170, 59, 255, 0.3)', borderRadius: 'var(--radius)', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', backdropFilter: 'blur(10px)' }}>
