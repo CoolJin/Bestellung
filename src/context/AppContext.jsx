@@ -12,7 +12,7 @@ export const AppProvider = ({ children }) => {
     const [userSettings, setUserSettings] = useState({});
     const [isLoaded, setIsLoaded] = useState(false);
 
-    const MAKE_WEBHOOK_URL = 'https://hook.make.com/YOUR_WEBHOOK_URL_HERE'; // Wird vom Admin später ersetzt
+    const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/9o6d7birjy66suvq6w8rzbwz72dbw9yb';
 
     useEffect(() => {
         const init = async () => {
