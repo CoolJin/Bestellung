@@ -188,8 +188,10 @@ export default function Home() {
 
     // Custom 1-second smooth scroll function
     const smoothScrollTo = (targetPosition, duration) => {
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+
         const startPosition = window.scrollY;
         const distance = targetPosition - startPosition;
         let startTime = null;
@@ -199,8 +201,10 @@ export default function Home() {
             const timeElapsed = currentTime - startTime;
             const progress = Math.min(timeElapsed / duration, 1);
             
-            // Cubic ease-out
-            const ease = 1 - Math.pow(1 - progress, 3);
+            // Ease-in-out cubic easing
+            const ease = progress < 0.5 
+                ? 4 * progress * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
                 
             window.scrollTo(0, startPosition + distance * ease);
             
@@ -218,16 +222,13 @@ export default function Home() {
     const handleFocus = () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                const searchContainer = document.querySelector('.home-search-container');
-                if (searchContainer && window.visualViewport) {
-                    const rect = searchContainer.getBoundingClientRect();
-                    const absoluteBottom = rect.bottom + window.scrollY;
+                const wrapper = document.querySelector('.home-search-wrapper');
+                
+                if (wrapper && window.visualViewport) {
+                    const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                     const viewportHeight = window.visualViewport.height;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
-                    
-                    if (Math.abs(window.scrollY - targetScrollY) > 5) {
-                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                    }
+                    smoothScrollTo(Math.max(0, targetScrollY), 1000);
                 }
             }, 300);
         }
@@ -252,26 +253,15 @@ export default function Home() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
+                if (!isFocused) return;
+
                 const viewportHeight = window.visualViewport.height;
                 const innerHeight = window.innerHeight;
 
-                if (!isFocused) {
-                    // Keyboard hidden manually
-                    if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
-                        smoothScrollTo(0, 1000);
-                        document.activeElement?.blur(); 
-                    }
-                    return;
-                }
-
-                // Focused: maintain 40px gap
-                const searchContainer = document.querySelector('.home-search-container');
-                if (searchContainer) {
-                    const absoluteBottom = searchContainer.getBoundingClientRect().bottom + window.scrollY;
-                    const targetScrollY = absoluteBottom - viewportHeight + 40;
-                    if (Math.abs(window.scrollY - targetScrollY) > 5) {
-                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                    }
+                // If viewport is close to innerHeight, the keyboard was hidden manually by the user
+                if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
+                    smoothScrollTo(0, 1000);
+                    document.activeElement.blur(); // Remove focus since keyboard is gone
                 }
             }, 150);
         };
@@ -281,7 +271,7 @@ export default function Home() {
             clearTimeout(resizeTimeout);
             window.visualViewport.removeEventListener('resize', handleResize);
         };
-    }, [searchPhase]);
+    }, []);
 
     // Scroll after banner expands
     useEffect(() => {
@@ -289,17 +279,15 @@ export default function Home() {
             const timer = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
                 if (isFocused) {
-                    const searchContainer = document.querySelector('.home-search-container');
-                    if (searchContainer && window.visualViewport) {
-                        const absoluteBottom = searchContainer.getBoundingClientRect().bottom + window.scrollY;
+                    const wrapper = document.querySelector('.home-search-wrapper');
+                    if (wrapper && window.visualViewport) {
+                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
-                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
-                            smoothScrollTo(Math.max(0, targetScrollY), 1000);
-                        }
+                        smoothScrollTo(Math.max(0, targetScrollY), 600);
                     }
                 }
-            }, 1050); // wait for 1s layout animation to finish
+            }, 1050);
             return () => clearTimeout(timer);
         }
     }, [showExtrasBanner]);
@@ -322,7 +310,7 @@ export default function Home() {
                     </div>
                 )}
                 
-                <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '100px' }}>
+                <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
                     <GlassSurface 
                         className="home-search-wrapper" 
                         width="100%" 
@@ -437,7 +425,7 @@ export default function Home() {
                                             </div>
                                         </div>
                                         <button 
-                                            onClick={(e) => { e.preventDefault(); navigate('/profile', { state: { highlightDiscord: true } }); }}
+                                            onClick={(e) => { e.preventDefault(); navigate('/profile'); }}
                                             style={{ background: 'var(--color-accent)', color: 'var(--color-primary)', border: 'none', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                         >
                                             Einrichten

@@ -204,7 +204,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                             <strong>So findest du deine ID:</strong> Discord-Einstellungen &gt; Erweitert &gt; Entwicklermodus aktivieren. Danach Rechtsklick auf dein Profilbild und "ID kopieren".
                         </p>
                         {isVerified && (
-                            <div style={{ marginTop: '0.75rem', color: '#10B981', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '500' }}>
+                            <div style={{ marginTop: '0.75rem', color: 'var(--color-success)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <CheckCircle size={16} /> Prüfung erfolgreich, Nutzer ist auf dem Server
                             </div>
                         )}

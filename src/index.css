@@ -50,21 +50,6 @@
   }
 }
 
-.aurora-blob {
-  position: absolute;
-  filter: blur(80px);
-  opacity: 0.5;
-  animation: float 20s infinite ease-in-out alternate;
-}
-
-@media (max-width: 768px) {
-  .aurora-blob {
-    animation: none;
-    filter: blur(30px);
-    opacity: 0.2;
-  }
-}
-
 body {
   margin: 0;
 }
@@ -79,23 +64,6 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-}
-
-@keyframes pulse-gold {
-    0% {
-        box-shadow: 0 0 0 0 rgba(224, 176, 255, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 15px rgba(224, 176, 255, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(224, 176, 255, 0);
-    }
-}
-
-.pulse-gold {
-    animation: pulse-gold 2s ease-in-out 5;
-    border-color: var(--color-accent) !important;
 }
 
 h1,
