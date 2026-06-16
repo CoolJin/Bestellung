@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 
@@ -31,10 +31,13 @@ export default function Profile() {
     const myOrders = orders.filter(o => {
         if (o.user !== currentUser.username) return false;
         if (o.deletedByAdmin) return false;
+        if (o.status === 'request_open') return false;
         const deletedTag = `DELETED:${currentUser.username}`;
         if (o.archivedBy && o.archivedBy.includes(deletedTag)) return false;
         return true;
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const myRequests = orders.filter(o => o.status === 'request_open' && o.user === currentUser.username);
 
     const handleRequestProduct = (item) => {
         showConfirm(
@@ -62,6 +65,22 @@ export default function Profile() {
                     console.error('Fehler beim Senden der Anfrage:', err);
                 }
             }
+        );
+    };
+
+    const handleWithdrawRequest = (reqId) => {
+        showConfirm(
+            "Anfrage zurückziehen",
+            "Möchtest du diese Anfrage wirklich zurückziehen?",
+            async () => {
+                try {
+                    await DB.deleteOrder(reqId);
+                    fetchAllData();
+                } catch (err) {
+                    console.error('Fehler beim Zurückziehen:', err);
+                }
+            },
+            true
         );
     };
 
@@ -278,18 +297,6 @@ export default function Profile() {
                 )}
             </div>
 
-            {/* Custom Confirm Modal */}
-            <Modal
-                isOpen={confirm.open}
-                title={confirm.title}
-                onClose={closeConfirm}
-                onConfirm={confirm.onConfirm ? executeConfirm : undefined}
-                confirmText="Bestätigen"
-                isDanger={confirm.isDanger}
-            >
-                <p>{confirm.message}</p>
-            </Modal>
-
             {/* Lager Modal */}
             <Modal
                 isOpen={isLagerModalOpen}
@@ -308,31 +315,55 @@ export default function Profile() {
                             Dein Lager ist leer.
                         </div>
                     ) : (
-                        getStorageItems().map((item, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    {item.image ? (
-                                        <img src={item.image} alt={item.name} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
-                                    ) : (
-                                        <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
-                                    )}
-                                    <span style={{ fontWeight: '600' }}>{item.name}</span>
+                        getStorageItems().map((item, idx) => {
+                            const existingRequest = myRequests.find(r => r.items[0]?.source === 'lager' && r.items[0]?.name === item.name);
+                            return (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        {item.image ? (
+                                            <img src={item.image} alt={item.name} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+                                        )}
+                                        <span style={{ fontWeight: '600' }}>{item.name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count}x</span>
+                                        {existingRequest ? (
+                                            <button 
+                                                onClick={() => handleWithdrawRequest(existingRequest.id)}
+                                                className="btn" 
+                                                style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--color-success)', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
+                                            >
+                                                <CheckCircle size={14} /> Angefragt
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleRequestProduct(item)}
+                                                className="btn btn-secondary" 
+                                                style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+                                            >
+                                                <Send size={14} /> Anfragen
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{item.count}x</span>
-                                    <button 
-                                        onClick={() => handleRequestProduct(item)}
-                                        className="btn btn-secondary" 
-                                        style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-                                        title="1x Anfragen"
-                                    >
-                                        <Send size={14} /> Anfragen
-                                    </button>
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
+            </Modal>
+
+            <Modal
+                isOpen={confirm.open}
+                title={confirm.title}
+                onClose={closeConfirm}
+                onConfirm={confirm.onConfirm ? executeConfirm : null}
+                confirmText={confirm.onConfirm ? "Bestätigen" : null}
+                cancelText={confirm.onConfirm ? "Abbrechen" : "Schließen"}
+                isDanger={confirm.isDanger}
+            >
+                <p>{confirm.message}</p>
             </Modal>
         </div>
     );
