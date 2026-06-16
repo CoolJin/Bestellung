@@ -61,29 +61,60 @@ export const AppProvider = ({ children }) => {
         };
     }, []);
 
+    const [usersList, setUsersList] = useState([]);
+
     useEffect(() => {
         if (!currentUser) return;
 
         const channel = supabaseClient.channel('admin_notifications')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
                 const newOrder = payload.new;
-                
-                // Fetch data quietly on new orders
-                fetchAllData();
+                fetchAllData(); // Refresh data
 
-                if (newOrder.status === 'request_open' && currentUser.role === 'admin') {
-                    // Check if current user (Admin) has a Discord ID configured
-                    const adminSettings = userSettings[currentUser.username] || {};
-                    if (adminSettings.discordId) {
-                        fetch(MAKE_WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                discordId: adminSettings.discordId,
-                                message: `Neue Produktanfrage von ${newOrder.user_id}!`,
-                                event: 'new_request'
-                            })
-                        }).catch(e => console.error("Webhook Error:", e));
+                if (newOrder.status === 'request_open') {
+                    // Notify all admins
+                    const admins = usersList.filter(u => u.role === 'admin');
+                    admins.forEach(admin => {
+                        const discordId = userSettings[admin.username]?.discordId;
+                        if (discordId) {
+                            fetch(MAKE_WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    discordId: discordId,
+                                    message: `🔔 Neue Produktanfrage von **${newOrder.user_id}**!`,
+                                    event: 'new_request'
+                                })
+                            }).catch(e => console.error("Webhook Error:", e));
+                        }
+                    });
+                }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+                const newOrder = payload.new;
+                const oldOrder = payload.old;
+                fetchAllData(); // Refresh data
+
+                // If status changed to accepted/denied/paid, notify the user
+                if (newOrder.status !== oldOrder.status) {
+                    const discordId = userSettings[newOrder.user_id]?.discordId;
+                    if (discordId) {
+                        let msg = '';
+                        if (newOrder.status === 'request_accepted') msg = `✅ Deine Produktanfrage wurde **akzeptiert**!`;
+                        else if (newOrder.status === 'request_denied') msg = `❌ Deine Produktanfrage wurde **abgelehnt**.`;
+                        else if (newOrder.status === 'paid') msg = `💰 Deine Bestellung wurde als **bezahlt** markiert!`;
+                        
+                        if (msg) {
+                            fetch(MAKE_WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    discordId: discordId,
+                                    message: msg,
+                                    event: 'status_update'
+                                })
+                            }).catch(e => console.error("Webhook Error:", e));
+                        }
                     }
                 }
             })
@@ -92,13 +123,15 @@ export const AppProvider = ({ children }) => {
         return () => {
             supabaseClient.removeChannel(channel);
         };
-    }, [currentUser, userSettings]);
+    }, [currentUser, userSettings, usersList]);
 
     const fetchAllData = async () => {
         const { orders: fetchedOrders, adminExtras: fetchedExtras, allSettings: fetchedSettings } = await DB.fetchOrders();
+        const users = await DB.fetchUsers();
         setOrders(fetchedOrders);
         setAdminExtras(fetchedExtras);
         setUserSettings(fetchedSettings || {});
+        setUsersList(users || []);
     };
 
     const saveSettings = async (settings) => {
