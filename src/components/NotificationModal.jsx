@@ -9,6 +9,13 @@ export default function NotificationModal({ isOpen, onClose }) {
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    
+    // Webhook URL für Make.com Verifizierung (ersetzen mit der echten URL)
+    const VERIFY_WEBHOOK_URL = 'DEINE_MAKE_WEBHOOK_URL_HIER';
+    
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [isVerified, setIsVerified] = useState(false);
+    const [verifyError, setVerifyError] = useState('');
 
     useEffect(() => {
         if (isOpen && currentUser && userSettings[currentUser.username]) {
@@ -23,9 +30,43 @@ export default function NotificationModal({ isOpen, onClose }) {
     const currentSavedEnabled = userSettings[currentUser.username]?.notificationsEnabled !== false;
 
     const hasChanges = discordIdInput.trim() !== currentSavedDiscordId || notificationsEnabled !== currentSavedEnabled;
+    const needsVerification = discordIdInput.trim() !== currentSavedDiscordId && discordIdInput.trim() !== '' && !isVerified;
+
+    const handleVerify = async () => {
+        setIsVerifying(true);
+        setVerifyError('');
+        try {
+            // Wenn keine echte URL eingetragen ist, überspringen wir die echte Prüfung erstmal für den Test
+            if (VERIFY_WEBHOOK_URL === 'DEINE_MAKE_WEBHOOK_URL_HIER') {
+                console.warn("Platzhalter-URL verwendet. Überspringe echte Überprüfung.");
+                setTimeout(() => {
+                    setIsVerified(true);
+                    setIsVerifying(false);
+                }, 800);
+                return;
+            }
+
+            const res = await fetch(VERIFY_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ discordId: discordIdInput.trim() })
+            });
+
+            if (res.ok) {
+                setIsVerified(true);
+            } else {
+                setVerifyError('ID nicht auf dem Server gefunden.');
+            }
+        } catch (e) {
+            console.error(e);
+            setVerifyError('Fehler bei der Überprüfung.');
+        } finally {
+            setIsVerifying(false);
+        }
+    };
 
     const handleSave = async () => {
-        if (!hasChanges) return;
+        if (!hasChanges || needsVerification) return;
         setIsSaving(true);
         try {
             await saveSettings({ 
@@ -33,11 +74,22 @@ export default function NotificationModal({ isOpen, onClose }) {
                 notificationsEnabled: notificationsEnabled 
             });
             setSaveSuccess(true);
+            setIsVerified(false); // Reset für die nächste Änderung
             setTimeout(() => setSaveSuccess(false), 3000);
         } catch(e) {
             console.error(e);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleClose = () => {
+        if (hasChanges && !saveSuccess) {
+            if (window.confirm('Du hast ungespeicherte Änderungen. Wirklich schließen?')) {
+                onClose();
+            }
+        } else {
+            onClose();
         }
     };
 
@@ -48,7 +100,7 @@ export default function NotificationModal({ isOpen, onClose }) {
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{
+        <div className="modal-overlay" onClick={handleClose} style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
             background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
@@ -63,7 +115,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                         <Bell size={20} style={{ color: 'var(--color-accent)' }} />
                         Benachrichtigungseinstellungen
                     </h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: '0.25rem' }}>
+                    <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', padding: '0.25rem' }}>
                         <X size={20} />
                     </button>
                 </div>
@@ -113,7 +165,11 @@ export default function NotificationModal({ isOpen, onClose }) {
                             type="text" 
                             className="input-field" 
                             value={discordIdInput} 
-                            onChange={(e) => setDiscordIdInput(e.target.value)} 
+                            onChange={(e) => {
+                                setDiscordIdInput(e.target.value);
+                                setIsVerified(false);
+                                setVerifyError('');
+                            }} 
                             placeholder="z.B. 123456789012345678" 
                             style={{ 
                                 width: '100%', 
@@ -128,6 +184,16 @@ export default function NotificationModal({ isOpen, onClose }) {
                         <p style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: '0.75rem', lineHeight: '1.4' }}>
                             <strong>So findest du deine ID:</strong> Discord-Einstellungen &gt; Erweitert &gt; Entwicklermodus aktivieren. Danach Rechtsklick auf dein Profilbild und "ID kopieren".
                         </p>
+                        {isVerified && (
+                            <div style={{ marginTop: '0.75rem', color: 'var(--color-success)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <CheckCircle size={16} /> Prüfung erfolgreich, Nutzer ist auf dem Server
+                            </div>
+                        )}
+                        {verifyError && (
+                            <div style={{ marginTop: '0.75rem', color: 'var(--color-destructive)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <X size={16} /> {verifyError}
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ 
@@ -169,7 +235,7 @@ export default function NotificationModal({ isOpen, onClose }) {
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                        <button onClick={onClose} className="btn-secondary" style={{ 
+                        <button onClick={handleClose} className="btn-secondary" style={{ 
                             padding: '0.6rem 1.25rem', 
                             background: 'transparent',
                             border: '1px solid var(--color-border)',
@@ -179,26 +245,51 @@ export default function NotificationModal({ isOpen, onClose }) {
                         }}>
                             Abbrechen
                         </button>
-                        <button 
-                            onClick={handleSave} 
-                            disabled={isSaving || (!hasChanges && !saveSuccess)}
-                            className="btn-primary" 
-                            style={{ 
-                                padding: '0.6rem 1.25rem', 
-                                background: saveSuccess ? 'var(--color-success)' : (hasChanges ? 'var(--color-accent)' : 'var(--color-surface)'),
-                                border: hasChanges || saveSuccess ? '1px solid transparent' : '1px solid var(--color-border)',
-                                color: hasChanges || saveSuccess ? '#000' : 'var(--color-muted)',
-                                borderRadius: 'var(--radius)',
-                                fontWeight: '600',
-                                cursor: (isSaving || (!hasChanges && !saveSuccess)) ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.4rem',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {isSaving ? 'Lädt...' : (saveSuccess ? <><CheckCircle size={16} /> Gespeichert</> : 'Speichern')}
-                        </button>
+                        
+                        {needsVerification ? (
+                            <button 
+                                onClick={handleVerify} 
+                                disabled={isVerifying || discordIdInput.trim() === ''}
+                                className="btn-primary" 
+                                style={{ 
+                                    padding: '0.6rem 1.25rem', 
+                                    background: 'var(--color-accent)',
+                                    border: '1px solid transparent',
+                                    color: '#000',
+                                    borderRadius: 'var(--radius)',
+                                    fontWeight: '600',
+                                    cursor: (isVerifying || discordIdInput.trim() === '') ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    transition: 'all 0.2s',
+                                    opacity: (isVerifying || discordIdInput.trim() === '') ? 0.5 : 1
+                                }}
+                            >
+                                {isVerifying ? 'Prüft...' : 'Prüfen'}
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={handleSave} 
+                                disabled={isSaving || (!hasChanges && !saveSuccess)}
+                                className="btn-primary" 
+                                style={{ 
+                                    padding: '0.6rem 1.25rem', 
+                                    background: saveSuccess ? 'var(--color-success)' : (hasChanges ? 'var(--color-accent)' : 'var(--color-surface)'),
+                                    border: hasChanges || saveSuccess ? '1px solid transparent' : '1px solid var(--color-border)',
+                                    color: hasChanges || saveSuccess ? '#000' : 'var(--color-muted)',
+                                    borderRadius: 'var(--radius)',
+                                    fontWeight: '600',
+                                    cursor: (isSaving || (!hasChanges && !saveSuccess)) ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {isSaving ? 'Lädt...' : (saveSuccess ? <><CheckCircle size={16} /> Gespeichert</> : 'Speichern')}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
