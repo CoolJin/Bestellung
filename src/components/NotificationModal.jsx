@@ -16,11 +16,15 @@ export default function NotificationModal({ isOpen, onClose }) {
     const [isVerifying, setIsVerifying] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     const [verifyError, setVerifyError] = useState('');
+    const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
     useEffect(() => {
         if (isOpen && currentUser && userSettings[currentUser.username]) {
             setDiscordIdInput(userSettings[currentUser.username].discordId || '');
             setNotificationsEnabled(userSettings[currentUser.username].notificationsEnabled !== false);
+            setIsVerified(false);
+            setVerifyError('');
+            setShowUnsavedWarning(false);
         }
     }, [isOpen, currentUser, userSettings]);
 
@@ -85,9 +89,7 @@ export default function NotificationModal({ isOpen, onClose }) {
 
     const handleClose = () => {
         if (hasChanges && !saveSuccess) {
-            if (window.confirm('Du hast ungespeicherte Änderungen. Wirklich schließen?')) {
-                onClose();
-            }
+            setShowUnsavedWarning(true);
         } else {
             onClose();
         }
@@ -108,8 +110,25 @@ export default function NotificationModal({ isOpen, onClose }) {
             <div className="glass-panel modal-content slide-up" onClick={e => e.stopPropagation()} style={{
                 background: 'var(--color-surface)', width: '100%', maxWidth: '500px', 
                 borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', position: 'relative'
             }}>
+                {showUnsavedWarning && (
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius: '12px', zIndex: 10, backdropFilter: 'blur(4px)'
+                    }}>
+                        <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', width: '80%', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                            <h3 style={{ marginBottom: '1rem', color: 'var(--color-foreground)', fontSize: '1.1rem' }}>Ungespeicherte Änderungen</h3>
+                            <p style={{ color: 'var(--color-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Du hast Änderungen vorgenommen. Möchtest du das Fenster wirklich schließen?</p>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                                <button onClick={() => setShowUnsavedWarning(false)} className="btn-secondary" style={{ padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', borderRadius: 'var(--radius)', cursor: 'pointer' }}>Zurück</button>
+                                <button onClick={() => { setShowUnsavedWarning(false); onClose(); }} className="btn-primary" style={{ padding: '0.5rem 1rem', background: 'var(--color-destructive)', color: 'white', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' }}>Schließen</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Bell size={20} style={{ color: 'var(--color-accent)' }} />
