@@ -66,6 +66,7 @@ export const AppProvider = ({ children }) => {
 
         const channel = supabaseClient.channel('admin_notifications')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+                console.log("REALTIME EVENT FIRED: INSERT orders", payload);
                 const newOrder = payload.new;
                 fetchAllData(); // Refresh UI data
 
@@ -75,9 +76,14 @@ export const AppProvider = ({ children }) => {
                     const users = await DB.fetchUsers();
                     const admins = users.filter(u => u.role === 'admin');
                     
+                    console.log("Found admins:", admins.map(a => a.username));
+                    
                     admins.forEach(admin => {
                         const discordId = allSettings[admin.username]?.discordId;
+                        console.log(`Checking Discord ID for admin ${admin.username}:`, discordId);
+                        
                         if (discordId) {
+                            console.log("Sending Webhook for new_request!");
                             fetch(MAKE_WEBHOOK_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -86,12 +92,14 @@ export const AppProvider = ({ children }) => {
                                     message: `Neue Produktanfrage von **${newOrder.user_id}**!`,
                                     event: 'new_request'
                                 })
-                            }).catch(e => console.error("Webhook Error:", e));
+                            }).then(res => console.log("Webhook response:", res.status))
+                              .catch(e => console.error("Webhook Error:", e));
                         }
                     });
                 }
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, async (payload) => {
+                console.log("REALTIME EVENT FIRED: UPDATE orders", payload);
                 const newOrder = payload.new;
                 const oldOrder = payload.old;
                 fetchAllData(); // Refresh UI data
@@ -107,6 +115,7 @@ export const AppProvider = ({ children }) => {
                         else if (newOrder.status === 'paid') msg = `Deine Bestellung wurde als **bezahlt** markiert!`;
                         
                         if (msg) {
+                            console.log("Sending Webhook for status_update!");
                             fetch(MAKE_WEBHOOK_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -115,7 +124,8 @@ export const AppProvider = ({ children }) => {
                                     message: msg,
                                     event: 'status_update'
                                 })
-                            }).catch(e => console.error("Webhook Error:", e));
+                            }).then(res => console.log("Webhook response:", res.status))
+                              .catch(e => console.error("Webhook Error:", e));
                         }
                     }
                 }
