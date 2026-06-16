@@ -15,6 +15,8 @@ export default function Profile() {
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
+    const shouldPulse = currentUser && userSettings[currentUser.username]?.hasSeenDiscordOnboarding && !userSettings[currentUser.username]?.discordId;
+
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });
     };
@@ -274,8 +276,8 @@ export default function Profile() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-secondary" onClick={() => setIsNotificationModalOpen(true)} style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Bell size={18} style={{ color: 'var(--color-accent)' }} />
+                    <button className={`btn btn-secondary ${shouldPulse ? 'pulse-gold' : ''}`} onClick={() => setIsNotificationModalOpen(true)} style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Bell size={18} style={{ color: shouldPulse ? 'inherit' : 'var(--color-accent)' }} />
                     </button>
                     <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
                         <Package size={18} /> Mein Lager

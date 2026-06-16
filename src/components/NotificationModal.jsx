@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, CheckCircle } from 'lucide-react';
+import { X, Bell, CheckCircle, ExternalLink, Copy } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
 export default function NotificationModal({ isOpen, onClose }) {
@@ -8,6 +8,7 @@ export default function NotificationModal({ isOpen, onClose }) {
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     useEffect(() => {
         if (isOpen && currentUser && userSettings[currentUser.username]) {
@@ -40,6 +41,12 @@ export default function NotificationModal({ isOpen, onClose }) {
         }
     };
 
+    const copyInviteLink = () => {
+        navigator.clipboard.writeText('https://discord.gg/c63u9KhFuM');
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose} style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
@@ -65,6 +72,38 @@ export default function NotificationModal({ isOpen, onClose }) {
                     <p style={{ fontSize: '0.9rem', color: 'var(--color-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
                         Verbinde deinen Account mit Discord, um bei {currentUser.role === 'admin' ? 'neuen Produktanfragen' : 'Status-Updates'} direkt eine private Nachricht zu erhalten.
                     </p>
+
+                    <div style={{ 
+                        marginBottom: '1.5rem', 
+                        padding: '1rem', 
+                        background: 'rgba(88, 101, 242, 0.1)', 
+                        border: '1px solid rgba(88, 101, 242, 0.3)', 
+                        borderRadius: 'var(--radius)' 
+                    }}>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: '600', color: '#5865F2', marginBottom: '0.5rem' }}>1. Server beitreten</h4>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginBottom: '1rem', lineHeight: '1.4' }}>
+                            Damit wir dir Nachrichten senden können, musst du Mitglied auf unserem Discord-Server sein.
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <a 
+                                href="https://discord.gg/c63u9KhFuM" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="btn-primary"
+                                style={{ flex: 1, padding: '0.5rem', textAlign: 'center', background: '#5865F2', color: 'white', textDecoration: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                            >
+                                <ExternalLink size={16} /> Server beitreten
+                            </a>
+                            <button 
+                                onClick={copyInviteLink}
+                                className="btn-secondary"
+                                style={{ padding: '0.5rem', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', borderRadius: 'var(--radius)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px' }}
+                                title="Link kopieren"
+                            >
+                                {copySuccess ? <CheckCircle size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                            </button>
+                        </div>
+                    </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--color-muted)', marginBottom: '0.5rem' }}>
