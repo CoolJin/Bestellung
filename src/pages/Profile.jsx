@@ -1,23 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, Bell, BellOff } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 
 export default function Profile() {
-    const { currentUser, orders, fetchAllData, clearCart, addToCart } = useAppContext();
+    const { currentUser, orders, fetchAllData, clearCart, addToCart, userSettings, saveSettings } = useAppContext();
     const navigate = useNavigate();
 
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
-    const [pushEnabled, setPushEnabled] = useState(localStorage.getItem('push_enabled_' + currentUser?.username) !== 'false');
+    const [discordIdInput, setDiscordIdInput] = useState('');
+    const [isSavingDiscord, setIsSavingDiscord] = useState(false);
 
-    const togglePush = () => {
-        const newVal = !pushEnabled;
-        setPushEnabled(newVal);
-        localStorage.setItem('push_enabled_' + currentUser?.username, newVal.toString());
+    useEffect(() => {
+        if (currentUser && userSettings[currentUser.username]) {
+            setDiscordIdInput(userSettings[currentUser.username].discordId || '');
+        }
+    }, [currentUser, userSettings]);
+
+    const handleSaveDiscord = async () => {
+        setIsSavingDiscord(true);
+        try {
+            await saveSettings({ discordId: discordIdInput.trim() });
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setIsSavingDiscord(false);
+        }
     };
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
@@ -283,28 +295,38 @@ export default function Profile() {
                 </button>
             </div>
 
-            <div className="glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {pushEnabled ? <Bell size={20} style={{ color: 'var(--color-accent)' }} /> : <BellOff size={20} style={{ color: 'var(--color-muted)' }} />}
-                    <div>
-                        <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>Geräte-Benachrichtigungen</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)' }}>Nur für dieses Gerät & diesen Account</div>
-                    </div>
+            <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <MessageSquare size={20} style={{ color: '#5865F2' }} />
+                    <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>Discord Benachrichtigungen</h3>
                 </div>
-                <button 
-                    onClick={togglePush}
-                    style={{ 
-                        width: '40px', height: '24px', borderRadius: '12px', 
-                        background: pushEnabled ? 'var(--color-accent)' : 'rgba(255,255,255,0.1)', 
-                        position: 'relative', cursor: 'pointer', border: 'none', transition: 'all 0.3s'
-                    }}
-                >
-                    <div style={{
-                        width: '18px', height: '18px', borderRadius: '50%', background: 'white',
-                        position: 'absolute', top: '3px', left: pushEnabled ? '19px' : '3px',
-                        transition: 'all 0.3s'
-                    }} />
-                </button>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                    Verbinde deinen Account mit Discord, um bei Status-Updates direkt eine private Nachricht zu erhalten. 
+                    Dafür musst du Mitglied auf unserem Server sein.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                    <input 
+                        type="text" 
+                        value={discordIdInput} 
+                        onChange={(e) => setDiscordIdInput(e.target.value)} 
+                        placeholder="Deine Discord User-ID (z.B. 123456789012345678)" 
+                        style={{ flex: 1, padding: '0.5rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '0.875rem' }} 
+                    />
+                    <button 
+                        onClick={handleSaveDiscord} 
+                        disabled={isSavingDiscord}
+                        className="btn btn-primary" 
+                        style={{ padding: '0 1rem', background: '#5865F2' }}
+                    >
+                        {isSavingDiscord ? 'Speichert...' : 'Speichern'}
+                    </button>
+                </div>
+                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <Info size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <span>
+                        <strong>So findest du deine ID:</strong> Discord-Einstellungen &gt; Erweitert &gt; Entwicklermodus aktivieren. Danach Rechtsklick auf dein Profilbild und "ID kopieren".
+                    </span>
+                </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -38,8 +38,16 @@ export const DB = {
         }));
 
         const adminExtras = rawOrders.find(o => o.id === '#ADMIN_EXTRAS')?.items || [];
-        const cleanOrders = rawOrders.filter(o => o.id !== '#ADMIN_EXTRAS');
-        return { orders: cleanOrders, adminExtras };
+        const cleanOrders = rawOrders.filter(o => o.id !== '#ADMIN_EXTRAS' && !o.id.startsWith('#SETTINGS_'));
+        
+        // Extract user settings
+        const allSettings = rawOrders.filter(o => o.id.startsWith('#SETTINGS_')).reduce((acc, curr) => {
+            const username = curr.id.replace('#SETTINGS_', '');
+            acc[username] = curr.items && curr.items.length > 0 ? curr.items[0] : {};
+            return acc;
+        }, {});
+
+        return { orders: cleanOrders, adminExtras, allSettings };
     },
 
     async saveAdminExtras(items, currentUsername) {
@@ -55,6 +63,21 @@ export const DB = {
         const { error } = await supabaseClient.from('orders').upsert([specialOrder]);
         if (error) throw error;
         return items;
+    },
+
+    async saveUserSettings(username, settingsObj) {
+        if (!username) throw new Error("No Username");
+        const settingsOrder = {
+            id: `#SETTINGS_${username}`,
+            user_id: username,
+            status: 'hidden',
+            items: [settingsObj],
+            total: 0,
+            date: new Date().toISOString()
+        };
+        const { error } = await supabaseClient.from('orders').upsert([settingsOrder]);
+        if (error) throw error;
+        return settingsObj;
     },
 
     async createUser(username, password) {

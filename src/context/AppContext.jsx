@@ -9,7 +9,10 @@ export const AppProvider = ({ children }) => {
     const [cart, setCart] = useState([]);
     const [orders, setOrders] = useState([]);
     const [adminExtras, setAdminExtras] = useState([]);
+    const [userSettings, setUserSettings] = useState({});
     const [isLoaded, setIsLoaded] = useState(false);
+
+    const MAKE_WEBHOOK_URL = 'https://hook.make.com/YOUR_WEBHOOK_URL_HERE'; // Wird vom Admin später ersetzt
 
     useEffect(() => {
         const init = async () => {
@@ -69,16 +72,18 @@ export const AppProvider = ({ children }) => {
                 fetchAllData();
 
                 if (newOrder.status === 'request_open' && currentUser.role === 'admin') {
-                    const pushEnabled = localStorage.getItem('push_enabled_' + currentUser.username) !== 'false';
-                    if (pushEnabled && window.Notification && window.Notification.permission === 'granted') {
-                        const notif = new window.Notification("Neue Produktanfrage!", {
-                            body: `Eine neue Anfrage von ${newOrder.user_id} ist eingegangen.`,
-                            icon: '/Bestellung/favicon.svg'
-                        });
-                        notif.onclick = () => {
-                            window.focus();
-                            notif.close();
-                        };
+                    // Check if current user (Admin) has a Discord ID configured
+                    const adminSettings = userSettings[currentUser.username] || {};
+                    if (adminSettings.discordId) {
+                        fetch(MAKE_WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                discordId: adminSettings.discordId,
+                                message: `Neue Produktanfrage von ${newOrder.user_id}!`,
+                                event: 'new_request'
+                            })
+                        }).catch(e => console.error("Webhook Error:", e));
                     }
                 }
             })
@@ -87,12 +92,19 @@ export const AppProvider = ({ children }) => {
         return () => {
             supabaseClient.removeChannel(channel);
         };
-    }, [currentUser]);
+    }, [currentUser, userSettings]);
 
     const fetchAllData = async () => {
-        const { orders: fetchedOrders, adminExtras: fetchedExtras } = await DB.fetchOrders();
+        const { orders: fetchedOrders, adminExtras: fetchedExtras, allSettings: fetchedSettings } = await DB.fetchOrders();
         setOrders(fetchedOrders);
         setAdminExtras(fetchedExtras);
+        setUserSettings(fetchedSettings || {});
+    };
+
+    const saveSettings = async (settings) => {
+        if (!currentUser) return;
+        await DB.saveUserSettings(currentUser.username, settings);
+        await fetchAllData();
     };
 
     const login = async (username, password) => {
@@ -187,7 +199,9 @@ export const AppProvider = ({ children }) => {
             addToAdminExtras,
             changeCartQty,
             clearCart,
-            fetchAllData
+            fetchAllData,
+            userSettings,
+            saveSettings
         }}>
             {children}
         </AppContext.Provider>
