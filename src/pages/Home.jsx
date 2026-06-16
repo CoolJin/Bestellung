@@ -228,7 +228,7 @@ export default function Home() {
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
                     
                     if (Math.abs(window.scrollY - targetScrollY) > 5) {
-                        window.scrollTo({ top: Math.max(0, targetScrollY), behavior: 'smooth' });
+                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
                     }
                 }
             }, 300);
@@ -239,7 +239,7 @@ export default function Home() {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
                 if (searchPhase === 'idle') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    smoothScrollTo(0, 1000);
                 }
             }, 100);
         }
@@ -260,50 +260,51 @@ export default function Home() {
                 if (!isFocused) {
                     // Keyboard hidden manually
                     if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        smoothScrollTo(0, 1000);
                         document.activeElement?.blur(); 
                     }
                     return;
                 }
 
-                // Focused: maintain 40px gap when keyboard size changes
+                // Focused: maintain 40px gap
                 const wrapper = document.querySelector('.home-search-wrapper');
                 if (wrapper) {
                     const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
                     const targetScrollY = absoluteBottom - viewportHeight + 40;
                     if (Math.abs(window.scrollY - targetScrollY) > 5) {
-                        window.scrollTo({ top: Math.max(0, targetScrollY), behavior: 'smooth' });
+                        smoothScrollTo(Math.max(0, targetScrollY), 1000);
                     }
                 }
-            }, 50); // Faster reaction
+            }, 150);
         };
 
         window.visualViewport.addEventListener('resize', handleResize);
-        
-        // Track layout height changes while focused (e.g., banner expanding)
-        const wrapper = document.querySelector('.home-search-wrapper');
-        let prevHeight = wrapper ? wrapper.offsetHeight : 0;
-        const ro = new ResizeObserver((entries) => {
-            const isFocused = document.activeElement === document.querySelector('.home-search-input');
-            if (!isFocused) return;
-            for (let entry of entries) {
-                const newHeight = entry.borderBoxSize ? entry.borderBoxSize[0].blockSize : entry.contentRect.height;
-                const delta = newHeight - prevHeight;
-                prevHeight = newHeight;
-                // Instantly scroll down by the exact pixel growth amount to keep the gap completely frozen
-                if (Math.abs(delta) > 0.5) {
-                    window.scrollBy(0, delta);
-                }
-            }
-        });
-        if (wrapper) ro.observe(wrapper);
-
         return () => {
             clearTimeout(resizeTimeout);
             window.visualViewport.removeEventListener('resize', handleResize);
-            ro.disconnect();
         };
     }, [searchPhase]);
+
+    // Scroll after banner expands
+    useEffect(() => {
+        if (showExtrasBanner && window.innerWidth <= 768) {
+            const timer = setTimeout(() => {
+                const isFocused = document.activeElement === document.querySelector('.home-search-input');
+                if (isFocused) {
+                    const wrapper = document.querySelector('.home-search-wrapper');
+                    if (wrapper && window.visualViewport) {
+                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                        const viewportHeight = window.visualViewport.height;
+                        const targetScrollY = absoluteBottom - viewportHeight + 40;
+                        if (Math.abs(window.scrollY - targetScrollY) > 10) {
+                            smoothScrollTo(Math.max(0, targetScrollY), 1000);
+                        }
+                    }
+                }
+            }, 1050); // wait for 1s layout animation to finish
+            return () => clearTimeout(timer);
+        }
+    }, [showExtrasBanner]);
 
     return (
         <div className={`home-container page-transition ${searchPhase !== 'idle' && searchPhase !== 'fading_text' ? 'search-active' : ''}`}>
@@ -323,14 +324,14 @@ export default function Home() {
                     </div>
                 )}
                 
-                <div className="home-search-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
-                    <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                        <GlassSurface 
-                            width="100%" 
-                            height="auto" 
-                            borderRadius={baseRadius} 
-                            borderWidth={0.15}
-                            backgroundOpacity={0.15}
+                <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '100px' }}>
+                    <GlassSurface 
+                        className="home-search-wrapper" 
+                        width="100%" 
+                        height="auto" 
+                        borderRadius={baseRadius} 
+                        borderWidth={0.15}
+                        backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
                         opacity={1}
@@ -448,7 +449,6 @@ export default function Home() {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </div>
                 </div>
 
                 <div className="w-full">
