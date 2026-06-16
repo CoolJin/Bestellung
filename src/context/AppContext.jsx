@@ -61,28 +61,29 @@ export const AppProvider = ({ children }) => {
         };
     }, []);
 
-    const [usersList, setUsersList] = useState([]);
-
     useEffect(() => {
         if (!currentUser) return;
 
         const channel = supabaseClient.channel('admin_notifications')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
                 const newOrder = payload.new;
-                fetchAllData(); // Refresh data
+                fetchAllData(); // Refresh UI data
 
                 if (newOrder.status === 'request_open') {
-                    // Notify all admins
-                    const admins = usersList.filter(u => u.role === 'admin');
+                    // Fetch fresh settings directly from DB to avoid state closure race conditions
+                    const { allSettings } = await DB.fetchOrders();
+                    const users = await DB.fetchUsers();
+                    const admins = users.filter(u => u.role === 'admin');
+                    
                     admins.forEach(admin => {
-                        const discordId = userSettings[admin.username]?.discordId;
+                        const discordId = allSettings[admin.username]?.discordId;
                         if (discordId) {
                             fetch(MAKE_WEBHOOK_URL, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     discordId: discordId,
-                                    message: `🔔 Neue Produktanfrage von **${newOrder.user_id}**!`,
+                                    message: `Neue Produktanfrage von **${newOrder.user_id}**!`,
                                     event: 'new_request'
                                 })
                             }).catch(e => console.error("Webhook Error:", e));
@@ -90,19 +91,20 @@ export const AppProvider = ({ children }) => {
                     });
                 }
             })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, async (payload) => {
                 const newOrder = payload.new;
                 const oldOrder = payload.old;
-                fetchAllData(); // Refresh data
+                fetchAllData(); // Refresh UI data
 
-                // If status changed to accepted/denied/paid, notify the user
                 if (newOrder.status !== oldOrder.status) {
-                    const discordId = userSettings[newOrder.user_id]?.discordId;
+                    const { allSettings } = await DB.fetchOrders();
+                    const discordId = allSettings[newOrder.user_id]?.discordId;
+                    
                     if (discordId) {
                         let msg = '';
-                        if (newOrder.status === 'request_accepted') msg = `✅ Deine Produktanfrage wurde **akzeptiert**!`;
-                        else if (newOrder.status === 'request_denied') msg = `❌ Deine Produktanfrage wurde **abgelehnt**.`;
-                        else if (newOrder.status === 'paid') msg = `💰 Deine Bestellung wurde als **bezahlt** markiert!`;
+                        if (newOrder.status === 'request_accepted') msg = `Deine Produktanfrage wurde **akzeptiert**!`;
+                        else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage wurde **abgelehnt**.`;
+                        else if (newOrder.status === 'paid') msg = `Deine Bestellung wurde als **bezahlt** markiert!`;
                         
                         if (msg) {
                             fetch(MAKE_WEBHOOK_URL, {
@@ -118,20 +120,19 @@ export const AppProvider = ({ children }) => {
                     }
                 }
             })
+
             .subscribe();
 
         return () => {
             supabaseClient.removeChannel(channel);
         };
-    }, [currentUser, userSettings, usersList]);
+    }, [currentUser]);
 
     const fetchAllData = async () => {
         const { orders: fetchedOrders, adminExtras: fetchedExtras, allSettings: fetchedSettings } = await DB.fetchOrders();
-        const users = await DB.fetchUsers();
         setOrders(fetchedOrders);
         setAdminExtras(fetchedExtras);
         setUserSettings(fetchedSettings || {});
-        setUsersList(users || []);
     };
 
     const saveSettings = async (settings) => {

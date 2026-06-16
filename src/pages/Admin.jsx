@@ -564,10 +564,13 @@ export default function Admin({ tab = 'orders' }) {
                                     padding: '0 1rem', 
                                     background: saveSuccess ? 'var(--color-success)' : (hasDiscordChanges ? '#5865F2' : 'var(--color-surface)'),
                                     color: saveSuccess ? '#000' : 'white',
-                                    border: hasDiscordChanges || saveSuccess ? 'none' : '1px solid var(--color-border)'
+                                    border: hasDiscordChanges || saveSuccess ? 'none' : '1px solid var(--color-border)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
                                 }}
                             >
-                                {isSavingDiscord ? 'Lädt...' : (saveSuccess ? '✅ Gespeichert' : 'Speichern')}
+                                {isSavingDiscord ? 'Lädt...' : (saveSuccess ? <><CheckCircle size={16} /> Gespeichert</> : 'Speichern')}
                             </button>
                         </div>
                         <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
