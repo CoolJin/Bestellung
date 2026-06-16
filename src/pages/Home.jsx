@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search as SearchIcon, X, ShoppingCart, Check } from 'lucide-react';
+import { Search as SearchIcon, X, ShoppingCart, Check, Bell } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
-    const { addToCart, currentUser, adminExtras = [] } = useAppContext();
+    const { addToCart, currentUser, adminExtras = [], userSettings } = useAppContext();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -395,6 +395,35 @@ export default function Home() {
                                                 </svg>
                                                 <span>Verfügbare Extras</span>
                                             </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                                {showExtrasBanner && searchPhase === 'idle' && currentUser && userSettings && userSettings[currentUser.username] && !userSettings[currentUser.username].discordId && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 1, delay: 0.2 }}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        <div style={{ padding: '0 2rem 1.25rem 2rem', display: 'flex', justifyContent: 'center' }}>
+                                            <div style={{ width: '100%', background: 'rgba(170, 59, 255, 0.1)', border: '1px solid rgba(170, 59, 255, 0.3)', borderRadius: 'var(--radius)', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{ background: 'rgba(170, 59, 255, 0.2)', padding: '0.5rem', borderRadius: '50%' }}>
+                                                        <Bell size={20} style={{ color: 'var(--color-accent)' }} />
+                                                    </div>
+                                                    <div style={{ textAlign: 'left' }}>
+                                                        <div style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--color-foreground)' }}>Neu: Discord-Benachrichtigungen</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginTop: '0.1rem' }}>Erhalte automatische Updates zu deinen Bestellungen.</div>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.preventDefault(); navigate('/profile'); }}
+                                                    style={{ background: 'var(--color-accent)', color: 'var(--color-primary)', border: 'none', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                >
+                                                    Einrichten
+                                                </button>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 )}

@@ -15,7 +15,7 @@ export default function Profile() {
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const shouldPulse = currentUser && userSettings[currentUser.username]?.hasSeenDiscordOnboarding && !userSettings[currentUser.username]?.discordId;
+    const shouldPulse = currentUser && userSettings && userSettings[currentUser.username] && !userSettings[currentUser.username].discordId;
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });

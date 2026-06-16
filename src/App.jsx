@@ -10,7 +10,6 @@ import Cart from './pages/Cart';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import UserExtras from './pages/UserExtras';
-import OnboardingModal from './components/OnboardingModal';
 
 const Navigation = () => {
     const { currentUser, cart, logout } = useAppContext();
@@ -87,25 +86,7 @@ const ProtectedRoute = ({ children, roleRequired }) => {
 };
 
 const AppContent = () => {
-    const { currentUser, isLoaded, userSettings, saveSettings } = useAppContext();
-    const [showOnboarding, setShowOnboarding] = React.useState(false);
-
-    React.useEffect(() => {
-        if (currentUser && currentUser.role === 'user' && userSettings && userSettings[currentUser.username]) {
-            if (!userSettings[currentUser.username].hasSeenDiscordOnboarding) {
-                setShowOnboarding(true);
-            }
-        }
-    }, [currentUser, userSettings]);
-
-    const handleCloseOnboarding = async () => {
-        setShowOnboarding(false);
-        try {
-            await saveSettings({ hasSeenDiscordOnboarding: 1 });
-        } catch(e) {
-            console.error(e);
-        }
-    };
+    const { currentUser, isLoaded } = useAppContext();
 
     if (!isLoaded) {
         return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -132,7 +113,6 @@ const AppContent = () => {
                     </Routes>
                 </main>
                 {currentUser && <Navigation />}
-                <OnboardingModal isOpen={showOnboarding} onClose={handleCloseOnboarding} />
             </div>
         </HashRouter>
     );
