@@ -14,6 +14,7 @@ export default function Profile() {
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [discordIdInput, setDiscordIdInput] = useState('');
     const [isSavingDiscord, setIsSavingDiscord] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
     useEffect(() => {
         if (currentUser && userSettings[currentUser.username]) {
@@ -21,10 +22,15 @@ export default function Profile() {
         }
     }, [currentUser, userSettings]);
 
+    const hasDiscordChanges = currentUser && discordIdInput.trim() !== (userSettings[currentUser.username]?.discordId || '');
+
     const handleSaveDiscord = async () => {
+        if (!hasDiscordChanges) return;
         setIsSavingDiscord(true);
         try {
             await saveSettings({ discordId: discordIdInput.trim() });
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
         } catch(e) {
             console.error(e);
         } finally {
@@ -314,11 +320,16 @@ export default function Profile() {
                     />
                     <button 
                         onClick={handleSaveDiscord} 
-                        disabled={isSavingDiscord}
+                        disabled={isSavingDiscord || (!hasDiscordChanges && !saveSuccess)}
                         className="btn btn-primary" 
-                        style={{ padding: '0 1rem', background: '#5865F2' }}
+                        style={{ 
+                            padding: '0 1rem', 
+                            background: saveSuccess ? 'var(--color-success)' : (hasDiscordChanges ? '#5865F2' : 'var(--color-surface)'),
+                            color: saveSuccess ? '#000' : 'white',
+                            border: hasDiscordChanges || saveSuccess ? 'none' : '1px solid var(--color-border)'
+                        }}
                     >
-                        {isSavingDiscord ? 'Speichert...' : 'Speichern'}
+                        {isSavingDiscord ? 'Lädt...' : (saveSuccess ? '✅ Gespeichert' : 'Speichern')}
                     </button>
                 </div>
                 <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
