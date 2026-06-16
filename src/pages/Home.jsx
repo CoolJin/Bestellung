@@ -221,10 +221,10 @@ export default function Home() {
         if (window.innerWidth <= 768) {
             // Wait slightly longer for iOS/Android native keyboard animation to finish completely
             setTimeout(() => {
-                const wrapper = document.querySelector('.home-search-wrapper');
+                const searchElement = document.getElementById('search-glass-surface');
                 
-                if (wrapper && window.visualViewport) {
-                    const rect = wrapper.getBoundingClientRect();
+                if (searchElement && window.visualViewport) {
+                    const rect = searchElement.getBoundingClientRect();
                     // rect.bottom is relative to viewport. If we want it to be 40px above the keyboard (bottom of visualViewport),
                     // the target viewport top is current scroll + rect.bottom + 40 - visualViewport.height
                     const absoluteBottom = rect.bottom + window.scrollY;
@@ -269,9 +269,9 @@ export default function Home() {
                     document.activeElement.blur(); 
                 } else if (searchPhase === 'idle') {
                     // Keyboard size changed (e.g. predictive text opened) while focused
-                    const wrapper = document.querySelector('.home-search-wrapper');
-                    if (wrapper) {
-                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const searchElement = document.getElementById('search-glass-surface');
+                    if (searchElement) {
+                        const absoluteBottom = searchElement.getBoundingClientRect().bottom + window.scrollY;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
                         // Only scroll if we are off by more than 10 pixels to prevent micro-jumps
                         if (Math.abs(window.scrollY - targetScrollY) > 10) {
@@ -295,9 +295,9 @@ export default function Home() {
             const timer = setTimeout(() => {
                 const isFocused = document.activeElement === document.querySelector('.home-search-input');
                 if (isFocused) {
-                    const wrapper = document.querySelector('.home-search-wrapper');
-                    if (wrapper && window.visualViewport) {
-                        const absoluteBottom = wrapper.getBoundingClientRect().bottom + window.scrollY;
+                    const searchElement = document.getElementById('search-glass-surface');
+                    if (searchElement && window.visualViewport) {
+                        const absoluteBottom = searchElement.getBoundingClientRect().bottom + window.scrollY;
                         const viewportHeight = window.visualViewport.height;
                         const targetScrollY = absoluteBottom - viewportHeight + 40;
                         if (Math.abs(window.scrollY - targetScrollY) > 10) {
@@ -330,11 +330,12 @@ export default function Home() {
                 
                 <div className="home-search-wrapper" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
                     <form onSubmit={handleSearch} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-                        <GlassSurface 
-                            width="100%" 
-                            height="auto" 
-                            borderRadius={baseRadius} 
-                            borderWidth={0.15}
+                        <div id="search-glass-surface" style={{ width: '100%', maxWidth: '600px' }}>
+                            <GlassSurface 
+                                width="100%" 
+                                height="auto" 
+                                borderRadius={baseRadius} 
+                                borderWidth={0.15}
                             backgroundOpacity={0.15}
                         brightness={60}
                         saturation={1}
@@ -418,8 +419,9 @@ export default function Home() {
                                 )}
                             </AnimatePresence>
                         </div>
-                    </GlassSurface>
-                </form>
+                        </GlassSurface>
+                        </div>
+                    </form>
 
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <AnimatePresence>
@@ -429,7 +431,7 @@ export default function Home() {
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 1, delay: 0.2 }}
-                                style={{ overflow: 'hidden', width: '100%', maxWidth: '600px' }}
+                                style={{ overflow: 'hidden', width: '100%', maxWidth: '600px', marginTop: '1.5rem' }}
                             >
                                 <div style={{ padding: '0 0 2rem 0', display: 'flex', justifyContent: 'center' }}>
                                     <div style={{ width: '100%', background: 'rgba(170, 59, 255, 0.1)', border: '1px solid rgba(170, 59, 255, 0.3)', borderRadius: 'var(--radius)', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', backdropFilter: 'blur(10px)' }}>
