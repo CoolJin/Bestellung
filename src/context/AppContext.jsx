@@ -82,9 +82,10 @@ export const AppProvider = ({ children }) => {
                     
                     admins.forEach(admin => {
                         const discordId = allSettings[admin.username]?.discordId;
-                        console.log(`Checking Discord ID for admin ${admin.username}:`, discordId);
+                        const notificationsEnabled = allSettings[admin.username]?.notificationsEnabled !== false;
+                        console.log(`Checking Discord ID for admin ${admin.username}:`, discordId, "Enabled:", notificationsEnabled);
                         
-                        if (discordId) {
+                        if (discordId && notificationsEnabled) {
                             console.log("Sending Webhook for new_request!");
                             fetch(MAKE_WEBHOOK_URL, {
                                 method: 'POST',
@@ -109,10 +110,11 @@ export const AppProvider = ({ children }) => {
                 if (newOrder.status !== oldOrder.status) {
                     const { allSettings } = await DB.fetchOrders();
                     const discordId = allSettings[newOrder.user_id]?.discordId;
+                    const notificationsEnabled = allSettings[newOrder.user_id]?.notificationsEnabled !== false;
                     
                     const productName = newOrder.items?.[0]?.name || "Unbekanntes Produkt";
                     
-                    if (discordId) {
+                    if (discordId && notificationsEnabled) {
                         let msg = '';
                         if (newOrder.status === 'request_accepted') msg = `Dein Produkt **${productName}** ist für dich bereit!`;
                         else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage für **${productName}** wurde abgelehnt.`;

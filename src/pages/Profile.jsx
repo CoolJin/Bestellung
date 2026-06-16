@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare, Info } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare, Info, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
+import NotificationModal from '../components/NotificationModal';
 
 export default function Profile() {
     const { currentUser, orders, fetchAllData, clearCart, addToCart, userSettings, saveSettings } = useAppContext();
@@ -12,31 +13,7 @@ export default function Profile() {
     // Confirm modal state
     const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, isDanger: false });
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
-    const [discordIdInput, setDiscordIdInput] = useState('');
-    const [isSavingDiscord, setIsSavingDiscord] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-
-    useEffect(() => {
-        if (currentUser && userSettings[currentUser.username]) {
-            setDiscordIdInput(userSettings[currentUser.username].discordId || '');
-        }
-    }, [currentUser, userSettings]);
-
-    const hasDiscordChanges = currentUser && discordIdInput.trim() !== (userSettings[currentUser.username]?.discordId || '');
-
-    const handleSaveDiscord = async () => {
-        if (!hasDiscordChanges) return;
-        setIsSavingDiscord(true);
-        try {
-            await saveSettings({ discordId: discordIdInput.trim() });
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
-        } catch(e) {
-            console.error(e);
-        } finally {
-            setIsSavingDiscord(false);
-        }
-    };
+    const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });
@@ -296,52 +273,17 @@ export default function Profile() {
         <div className="container" style={{ paddingBottom: '6rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
-                <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
-                    <Package size={18} /> Mein Lager
-                </button>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <MessageSquare size={20} style={{ color: '#5865F2' }} />
-                    <h3 style={{ fontSize: '1rem', fontWeight: '600' }}>Discord Benachrichtigungen</h3>
-                </div>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
-                    Verbinde deinen Account mit Discord, um bei Status-Updates direkt eine private Nachricht zu erhalten. 
-                    Dafür musst du Mitglied auf unserem Server sein.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
-                    <input 
-                        type="text" 
-                        value={discordIdInput} 
-                        onChange={(e) => setDiscordIdInput(e.target.value)} 
-                        placeholder="Deine Discord User-ID (z.B. 123456789012345678)" 
-                        style={{ flex: 1, padding: '0.5rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '0.875rem' }} 
-                    />
-                    <button 
-                        onClick={handleSaveDiscord} 
-                        disabled={isSavingDiscord || (!hasDiscordChanges && !saveSuccess)}
-                        className="btn btn-primary" 
-                        style={{ 
-                            padding: '0 1rem', 
-                            background: saveSuccess ? 'var(--color-success)' : (hasDiscordChanges ? '#5865F2' : 'var(--color-surface)'),
-                            color: saveSuccess ? '#000' : 'white',
-                            border: hasDiscordChanges || saveSuccess ? 'none' : '1px solid var(--color-border)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                        }}
-                    >
-                        {isSavingDiscord ? 'Lädt...' : (saveSuccess ? <><CheckCircle size={16} /> Gespeichert</> : 'Speichern')}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-secondary" onClick={() => setIsNotificationModalOpen(true)} style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Bell size={18} style={{ color: 'var(--color-accent)' }} />
+                    </button>
+                    <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
+                        <Package size={18} /> Mein Lager
                     </button>
                 </div>
-                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <Info size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
-                    <span>
-                        <strong>So findest du deine ID:</strong> Discord-Einstellungen &gt; Erweitert &gt; Entwicklermodus aktivieren. Danach Rechtsklick auf dein Profilbild und "ID kopieren".
-                    </span>
-                </div>
             </div>
+
+
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {activeOrders.length === 0 && archivedOrders.length === 0 ? (
@@ -432,6 +374,10 @@ export default function Profile() {
             >
                 <p>{confirm.message}</p>
             </Modal>
+            <NotificationModal 
+                isOpen={isNotificationModalOpen} 
+                onClose={() => setIsNotificationModalOpen(false)} 
+            />
         </div>
     );
 }
