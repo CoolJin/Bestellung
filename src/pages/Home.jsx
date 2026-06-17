@@ -407,11 +407,11 @@ export default function Home() {
                     <AnimatePresence>
                         {showExtrasBanner && searchPhase === 'idle' && currentUser && (!userSettings || !userSettings[currentUser.username] || !userSettings[currentUser.username].discordId) && (
                             <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 1, delay: 0.2 }}
-                                style={{ overflow: 'hidden', width: '100%', maxWidth: '600px' }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.8, delay: 1 }}
+                                style={{ width: '100%', maxWidth: '600px' }}
                             >
                                 <div style={{ padding: '0 0 2rem 0', display: 'flex', justifyContent: 'center' }}>
                                     <div style={{ width: '100%', background: 'rgba(170, 59, 255, 0.1)', border: '1px solid rgba(170, 59, 255, 0.3)', borderRadius: 'var(--radius)', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', backdropFilter: 'blur(10px)' }}>
