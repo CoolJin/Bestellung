@@ -273,14 +273,15 @@ export default function Profile() {
 
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className={`btn btn-secondary ${shouldPulse ? 'pulse-gold' : ''}`} onClick={() => setIsNotificationModalOpen(true)} style={{ padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Bell size={18} style={{ color: shouldPulse ? 'inherit' : 'var(--color-accent)' }} />
-                    </button>
-                    <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)}>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Mein Profil</h1>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-start' }}>
+                    <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Package size={18} /> Mein Lager
+                    </button>
+                    <button className={`btn btn-secondary ${shouldPulse ? 'pulse-gold' : ''}`} onClick={() => setIsNotificationModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Bell size={18} style={{ color: shouldPulse ? 'inherit' : 'var(--color-accent)' }} />
+                        Benachrichtigungseinstellungen
                     </button>
                 </div>
             </div>
