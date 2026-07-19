@@ -12,7 +12,7 @@ export const AppProvider = ({ children }) => {
     const [userSettings, setUserSettings] = useState({});
     const [isLoaded, setIsLoaded] = useState(false);
 
-    const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/9o6d7birjy66suvq6w8rzbwz72dbw9yb';
+    const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/raae69aakag4pwrneiqb5kvqpikyqtij';
 
     useEffect(() => {
         const init = async () => {
