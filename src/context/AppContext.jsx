@@ -135,6 +135,37 @@ export const AppProvider = ({ children }) => {
                     }
                 }
             })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, async (payload) => {
+                console.log("REALTIME EVENT FIRED: DELETE orders", payload);
+                const deletedOrder = payload.old;
+
+                // Only notify if it was an open product request being withdrawn
+                if (deletedOrder.status === 'request_open') {
+                    fetchAllData();
+                    const productName = deletedOrder.items?.[0]?.name || "Unbekanntes Produkt";
+                    const { allSettings } = await DB.fetchOrders();
+                    const users = await DB.fetchUsers();
+                    const admins = users.filter(u => u.role === 'admin');
+
+                    admins.forEach(admin => {
+                        const discordId = allSettings[admin.username]?.discordId;
+                        const notificationsEnabled = allSettings[admin.username]?.notificationsEnabled !== false;
+                        if (discordId && notificationsEnabled) {
+                            console.log("Sending Webhook for request_withdrawn!");
+                            fetch(MAKE_WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    discordId: discordId,
+                                    message: `**${deletedOrder.user_id}** hat seine Produktanfrage für **${productName}** zurückgezogen.`,
+                                    event: 'request_withdrawn'
+                                })
+                            }).then(res => console.log("Webhook response:", res.status))
+                              .catch(e => console.error("Webhook Error:", e));
+                        }
+                    });
+                }
+            })
 
             .subscribe();
 
