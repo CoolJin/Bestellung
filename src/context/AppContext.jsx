@@ -118,6 +118,8 @@ export const AppProvider = ({ children }) => {
                         let msg = '';
                         if (newOrder.status === 'request_accepted') msg = `Dein Produkt **${productName}** ist für dich bereit!`;
                         else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage für **${productName}** wurde abgelehnt.`;
+                        else if (newOrder.status === 'ordered') msg = `Deine Bestellung **${newOrder.id}** wurde bestellt.`;
+                        else if (newOrder.status === 'completed') msg = `Deine Bestellung **${newOrder.id}** wurde als bezahlt markiert.`;
                         
                         if (msg) {
                             console.log("Sending Webhook for status_update!");
