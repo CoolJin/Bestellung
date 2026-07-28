@@ -1,37 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Bell, CheckCircle, ExternalLink, Copy } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
+// Make.com-Szenario, das prüft, ob die Discord-ID auf dem Server ist.
+const VERIFY_WEBHOOK_URL = import.meta.env.VITE_DISCORD_VERIFY_WEBHOOK_URL || '';
+
+/**
+ * Wird nur gerendert, solange das Modal offen ist - dadurch startet der
+ * Formular-State bei jedem Öffnen frisch mit den gespeicherten Werten.
+ */
 export default function NotificationModal({ isOpen, onClose }) {
-    const { currentUser, userSettings, saveSettings } = useAppContext();
-    const [discordIdInput, setDiscordIdInput] = useState('');
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    if (!isOpen) return null;
+    return <NotificationModalContent onClose={onClose} />;
+}
+
+function NotificationModalContent({ onClose }) {
+    const { currentUser, mySettings, saveSettings } = useAppContext();
+    const [discordIdInput, setDiscordIdInput] = useState(mySettings.discordId || '');
+    const [notificationsEnabled, setNotificationsEnabled] = useState(mySettings.notificationsEnabled !== false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
-    
-    // Webhook URL für Make.com Verifizierung
-    const VERIFY_WEBHOOK_URL = 'https://hook.eu2.make.com/raae69aakag4pwrneiqb5kvqpikyqtij';
-    
+
     const [isVerifying, setIsVerifying] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     const [verifyError, setVerifyError] = useState('');
     const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
 
-    useEffect(() => {
-        if (isOpen && currentUser && userSettings[currentUser.username]) {
-            setDiscordIdInput(userSettings[currentUser.username].discordId || '');
-            setNotificationsEnabled(userSettings[currentUser.username].notificationsEnabled !== false);
-            setIsVerified(false);
-            setVerifyError('');
-            setShowUnsavedWarning(false);
-        }
-    }, [isOpen, currentUser, userSettings]);
-
-    if (!isOpen) return null;
-
-    const currentSavedDiscordId = userSettings[currentUser.username]?.discordId || '';
-    const currentSavedEnabled = userSettings[currentUser.username]?.notificationsEnabled !== false;
+    const currentSavedDiscordId = mySettings.discordId || '';
+    const currentSavedEnabled = mySettings.notificationsEnabled !== false;
 
     const hasChanges = discordIdInput.trim() !== currentSavedDiscordId || notificationsEnabled !== currentSavedEnabled;
     const needsVerification = discordIdInput.trim() !== currentSavedDiscordId && discordIdInput.trim() !== '' && !isVerified;
@@ -40,13 +37,14 @@ export default function NotificationModal({ isOpen, onClose }) {
         setIsVerifying(true);
         setVerifyError('');
         try {
-            // Wenn keine echte URL eingetragen ist, überspringen wir die echte Prüfung erstmal für den Test
-            if (VERIFY_WEBHOOK_URL === 'DEINE_MAKE_WEBHOOK_URL_HIER') {
-                console.warn("Platzhalter-URL verwendet. Überspringe echte Überprüfung.");
-                setTimeout(() => {
-                    setIsVerified(true);
-                    setIsVerifying(false);
-                }, 800);
+            if (!/^\d{17,20}$/.test(discordIdInput.trim())) {
+                setVerifyError('Das sieht nicht nach einer Discord-ID aus (17-20 Ziffern).');
+                return;
+            }
+
+            // Ohne konfiguriertes Prüf-Szenario wird die ID ungeprüft übernommen.
+            if (!VERIFY_WEBHOOK_URL) {
+                setIsVerified(true);
                 return;
             }
 

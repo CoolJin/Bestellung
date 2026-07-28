@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react';
-import { X } from 'lucide-react';export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", confirmColor = "primary", isDanger = false, cancelText = "Abbrechen", centerButtons = false }) {// Prevent scrolling when modal is open
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
+
+export default function Modal({ isOpen, title, children, onClose, onConfirm, confirmText = "Bestätigen", isDanger = false, cancelText = "Abbrechen", centerButtons = false }) {
+    // Scrollen der Seite unterbinden, solange das Modal offen ist
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';

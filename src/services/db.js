@@ -1,130 +1,234 @@
-import { supabaseClient } from './supabase';
+import { supabaseClient, createIsolatedClient } from './supabase';
+
+/**
+ * Die Accounts liegen in Supabase Auth, das eine E-Mail-Adresse verlangt.
+ * Angemeldet wird sich weiterhin mit dem Benutzernamen - daraus wird intern
+ * eine feste Adresse gebaut. An diese Domain wird nie etwas zugestellt.
+ */
+const EMAIL_DOMAIN = 'sns.local';
+export const emailForUsername = (username) =>
+    `${String(username).trim().toLowerCase()}@${EMAIL_DOMAIN}`;
+
+const mapProfile = (p) => p && ({
+    id: p.id,
+    username: p.username,
+    role: p.role,
+    isPablo: p.is_pablo,
+    cart: p.cart || [],
+});
+
+const mapOrder = (o) => ({
+    id: o.id,
+    user: o.user_id,
+    total: o.total,
+    status: o.status,
+    items: o.items,
+    date: o.date,
+    paid: o.paid,
+    adminNote: o.admin_note,
+    note: o.note,
+    archivedBy: o.archived_by || [],
+    deletedByAdmin: o.deleted_by_admin,
+    adminArchived: o.admin_archived,
+});
 
 export const DB = {
-    async fetchUsers() {
-        const { data: users, error } = await supabaseClient.from('users').select('*');
+    // -----------------------------------------------------------------
+    // Authentifizierung
+    // -----------------------------------------------------------------
+    async signIn(username, password) {
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email: emailForUsername(username),
+            password,
+        });
+        if (error) return null;
+        return await DB.fetchMyProfile();
+    },
+
+    async signOut() {
+        await supabaseClient.auth.signOut();
+    },
+
+    /** Profil des angemeldeten Benutzers, oder null wenn keine Session aktiv ist. */
+    async fetchMyProfile() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return null;
+
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
         if (error) {
-            console.error('DB: Error fetching users', error);
+            console.error('DB: Profil konnte nicht geladen werden', error);
+            return null;
+        }
+        return mapProfile(data);
+    },
+
+    // -----------------------------------------------------------------
+    // Benutzerverwaltung (nur Admin - die Policies erzwingen das)
+    // -----------------------------------------------------------------
+    async fetchUsers() {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .order('username');
+
+        if (error) {
+            console.error('DB: Benutzer konnten nicht geladen werden', error);
             return [];
         }
-        return (users || []).map(u => ({
-            username: u.username,
-            password: u.password,
-            role: u.role,
-            cart: u.cart,
-            isPablo: u.is_pablo
-        }));
-    },
-
-    async fetchOrders() {
-        const { data: orders, error } = await supabaseClient.from('orders').select('*');
-        if (error) {
-            console.error('DB: Error fetching orders', error);
-            return { orders: [], adminExtras: [] };
-        }
-        const rawOrders = (orders || []).map(o => ({
-            id: o.id,
-            user: o.user_id,
-            total: o.total,
-            status: o.status,
-            items: o.items,
-            date: o.date,
-            paid: o.paid,
-            adminNote: o.admin_note,
-            note: o.note,
-            archivedBy: o.archived_by || [],
-            deletedByAdmin: o.deleted_by_admin,
-            adminArchived: o.admin_archived
-        }));
-
-        const adminExtras = rawOrders.find(o => o.id === '#ADMIN_EXTRAS')?.items || [];
-        const cleanOrders = rawOrders.filter(o => o.id !== '#ADMIN_EXTRAS' && !o.id.startsWith('#SETTINGS_'));
-        
-        // Extract user settings
-        const allSettings = rawOrders.filter(o => o.id.startsWith('#SETTINGS_')).reduce((acc, curr) => {
-            const username = curr.id.replace('#SETTINGS_', '');
-            acc[username] = curr.items && curr.items.length > 0 ? curr.items[0] : {};
-            return acc;
-        }, {});
-
-        return { orders: cleanOrders, adminExtras, allSettings };
-    },
-
-    async saveAdminExtras(items, currentUsername) {
-        if (!currentUsername) throw new Error("No Session");
-        const specialOrder = {
-            id: '#ADMIN_EXTRAS',
-            user_id: currentUsername,
-            status: 'hidden',
-            items: items,
-            total: 0,
-            date: new Date().toISOString()
-        };
-        const { error } = await supabaseClient.from('orders').upsert([specialOrder]);
-        if (error) throw error;
-        return items;
-    },
-
-    async saveUserSettings(username, settingsObj) {
-        if (!username) throw new Error("No Username");
-        const settingsOrder = {
-            id: `#SETTINGS_${username}`,
-            user_id: username,
-            status: 'hidden',
-            items: [settingsObj],
-            total: 0,
-            date: new Date().toISOString()
-        };
-        const { error } = await supabaseClient.from('orders').upsert([settingsOrder]);
-        if (error) throw error;
-        return settingsObj;
+        return (data || []).map(mapProfile);
     },
 
     async createUser(username, password) {
-        const newUser = { username, password, role: 'user', cart: [], is_pablo: false };
-        const { error } = await supabaseClient.from('users').insert([newUser]);
-        if (error) throw new Error('Fehler beim Erstellen des Benutzers: ' + error.message);
+        const clean = String(username).trim();
+        if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(clean)) {
+            throw new Error('Benutzername: 3-32 Zeichen, nur Buchstaben, Ziffern, . _ -');
+        }
+        if (!password || password.length < 8) {
+            throw new Error('Das Passwort muss mindestens 8 Zeichen lang sein.');
+        }
+
+        // Eigener Client, damit die Session des Admins erhalten bleibt.
+        const signupClient = createIsolatedClient();
+        const { error } = await signupClient.auth.signUp({
+            email: emailForUsername(clean),
+            password,
+            options: { data: { username: clean } },
+        });
+
+        if (error) {
+            if (/already registered|already exists/i.test(error.message)) {
+                throw new Error(`Der Benutzer "${clean}" existiert bereits.`);
+            }
+            throw new Error('Benutzer konnte nicht erstellt werden: ' + error.message);
+        }
     },
 
     async deleteUser(username) {
-        await supabaseClient.from('users').delete().eq('username', username);
+        const { error } = await supabaseClient.rpc('admin_delete_user', {
+            target_username: username,
+        });
+        if (error) throw new Error('Löschen fehlgeschlagen: ' + error.message);
+    },
+
+    async setPassword(username, newPassword) {
+        const { error } = await supabaseClient.rpc('admin_set_password', {
+            target_username: username,
+            new_password: newPassword,
+        });
+        if (error) throw new Error('Passwort konnte nicht geändert werden: ' + error.message);
     },
 
     async updateUser(username, updates) {
         const dbUpdates = {};
         if (updates.role !== undefined) dbUpdates.role = updates.role;
-        if (updates.password !== undefined) dbUpdates.password = updates.password;
         if (updates.cart !== undefined) dbUpdates.cart = updates.cart;
         if (updates.isPablo !== undefined) dbUpdates.is_pablo = updates.isPablo;
-        
-        await supabaseClient.from('users').update(dbUpdates).eq('username', username);
+
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update(dbUpdates)
+            .eq('username', username);
+
+        if (error) throw new Error('Änderung fehlgeschlagen: ' + error.message);
     },
 
     async saveCart(username, cart) {
         if (!username) return;
-        await supabaseClient.from('users').update({ cart: cart }).eq('username', username);
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ cart })
+            .eq('username', username);
+        if (error) console.error('DB: Warenkorb konnte nicht gespeichert werden', error);
     },
 
-    async authenticate(username, password) {
-        const { data } = await supabaseClient.from('users')
+    // -----------------------------------------------------------------
+    // Eigene Benachrichtigungseinstellungen
+    // -----------------------------------------------------------------
+    async fetchMySettings(username) {
+        if (!username) return {};
+        const { data, error } = await supabaseClient
+            .from('settings')
             .select('*')
             .eq('username', username)
-            .eq('password', password)
-            .single();
-            
-        if (data) {
-            return {
-                username: data.username,
-                password: data.password,
-                role: data.role,
-                cart: data.cart || [],
-                isPablo: data.is_pablo
-            };
+            .maybeSingle();
+
+        if (error) {
+            console.error('DB: Einstellungen konnten nicht geladen werden', error);
+            return {};
         }
-        return null;
+        if (!data) return {};
+        return {
+            discordId: data.discord_id || '',
+            notificationsEnabled: data.notifications_enabled !== false,
+        };
     },
 
-    // Orders
+    async saveMySettings(username, settings) {
+        if (!username) throw new Error('Keine Session');
+        const { error } = await supabaseClient.from('settings').upsert({
+            username,
+            discord_id: settings.discordId || null,
+            notifications_enabled: settings.notificationsEnabled !== false,
+            updated_at: new Date().toISOString(),
+        });
+        if (error) throw new Error('Speichern fehlgeschlagen: ' + error.message);
+        return settings;
+    },
+
+    // -----------------------------------------------------------------
+    // Admin-Extras
+    // -----------------------------------------------------------------
+    async fetchAdminExtras() {
+        const { data, error } = await supabaseClient
+            .from('admin_extras')
+            .select('items')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (error) {
+            console.error('DB: Extras konnten nicht geladen werden', error);
+            return [];
+        }
+        return data?.items || [];
+    },
+
+    async saveAdminExtras(items) {
+        const { error } = await supabaseClient
+            .from('admin_extras')
+            .update({ items, updated_at: new Date().toISOString() })
+            .eq('id', 1);
+        if (error) throw new Error('Extras konnten nicht gespeichert werden: ' + error.message);
+        return items;
+    },
+
+    // -----------------------------------------------------------------
+    // Bestellungen
+    // -----------------------------------------------------------------
+    async fetchOrders() {
+        const { data, error } = await supabaseClient
+            .from('orders')
+            .select('*')
+            .order('date', { ascending: false });
+
+        if (error) {
+            console.error('DB: Bestellungen konnten nicht geladen werden', error);
+            return [];
+        }
+        return (data || []).map(mapOrder);
+    },
+
+    /** Fortlaufende Bestellnummer aus der Datenbank - kollisionsfrei. */
+    async nextOrderId() {
+        const { data, error } = await supabaseClient.rpc('next_order_id');
+        if (error) throw new Error('Bestellnummer konnte nicht vergeben werden: ' + error.message);
+        return data;
+    },
+
     async saveOrder(order) {
         const dbOrder = {
             id: order.id,
@@ -138,48 +242,34 @@ export const DB = {
             note: order.note || '',
             archived_by: order.archivedBy || [],
             deleted_by_admin: order.deletedByAdmin || false,
-            admin_archived: order.adminArchived || false
+            admin_archived: order.adminArchived || false,
         };
 
         const { error } = await supabaseClient.from('orders').insert([dbOrder]);
         if (error) {
-            throw new Error('Speichern fehlgeschlagen: ' + (error.message || error.details || JSON.stringify(error)));
+            throw new Error('Speichern fehlgeschlagen: ' + (error.message || error.details || 'unbekannter Fehler'));
         }
     },
 
     async updateOrder(id, orderData) {
         const dbUpdate = {};
-        if (orderData.status !== undefined) dbUpdate.status = orderData.status;
-        if (orderData.paid !== undefined) dbUpdate.paid = orderData.paid;
-        if (orderData.adminNote !== undefined) dbUpdate.admin_note = orderData.adminNote;
+        if (orderData.status !== undefined)         dbUpdate.status = orderData.status;
+        if (orderData.paid !== undefined)           dbUpdate.paid = orderData.paid;
+        if (orderData.adminNote !== undefined)      dbUpdate.admin_note = orderData.adminNote;
         if (orderData.deletedByAdmin !== undefined) dbUpdate.deleted_by_admin = orderData.deletedByAdmin;
-        if (orderData.archivedBy !== undefined) dbUpdate.archived_by = orderData.archivedBy;
-        if (orderData.adminArchived !== undefined) dbUpdate.admin_archived = orderData.adminArchived;
-        if (orderData.items !== undefined) dbUpdate.items = orderData.items;
+        if (orderData.archivedBy !== undefined)     dbUpdate.archived_by = orderData.archivedBy;
+        if (orderData.adminArchived !== undefined)  dbUpdate.admin_archived = orderData.adminArchived;
+        if (orderData.items !== undefined)          dbUpdate.items = orderData.items;
+        if (orderData.total !== undefined)          dbUpdate.total = orderData.total;
+        if (orderData.note !== undefined)           dbUpdate.note = orderData.note;
+        if (orderData.date !== undefined)           dbUpdate.date = orderData.date;
 
-        await supabaseClient.from('orders').update(dbUpdate).eq('id', id);
+        const { error } = await supabaseClient.from('orders').update(dbUpdate).eq('id', id);
+        if (error) throw new Error('Änderung fehlgeschlagen: ' + error.message);
     },
 
     async deleteOrder(id) {
-        await supabaseClient.from('orders').delete().eq('id', id);
+        const { error } = await supabaseClient.from('orders').delete().eq('id', id);
+        if (error) throw new Error('Löschen fehlgeschlagen: ' + error.message);
     },
-
-    generateOrderId(existingOrders = [], editingId = null) {
-        if (editingId) {
-            const strId = String(editingId);
-            if (strId.endsWith('B')) return strId;
-            return strId + 'B';
-        }
-
-        let maxId = 0;
-        existingOrders.forEach(o => {
-            const numPart = parseInt(String(o.id).replace(/\D/g, ''), 10);
-            if (!isNaN(numPart) && numPart > maxId && numPart < 90000) {
-                maxId = numPart;
-            }
-        });
-
-        const newIdNum = maxId + 1;
-        return '#' + String(newIdNum).padStart(4, '0');
-    }
 };

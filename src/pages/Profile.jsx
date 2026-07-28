@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, MessageSquare, Info, Bell } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import NotificationModal from '../components/NotificationModal';
 
 export default function Profile() {
-    const { currentUser, orders, fetchAllData, clearCart, addToCart, userSettings, saveSettings } = useAppContext();
+    const { currentUser, orders, fetchAllData, clearCart, addToCart, mySettings, startEditingOrder } = useAppContext();
     const navigate = useNavigate();
 
     // Confirm modal state
@@ -15,7 +15,7 @@ export default function Profile() {
     const [isLagerModalOpen, setIsLagerModalOpen] = useState(false);
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    const shouldPulse = currentUser && userSettings && userSettings[currentUser.username] && !userSettings[currentUser.username].discordId;
+    const shouldPulse = currentUser && !mySettings.discordId;
 
     const showConfirm = (title, message, onConfirm, isDanger = false) => {
         setConfirm({ open: true, title, message, onConfirm, isDanger });
@@ -30,7 +30,7 @@ export default function Profile() {
 
     useEffect(() => {
         fetchAllData();
-    }, []);
+    }, [fetchAllData]);
 
     const myOrders = orders.filter(o => {
         if (o.user !== currentUser.username) return false;
@@ -50,7 +50,7 @@ export default function Profile() {
             async () => {
                 try {
                     const reqOrder = {
-                        id: 'REQ-' + Date.now(),
+                        id: 'REQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                         user: currentUser.username,
                         status: 'request_open',
                         total: 0,
@@ -101,8 +101,11 @@ export default function Profile() {
                     await DB.updateOrder(orderId, { archivedBy: [...current, currentUser.username] });
                 }
             } else if (action === 'restore') {
+                // Nur aus dem Archiv holen - der Status bleibt, wie er war.
+                // (Früher wurde hier auf 'open' zurückgesetzt, wodurch eine
+                // längst bezahlte Bestellung beim Admin wieder als offen auftauchte.)
                 const current = (order.archivedBy || []).filter(u => u !== currentUser.username);
-                await DB.updateOrder(orderId, { archivedBy: current, status: 'open' });
+                await DB.updateOrder(orderId, { archivedBy: current });
             } else if (action === 'delete') {
                 let current = (order.archivedBy || []).filter(u => u !== currentUser.username);
                 current.push(`DELETED:${currentUser.username}`);
@@ -113,9 +116,8 @@ export default function Profile() {
                 navigate('/cart');
                 return;
             } else if (action === 'edit') {
-                clearCart();
-                (order.items || []).forEach(item => addToCart(item, item.quantity || 1));
-                await DB.deleteOrder(orderId);
+                // Bestellung bleibt bestehen, bis die Änderung abgesendet wird.
+                startEditingOrder(order);
                 navigate('/cart');
                 return;
             }
@@ -130,7 +132,7 @@ export default function Profile() {
             cancel:  { title: 'Stornieren',           message: 'Bestellung wirklich stornieren?',                    danger: true },
             delete:  { title: 'Entfernen',             message: 'Eintrag wirklich aus der Liste entfernen?',          danger: true },
             reorder: { title: 'Erneut bestellen',      message: 'Diese Bestellung in den Warenkorb legen?',           danger: false },
-            edit:    { title: 'Bestellung bearbeiten', message: 'Der aktuelle Warenkorb wird überschrieben. Weiter?', danger: false },
+            edit:    { title: 'Bestellung bearbeiten', message: 'Der aktuelle Warenkorb wird durch diese Bestellung ersetzt. Die Bestellung selbst bleibt bestehen, bis du die Änderung absendest. Weiter?', danger: false },
         };
         const cfg = msgs[action];
         if (cfg) {
@@ -153,7 +155,7 @@ export default function Profile() {
             default:           badges.push(<span key="status" style={{ ...base, background: 'rgba(255,255,255,0.08)', color: 'var(--color-muted)' }}>{order.status}</span>); break;
         }
 
-        if (order.status === 'ordered' && order.paymentStatus !== 'paid') {
+        if (order.status === 'ordered' && !order.paid) {
             badges.push(<span key="payment" style={{ ...base, background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>Nicht bezahlt</span>);
         }
 

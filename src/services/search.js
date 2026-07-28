@@ -27,8 +27,8 @@ export const handleSearchLogic = async (query) => {
         }
     ];
     
-    let html = null;
-    
+    let html;
+
     // Timeout Wrapper
     const fetchWithTimeout = (url, timeout = 4500) => {
         return new Promise((resolve, reject) => {
@@ -74,7 +74,7 @@ export const handleSearchLogic = async (query) => {
         
     } catch (aggregateError) {
         console.error("[Search] All proxies failed", aggregateError);
-        throw new Error("Verbindung fehlgeschlagen (Alle Routen blockiert oder Timeout)");
+        throw new Error("Verbindung fehlgeschlagen (Alle Routen blockiert oder Timeout)", { cause: aggregateError });
     }
     
     const parser = new DOMParser();

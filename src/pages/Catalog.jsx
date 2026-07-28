@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search as SearchIcon, X, ShoppingCart, Check, Star } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { handleSearchLogic } from '../services/search';
@@ -8,24 +8,16 @@ import { calculatePrice, calculateVK, formatPrice } from '../services/pricing';
 // mode: 'cart' (default) | 'extras' (admin — adds to admin extras instead of cart)
 export default function Catalog({ mode = 'cart' }) {
     const { addToCart, addToAdminExtras, currentUser } = useAppContext();
-    const [query, setQuery] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    // Suchbegriff kann per ?q= vorgegeben werden
+    const [initialQuery] = useState(() => searchParams.get('q') || '');
+    const [query, setQuery] = useState(initialQuery);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
-    const [searchParams, setSearchParams] = useSearchParams();
 
-    useEffect(() => {
-        const q = searchParams.get('q');
-        if (q) {
-            setQuery(q);
-            performSearch(q);
-            // Optionally remove the query from URL after initial load
-            setSearchParams({});
-        }
-    }, []);
-
-    const performSearch = async (searchQuery) => {
+    const performSearch = useCallback(async (searchQuery) => {
         if (!searchQuery || searchQuery.length < 2) { setResults([]); return; }
         setLoading(true);
         setError('');
@@ -38,7 +30,15 @@ export default function Catalog({ mode = 'cart' }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (initialQuery) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            performSearch(initialQuery);
+            setSearchParams({});
+        }
+    }, [initialQuery, performSearch, setSearchParams]);
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') { e.preventDefault(); performSearch(query); e.target.blur(); }
