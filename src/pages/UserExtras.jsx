@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +37,7 @@ export default function UserExtras() {
             async () => {
                 try {
                     const reqOrder = {
-                        id: 'REQ-' + Date.now(),
+                        id: 'REQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                         user: currentUser.username,
                         status: 'request_open',
                         total: 0,

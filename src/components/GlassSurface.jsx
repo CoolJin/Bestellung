@@ -1,6 +1,22 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState, useRef, useId } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
 import './GlassSurface.css';
+
+/**
+ * Safari und Firefox unterstützen backdrop-filter mit SVG-Filtern nicht -
+ * dort wird die reine CSS-Variante benutzt.
+ */
+const supportsSVGFilters = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+  const isFirefox = /Firefox/.test(navigator.userAgent);
+  if (isWebkit || isFirefox) return false;
+
+  const div = document.createElement('div');
+  div.style.backdropFilter = 'url(#test)';
+  return div.style.backdropFilter !== '';
+};
 
 const GlassSurface = ({
   children,
@@ -29,7 +45,7 @@ const GlassSurface = ({
   const redGradId = `red-grad-${uniqueId}`;
   const blueGradId = `blue-grad-${uniqueId}`;
 
-  const [svgSupported, setSvgSupported] = useState(false);
+  const [svgSupported] = useState(supportsSVGFilters);
 
   const containerRef = useRef(null);
   const feImageRef = useRef(null);
@@ -120,28 +136,6 @@ const GlassSurface = ({
   useEffect(() => {
     setTimeout(updateDisplacementMap, 0);
   }, [width, height]);
-
-  useEffect(() => {
-    setSvgSupported(supportsSVGFilters());
-  }, []);
-
-  const supportsSVGFilters = () => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return false;
-    }
-
-    const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-
-    if (isWebkit || isFirefox) {
-      return false;
-    }
-
-    const div = document.createElement('div');
-    div.style.backdropFilter = `url(#${filterId})`;
-
-    return div.style.backdropFilter !== '';
-  };
 
   const containerStyle = {
     ...style,

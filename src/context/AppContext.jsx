@@ -1,270 +1,227 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DB } from '../services/db';
 import { supabaseClient } from '../services/supabase';
 
 const AppContext = createContext();
+
+/** Nach dieser Zeit ohne Interaktion wird automatisch abgemeldet. */
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+const LAST_ACTIVE_KEY = 'sns-last-active';
 
 export const AppProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [cart, setCart] = useState([]);
     const [orders, setOrders] = useState([]);
     const [adminExtras, setAdminExtras] = useState([]);
-    const [userSettings, setUserSettings] = useState({});
+    const [mySettings, setMySettings] = useState({});
     const [isLoaded, setIsLoaded] = useState(false);
 
-    const MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/9o6d7birjy66suvq6w8rzbwz72dbw9yb';
+    // Bestellung, die gerade bearbeitet wird (siehe Profil > Bearbeiten).
+    const [editingOrderId, setEditingOrderId] = useState(null);
 
+    // -----------------------------------------------------------------
+    // Daten laden
+    // -----------------------------------------------------------------
+    const fetchAllData = useCallback(async () => {
+        if (!currentUser) return;
+
+        const [fetchedOrders, fetchedExtras, fetchedSettings] = await Promise.all([
+            DB.fetchOrders(),
+            DB.fetchAdminExtras(),
+            DB.fetchMySettings(currentUser.username),
+        ]);
+
+        setOrders(fetchedOrders);
+        setAdminExtras(fetchedExtras);
+        setMySettings(fetchedSettings || {});
+    }, [currentUser]);
+
+    // -----------------------------------------------------------------
+    // Session herstellen und auf Auth-Wechsel reagieren
+    // -----------------------------------------------------------------
     useEffect(() => {
+        let active = true;
+
         const init = async () => {
             try {
-                const sessionData = localStorage.getItem('session_v3');
-                if (sessionData) {
-                    const session = JSON.parse(sessionData);
-                    if (Date.now() - session.lastActive > 900000) {
-                        localStorage.removeItem('session_v3');
-                    } else {
-                        session.lastActive = Date.now();
-                        localStorage.setItem('session_v3', JSON.stringify(session));
-                        setCurrentUser(session.user);
-                        setCart(session.user.cart || []);
+                const lastActive = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+                if (lastActive && Date.now() - lastActive > INACTIVITY_LIMIT_MS) {
+                    await DB.signOut();
+                    localStorage.removeItem(LAST_ACTIVE_KEY);
+                } else {
+                    const profile = await DB.fetchMyProfile();
+                    if (active && profile) {
+                        setCurrentUser(profile);
+                        setCart(profile.cart || []);
                     }
                 }
             } catch (e) {
-                console.error("Session parse error", e);
-                localStorage.removeItem('session_v3');
-            }
-
-            try {
-                await fetchAllData();
-            } catch(e) {
-                console.error("Fetch Data Error:", e);
+                console.error('Session konnte nicht wiederhergestellt werden', e);
             } finally {
-                setIsLoaded(true);
+                if (active) setIsLoaded(true);
             }
         };
         init();
 
-        const handleActivity = () => {
-            const data = localStorage.getItem('session_v3');
-            if (data) {
-                const session = JSON.parse(data);
-                session.lastActive = Date.now();
-                localStorage.setItem('session_v3', JSON.stringify(session));
+        const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                setCurrentUser(null);
+                setCart([]);
+                setOrders([]);
+                setAdminExtras([]);
+                setMySettings({});
+                setEditingOrderId(null);
             }
-        };
+        });
 
-        window.addEventListener('click', handleActivity);
-        window.addEventListener('keypress', handleActivity);
         return () => {
-            window.removeEventListener('click', handleActivity);
-            window.removeEventListener('keypress', handleActivity);
+            active = false;
+            subscription.unsubscribe();
         };
     }, []);
 
+    // Sobald ein Benutzer da ist: Daten holen.
+    // (Laden beim Mounten ist genau der Zweck eines Effects - die Regel
+    //  kann hier nicht sehen, dass der State erst nach dem await gesetzt wird.)
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (currentUser) fetchAllData();
+    }, [currentUser, fetchAllData]);
+
+    // -----------------------------------------------------------------
+    // Automatische Abmeldung nach Inaktivität
+    // -----------------------------------------------------------------
     useEffect(() => {
         if (!currentUser) return;
 
-        const channel = supabaseClient.channel('admin_notifications')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
-                console.log("REALTIME EVENT FIRED: INSERT orders", payload);
-                const newOrder = payload.new;
-                fetchAllData(); // Refresh UI data
+        const touch = () => localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+        touch();
 
-                if (newOrder.status === 'request_open') {
-                    const productName = newOrder.items?.[0]?.name || "Unbekanntes Produkt";
-                    const productSource = newOrder.items?.[0]?.source === 'extra' ? 'Extras' : 'Lagerbestand';
-                    
-                    const { allSettings } = await DB.fetchOrders();
-                    const users = await DB.fetchUsers();
-                    const admins = users.filter(u => u.role === 'admin');
-                    
-                    console.log("Found admins:", admins.map(a => a.username));
-                    
-                    admins.forEach(admin => {
-                        const discordId = allSettings[admin.username]?.discordId;
-                        const notificationsEnabled = allSettings[admin.username]?.notificationsEnabled !== false;
-                        console.log(`Checking Discord ID for admin ${admin.username}:`, discordId, "Enabled:", notificationsEnabled);
-                        
-                        if (discordId && notificationsEnabled) {
-                            console.log("Sending Webhook for new_request!");
-                            fetch(MAKE_WEBHOOK_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    discordId: discordId,
-                                    message: `Neue Produktanfrage von **${newOrder.user_id}**: **${productName}** (aus ${productSource})!`,
-                                    event: 'new_request'
-                                })
-                            }).then(res => console.log("Webhook response:", res.status))
-                              .catch(e => console.error("Webhook Error:", e));
-                        }
-                    });
-                }
-            })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, async (payload) => {
-                console.log("REALTIME EVENT FIRED: UPDATE orders", payload);
-                const newOrder = payload.new;
-                const oldOrder = payload.old;
-                fetchAllData(); // Refresh UI data
+        const events = ['click', 'keydown', 'touchstart'];
+        events.forEach(e => window.addEventListener(e, touch, { passive: true }));
 
-                if (newOrder.status !== oldOrder.status) {
-                    const { allSettings } = await DB.fetchOrders();
-                    const discordId = allSettings[newOrder.user_id]?.discordId;
-                    const notificationsEnabled = allSettings[newOrder.user_id]?.notificationsEnabled !== false;
-                    
-                    const productName = newOrder.items?.[0]?.name || "Unbekanntes Produkt";
-                    
-                    if (discordId && notificationsEnabled) {
-                        let msg = '';
-                        if (newOrder.status === 'request_accepted') msg = `Dein Produkt **${productName}** ist für dich bereit!`;
-                        else if (newOrder.status === 'request_denied') msg = `Deine Produktanfrage für **${productName}** wurde abgelehnt.`;
-                        else if (newOrder.status === 'ordered') msg = `Deine Bestellung **${newOrder.id}** wurde bestellt.`;
-                        else if (newOrder.status === 'completed') msg = `Deine Bestellung **${newOrder.id}** wurde als bezahlt markiert.`;
-                        
-                        if (msg) {
-                            console.log("Sending Webhook for status_update!");
-                            fetch(MAKE_WEBHOOK_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    discordId: discordId,
-                                    message: msg,
-                                    event: 'status_update'
-                                })
-                            }).then(res => console.log("Webhook response:", res.status))
-                              .catch(e => console.error("Webhook Error:", e));
-                        }
-                    }
-                }
-            })
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, async (payload) => {
-                console.log("REALTIME EVENT FIRED: DELETE orders", payload);
-                const deletedOrder = payload.old;
-
-                // Only notify if it was an open product request being withdrawn
-                if (deletedOrder.status === 'request_open') {
-                    fetchAllData();
-                    const productName = deletedOrder.items?.[0]?.name || "Unbekanntes Produkt";
-                    const { allSettings } = await DB.fetchOrders();
-                    const users = await DB.fetchUsers();
-                    const admins = users.filter(u => u.role === 'admin');
-
-                    admins.forEach(admin => {
-                        const discordId = allSettings[admin.username]?.discordId;
-                        const notificationsEnabled = allSettings[admin.username]?.notificationsEnabled !== false;
-                        if (discordId && notificationsEnabled) {
-                            console.log("Sending Webhook for request_withdrawn!");
-                            fetch(MAKE_WEBHOOK_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    discordId: discordId,
-                                    message: `**${deletedOrder.user_id}** hat seine Produktanfrage für **${productName}** zurückgezogen.`,
-                                    event: 'request_withdrawn'
-                                })
-                            }).then(res => console.log("Webhook response:", res.status))
-                              .catch(e => console.error("Webhook Error:", e));
-                        }
-                    });
-                }
-            })
-
-            .subscribe();
+        const interval = setInterval(async () => {
+            const lastActive = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+            if (lastActive && Date.now() - lastActive > INACTIVITY_LIMIT_MS) {
+                localStorage.removeItem(LAST_ACTIVE_KEY);
+                await DB.signOut();
+            }
+        }, 30000);
 
         return () => {
-            supabaseClient.removeChannel(channel);
+            events.forEach(e => window.removeEventListener(e, touch));
+            clearInterval(interval);
         };
     }, [currentUser]);
 
-    const fetchAllData = async () => {
-        const { orders: fetchedOrders, adminExtras: fetchedExtras, allSettings: fetchedSettings } = await DB.fetchOrders();
-        setOrders(fetchedOrders);
-        setAdminExtras(fetchedExtras);
-        setUserSettings(fetchedSettings || {});
+    // -----------------------------------------------------------------
+    // Realtime: bei Änderungen einfach neu laden.
+    // Die Discord-Benachrichtigungen verschickt die Datenbank selbst
+    // (supabase/migrations/003) - früher tat das jeder offene Tab, was zu
+    // mehrfachen DMs führte.
+    // -----------------------------------------------------------------
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const channel = supabaseClient
+            .channel('sns-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchAllData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_extras' }, () => fetchAllData())
+            .subscribe();
+
+        return () => { supabaseClient.removeChannel(channel); };
+    }, [currentUser, fetchAllData]);
+
+    // -----------------------------------------------------------------
+    // An- und Abmeldung
+    // -----------------------------------------------------------------
+    const login = async (username, password) => {
+        const profile = await DB.signIn(username, password);
+        if (!profile) return false;
+        localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+        setCurrentUser(profile);
+        setCart(profile.cart || []);
+        return true;
+    };
+
+    const logout = async () => {
+        localStorage.removeItem(LAST_ACTIVE_KEY);
+        setEditingOrderId(null);
+        await DB.signOut();
     };
 
     const saveSettings = async (settings) => {
         if (!currentUser) return;
-        await DB.saveUserSettings(currentUser.username, settings);
-        await fetchAllData();
+        await DB.saveMySettings(currentUser.username, settings);
+        setMySettings(await DB.fetchMySettings(currentUser.username));
     };
 
-    const login = async (username, password) => {
-        const user = await DB.authenticate(username, password);
-        if (user) {
-            setCurrentUser(user);
-            setCart(user.cart || []);
-            localStorage.setItem('session_v3', JSON.stringify({ user, lastActive: Date.now() }));
-            return true;
+    // -----------------------------------------------------------------
+    // Warenkorb - einzige Quelle der Wahrheit ist das Profil in der DB.
+    // (Früher lag zusätzlich eine Kopie im localStorage, die nicht bei
+    // jeder Änderung mitgezogen wurde - nach einem Reload war der
+    // Warenkorb dann falsch.)
+    // -----------------------------------------------------------------
+    const persistCart = useCallback((newCart) => {
+        setCart(newCart);
+        if (currentUser) {
+            DB.saveCart(currentUser.username, newCart);
         }
-        return false;
-    };
+    }, [currentUser]);
 
-    const logout = () => {
-        setCurrentUser(null);
-        setCart([]);
-        localStorage.removeItem('session_v3');
-    };
-
-    // Dedup helper: match by name since external products get random IDs each search
+    // Externe Produkte bekommen bei jeder Suche eine neue ID - daher
+    // zusätzlich über den Namen abgleichen.
     const sameProduct = (a, b) =>
         a.id === b.id || (a.name && b.name && a.name.trim().toLowerCase() === b.name.trim().toLowerCase());
 
     const addToCart = (product, quantity = 1) => {
-        setCart(prev => {
-            const existing = prev.find(p => sameProduct(p, product));
-            let newCart;
-            if (existing) {
-                newCart = prev.map(p => sameProduct(p, product) ? { ...p, quantity: p.quantity + quantity } : p);
-            } else {
-                newCart = [...prev, { ...product, quantity }];
-            }
-            if (currentUser) DB.saveCart(currentUser.username, newCart);
-            const sessionData = localStorage.getItem('session_v3');
-            if (sessionData) {
-                const session = JSON.parse(sessionData);
-                session.user.cart = newCart;
-                localStorage.setItem('session_v3', JSON.stringify(session));
-            }
-            return newCart;
-        });
+        const existing = cart.find(p => sameProduct(p, product));
+        const newCart = existing
+            ? cart.map(p => sameProduct(p, product) ? { ...p, quantity: (p.quantity || 1) + quantity } : p)
+            : [...cart, { ...product, quantity }];
+        persistCart(newCart);
     };
 
     const changeCartQty = (id, delta) => {
-        setCart(prev => {
-            const existing = prev.find(p => p.id === id);
-            if (!existing) return prev;
-            let newCart;
-            if (existing.quantity + delta <= 0) {
-                newCart = prev.filter(p => p.id !== id);
-            } else {
-                newCart = prev.map(p => p.id === id ? { ...p, quantity: p.quantity + delta } : p);
-            }
-            if (currentUser) DB.saveCart(currentUser.username, newCart);
-            return newCart;
-        });
+        const existing = cart.find(p => p.id === id);
+        if (!existing) return;
+        const newCart = (existing.quantity + delta <= 0)
+            ? cart.filter(p => p.id !== id)
+            : cart.map(p => p.id === id ? { ...p, quantity: p.quantity + delta } : p);
+        persistCart(newCart);
     };
 
-    const clearCart = () => {
-        setCart([]);
-        if (currentUser) DB.saveCart(currentUser.username, []);
+    const clearCart = () => persistCart([]);
+
+    /**
+     * Bestellung zum Bearbeiten in den Warenkorb laden.
+     * Die Bestellung bleibt dabei bestehen und wird beim Absenden
+     * aktualisiert - bricht der Nutzer ab, geht nichts verloren.
+     */
+    const startEditingOrder = (order) => {
+        setEditingOrderId(order.id);
+        persistCart((order.items || []).map(item => ({ ...item, quantity: item.quantity || 1 })));
     };
 
-    // Add product to Admin Extras (admin-only separate basket)
+    const cancelEditingOrder = () => {
+        setEditingOrderId(null);
+        persistCart([]);
+    };
+
+    // -----------------------------------------------------------------
+    // Admin-Extras
+    // -----------------------------------------------------------------
     const addToAdminExtras = async (product) => {
         try {
-            const current = [...adminExtras];
-            const existing = current.find(p => sameProduct(p, product));
-            let newExtras;
-            if (existing) {
-                newExtras = current.map(p => sameProduct(p, product) ? { ...p, quantity: (p.quantity || 1) + 1 } : p);
-            } else {
-                newExtras = [...current, { ...product, quantity: 1 }];
-            }
-            await DB.saveAdminExtras(newExtras, currentUser.username);
+            const existing = adminExtras.find(p => sameProduct(p, product));
+            const newExtras = existing
+                ? adminExtras.map(p => sameProduct(p, product) ? { ...p, quantity: (p.quantity || 1) + 1 } : p)
+                : [...adminExtras, { ...product, quantity: 1 }];
+
+            await DB.saveAdminExtras(newExtras);
             setAdminExtras(newExtras);
         } catch (e) {
-            console.error('addToAdminExtras failed', e);
+            console.error('Extras konnten nicht gespeichert werden', e);
         }
     };
 
@@ -275,19 +232,23 @@ export const AppProvider = ({ children }) => {
             orders,
             adminExtras,
             isLoaded,
+            mySettings,
+            editingOrderId,
             login,
             logout,
             addToCart,
             addToAdminExtras,
             changeCartQty,
             clearCart,
+            startEditingOrder,
+            cancelEditingOrder,
             fetchAllData,
-            userSettings,
-            saveSettings
+            saveSettings,
         }}>
             {children}
         </AppContext.Provider>
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => useContext(AppContext);

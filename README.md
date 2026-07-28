@@ -1,16 +1,47 @@
-# React + Vite
+# SNS Bestellsystem
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Kleines Bestellsystem für den privaten Gebrauch: Produktsuche, Warenkorb,
+Bestellabwicklung mit Status-Workflow, Lager-Tracking, Admin-Extras und
+optionale Discord-Benachrichtigungen.
 
-Currently, two official plugins are available:
+**Stack:** React 19 + Vite, React Router (HashRouter), Supabase (Datenbank +
+Realtime + Auth), Tailwind für Utilities, eigenes Design-System in
+`src/styles/design-system.css`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Entwicklung
 
-## React Compiler
+```bash
+npm install
+npm run dev      # Dev-Server
+npm run lint     # ESLint
+npm run build    # Produktions-Build nach dist/
+npm run preview  # Build lokal ansehen
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Konfiguration
 
-## Expanding the ESLint configuration
+Supabase-URL und Publishable Key stehen in `.env` (siehe `.env.example`).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Beide Werte landen im gebauten JavaScript und sind damit öffentlich —
+das ist bei einer reinen Frontend-App unvermeidbar und beim Publishable Key
+auch so vorgesehen. **Der Zugriffsschutz kommt ausschließlich von den
+RLS-Policies in der Datenbank**, nicht davon, dass der Key geheim bleibt.
+Siehe `supabase/README.md`.
+
+## Deployment
+
+Push auf `main` baut und veröffentlicht automatisch auf GitHub Pages
+(`.github/workflows/deploy.yml`). Die App liegt unter dem Unterpfad
+`/Bestellung/`, entsprechend gesetzt in `vite.config.js` (`base`).
+
+## Struktur
+
+```
+src/
+  components/   Modal, NotificationModal, GlassSurface
+  context/      AppContext - Session, Warenkorb, Bestellungen, Realtime
+  pages/        Login, Home, Cart, Profile, UserExtras, Admin, AdminExtras, Catalog
+  services/     supabase (Client), db (Datenzugriff), pricing, search
+  styles/       design-system.css, tailwind.css
+supabase/       SQL-Migrationen und Einrichtungsanleitung
+```

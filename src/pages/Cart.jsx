@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ArrowRight, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, Trash2, ArrowRight, ShoppingCart, Edit2, X } from 'lucide-react';
 import { calculatePrice, calculateCartTotal, formatPrice } from '../services/pricing';
 
 export default function Cart() {
-    const { cart, currentUser, changeCartQty, clearCart, orders } = useAppContext();
+    const {
+        cart, currentUser, changeCartQty, clearCart, orders,
+        editingOrderId, cancelEditingOrder, fetchAllData,
+    } = useAppContext();
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
     const total = calculateCartTotal(cart, currentUser);
+    const editingOrder = editingOrderId ? orders.find(o => o.id === editingOrderId) : null;
+
+    // Beim Bearbeiten die vorhandene Notiz einmalig übernehmen
+    const [noteLoadedFor, setNoteLoadedFor] = useState(null);
+    if (editingOrder && noteLoadedFor !== editingOrder.id) {
+        setNoteLoadedFor(editingOrder.id);
+        setNote(editingOrder.note || '');
+    }
 
     const handleCheckout = async () => {
         if (cart.length === 0) return;
@@ -20,26 +31,36 @@ export default function Cart() {
         setError('');
 
         try {
-            const orderId = DB.generateOrderId(orders);
-
             const itemsWithPrices = cart.map(item => ({
                 ...item,
                 price: calculatePrice(item, currentUser),
                 originalPrice: Number(item.originalPrice || item.price || 0),
             }));
 
-            const newOrder = {
-                id: orderId,
-                user: currentUser.username,
-                status: 'open',
-                items: itemsWithPrices,
-                total: parseFloat(total.toFixed(2)),
-                date: new Date().toISOString(),
-                note: note.trim(),
-            };
+            if (editingOrderId) {
+                // Bestehende Bestellung aktualisieren statt löschen und neu
+                // anlegen - bricht der Nutzer vorher ab, bleibt sie erhalten.
+                await DB.updateOrder(editingOrderId, {
+                    items: itemsWithPrices,
+                    total: parseFloat(total.toFixed(2)),
+                    note: note.trim(),
+                    date: new Date().toISOString(),
+                });
+                cancelEditingOrder();
+            } else {
+                await DB.saveOrder({
+                    id: await DB.nextOrderId(),
+                    user: currentUser.username,
+                    status: 'open',
+                    items: itemsWithPrices,
+                    total: parseFloat(total.toFixed(2)),
+                    date: new Date().toISOString(),
+                    note: note.trim(),
+                });
+                clearCart();
+            }
 
-            await DB.saveOrder(newOrder);
-            clearCart();
+            await fetchAllData();
             navigate('/profile');
         } catch (err) {
             setError(err.message || 'Fehler beim Bestellen');
@@ -48,9 +69,27 @@ export default function Cart() {
         }
     };
 
+    const handleCancelEdit = () => {
+        cancelEditingOrder();
+        setNote('');
+        navigate('/profile');
+    };
+
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
             <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Warenkorb</h1>
+
+            {editingOrderId && (
+                <div className="glass-panel mb-4" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderColor: 'var(--color-accent)' }}>
+                    <span style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Edit2 size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+                        Du bearbeitest Bestellung <strong>{editingOrderId}</strong>
+                    </span>
+                    <button className="btn btn-secondary" style={{ flexShrink: 0 }} onClick={handleCancelEdit}>
+                        <X size={15} /> Abbrechen
+                    </button>
+                </div>
+            )}
 
             {error && (
                 <div className="glass-panel mb-4" style={{ padding: '1rem', color: 'var(--color-destructive)', borderColor: 'var(--color-destructive)' }}>
@@ -118,7 +157,7 @@ export default function Cart() {
                         >
                             {loading
                                 ? <span className="spinner" style={{ width: '1.2rem', height: '1.2rem', borderWidth: '2px' }}></span>
-                                : <><ArrowRight size={20} /> Bestellung absenden</>
+                                : <><ArrowRight size={20} /> {editingOrderId ? 'Änderungen speichern' : 'Bestellung absenden'}</>
                             }
                         </button>
                     </div>

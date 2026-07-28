@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search as SearchIcon, X, ShoppingCart, Check, Bell } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
@@ -7,11 +7,22 @@ import GlassSurface from '../components/GlassSurface';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
+const lockBodyScroll = (scrollY) => {
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+};
+
+const unlockBodyScroll = () => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+};
+
 export default function Home() {
-    const { addToCart, currentUser, adminExtras = [], userSettings } = useAppContext();
+    const { addToCart, currentUser, adminExtras = [], mySettings } = useAppContext();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
     const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
@@ -22,6 +33,10 @@ export default function Home() {
     const hintWrapperRef = useRef(null);
     const searchContainerRef = useRef(null);
     const navigate = useNavigate();
+
+    // Aktuelle Phase für Event-Handler, die nicht neu registriert werden sollen
+    const searchPhaseRef = useRef(searchPhase);
+    useEffect(() => { searchPhaseRef.current = searchPhase; }, [searchPhase]);
 
     useEffect(() => {
         const updateRadius = () => {
@@ -80,7 +95,6 @@ export default function Home() {
             }
             setSearchPhase('waiting_for_results');
             setIsFadingOutGrid(false);
-            setLoading(true);
             setError('');
             
             // Close keyboard if open when hitting enter again
@@ -94,24 +108,19 @@ export default function Home() {
             } catch(err) {
                 setError(err.message || 'Fehler bei der Suche');
                 setResults([]);
-            } finally {
-                setLoading(false);
             }
             return;
         }
-
-        setLoading(true);
         setError('');
         
         let scrollYBeforeBlur = 0;
         const isMobile = window.innerWidth <= 768;
         
         if (isMobile) {
-            // Lock body to prevent native mobile browser scroll-bounce when keyboard closes
+            // Body fixieren, damit mobile Browser beim Schließen der Tastatur
+            // nicht zurückspringen
             scrollYBeforeBlur = window.scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollYBeforeBlur}px`;
-            document.body.style.width = '100%';
+            lockBodyScroll(scrollYBeforeBlur);
         }
 
         if (input) input.blur();
@@ -124,10 +133,9 @@ export default function Home() {
                 await wait(500); // Wait for texts to fade out
                 
                 if (isMobile) {
-                    // Unlock body and restore scroll instantly before starting our smooth scroll
-                    document.body.style.position = '';
-                    document.body.style.top = '';
-                    document.body.style.width = '';
+                    // Body freigeben und Scrollposition sofort wiederherstellen,
+                    // bevor die eigene Animation startet
+                    unlockBodyScroll();
                     window.scrollTo(0, scrollYBeforeBlur);
                 }
 
@@ -149,8 +157,6 @@ export default function Home() {
             setError(err.message || 'Fehler bei der Suche');
             setResults([]);
             setSearchPhase('idle');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -258,8 +264,9 @@ export default function Home() {
                 const viewportHeight = window.visualViewport.height;
                 const innerHeight = window.innerHeight;
 
-                // If viewport is close to innerHeight, the keyboard was hidden manually by the user
-                if (viewportHeight > innerHeight * 0.85 && searchPhase === 'idle') {
+                // Ist der Viewport wieder fast so hoch wie das Fenster, hat der
+                // Nutzer die Tastatur selbst geschlossen
+                if (viewportHeight > innerHeight * 0.85 && searchPhaseRef.current === 'idle') {
                     smoothScrollTo(0, 1000);
                     document.activeElement.blur(); // Remove focus since keyboard is gone
                 }
@@ -405,7 +412,7 @@ export default function Home() {
 
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <AnimatePresence>
-                        {showExtrasBanner && searchPhase === 'idle' && currentUser && (!userSettings || !userSettings[currentUser.username] || !userSettings[currentUser.username].discordId) && (
+                        {showExtrasBanner && searchPhase === 'idle' && currentUser && !mySettings.discordId && (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}

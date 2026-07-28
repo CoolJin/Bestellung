@@ -4,30 +4,17 @@ import App from './App.jsx';
 import './styles/tailwind.css';
 import './styles/design-system.css';
 
-console.log("main.jsx: Script start");
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
 
-try {
-  const rootElement = document.getElementById('root');
-  console.log("main.jsx: Root element:", rootElement);
-  const root = ReactDOM.createRoot(rootElement);
-  console.log("main.jsx: Root created");
-  
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
-  console.log("main.jsx: Render called");
-
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/Bestellung/sw.js').then(registration => {
-        console.log('SW registered: ', registration);
-      }).catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
-    });
-  }
-} catch (e) {
-  console.error("main.jsx: Render failed with error:", e);
+// Alte Service-Worker-Registrierungen entfernen: die früher referenzierte
+// sw.js hat nie existiert. Ohne dieses Aufräumen behalten bereits
+// installierte PWAs ihren veralteten Worker.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations => registrations.forEach(r => r.unregister()))
+    .catch(() => { /* nicht kritisch */ });
 }

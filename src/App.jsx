@@ -2,7 +2,6 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { Search, ShoppingCart, User, LayoutDashboard, LogOut, Home as HomeIcon } from 'lucide-react';
-import './styles/design-system.css';
 
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -71,20 +70,6 @@ const Navigation = () => {
     );
 };
 
-const ProtectedRoute = ({ children, roleRequired }) => {
-    const { currentUser, isLoaded } = useAppContext();
-    
-    if (!isLoaded) return <div className="p-4 text-center"><div className="spinner"></div></div>;
-    
-    if (!currentUser) return <Navigate to="/login" />;
-    
-    if (roleRequired && currentUser.role !== roleRequired) {
-        return <Navigate to={currentUser.role === 'admin' ? '/admin' : '/home'} />;
-    }
-    
-    return children;
-};
-
 const AppContent = () => {
     const { currentUser, isLoaded } = useAppContext();
 
@@ -138,7 +123,7 @@ class ErrorBoundary extends React.Component {
         <div style={{ padding: '2rem', color: 'red' }}>
           <h2>Ein Fehler ist aufgetreten!</h2>
           <pre>{this.state.error && this.state.error.toString()}</pre>
-          <button onClick={() => { localStorage.clear(); window.location.href = '/'; }}>
+          <button onClick={() => { localStorage.clear(); window.location.href = import.meta.env.BASE_URL; }}>
             Reset App (Clear LocalStorage)
           </button>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { LogIn } from 'lucide-react';
 
@@ -33,28 +33,32 @@ export default function Login() {
                         <LogIn size={32} />
                     </div>
                     <h1 style={{ fontSize: '1.5rem', fontWeight: '600' }}>Willkommen</h1>
-                    <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Bitte melden Sie sich an.</p>
+                    <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Bitte melde dich an.</p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label className="form-label">Benutzername</label>
-                        <input 
-                            type="text" 
-                            className="form-input" 
+                        <input
+                            type="text"
+                            className="form-input"
                             value={username}
                             onChange={e => setUsername(e.target.value)}
-                            required 
+                            autoComplete="username"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            required
                         />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Passwort</label>
-                        <input 
-                            type="password" 
-                            className="form-input" 
+                        <input
+                            type="password"
+                            className="form-input"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
-                            required 
+                            autoComplete="current-password"
+                            required
                         />
                     </div>
                     

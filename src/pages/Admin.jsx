@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
 import Catalog from './Catalog';
 import AdminExtras from './AdminExtras';
 import Modal from '../components/Modal';
 import NotificationModal from '../components/NotificationModal';
-import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package, Bell } from 'lucide-react';
+import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, ShieldCheck, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package, Bell, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin({ tab = 'orders' }) {
-    const { orders, fetchAllData, adminExtras, currentUser, userSettings } = useAppContext();
+    const { orders, fetchAllData, adminExtras } = useAppContext();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [selectedUserFilter, setSelectedUserFilter] = useState('');
     const [expandedUser, setExpandedUser] = useState(null);
-    const [revealedPasswords, setRevealedPasswords] = useState({});
-    
+
     // Order Accordions
     const [openOrderSections, setOpenOrderSections] = useState({ requests: true, active: true, cancelled: false, archived: false });
 
@@ -23,7 +22,9 @@ export default function Admin({ tab = 'orders' }) {
     const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', type: '', data: null });
     const [pw1, setPw1] = useState('');
     const [pw2, setPw2] = useState('');
-    const [confirmPw, setConfirmPw] = useState('');
+    const [confirmName, setConfirmName] = useState('');
+    const [noteDraft, setNoteDraft] = useState('');
+    const [modalError, setModalError] = useState('');
     const [inventoryDraft, setInventoryDraft] = useState(null);
     
     // Admin user create state
@@ -33,21 +34,21 @@ export default function Admin({ tab = 'orders' }) {
 
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
-    useEffect(() => {
-        fetchAllData();
-        loadUsers();
+    const loadUsers = useCallback(async () => {
+        setUsers(await DB.fetchUsers());
     }, []);
 
-    const loadUsers = async () => {
-        const u = await DB.fetchUsers();
-        setUsers(u);
-    };
+    useEffect(() => {
+        fetchAllData();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadUsers();
+    }, [fetchAllData, loadUsers]);
 
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
             await DB.createUser(newUsername, newPassword);
-            setAdminMsg('Benutzer erstellt!');
+            setAdminMsg(`Benutzer "${newUsername.trim()}" erstellt!`);
             setNewUsername('');
             setNewPassword('');
             loadUsers();
@@ -56,11 +57,9 @@ export default function Admin({ tab = 'orders' }) {
         }
     };
 
-    const handleOrderAction = async (id, status, paymentStatus = null) => {
+    const handleOrderAction = async (id, status, paid = null) => {
         const updates = { status };
-        if (paymentStatus) {
-            updates.paymentStatus = paymentStatus;
-        }
+        if (paid !== null) updates.paid = paid;
         await DB.updateOrder(id, updates);
         fetchAllData();
     };
@@ -77,7 +76,7 @@ export default function Admin({ tab = 'orders' }) {
                     if (currentExtras[extraIdx].quantity <= 0) {
                         currentExtras.splice(extraIdx, 1);
                     }
-                    await DB.saveAdminExtras(currentExtras, currentUser.username);
+                    await DB.saveAdminExtras(currentExtras);
                 }
             } else if (item.source === 'lager') {
                 const userOrders = orders.filter(o => 
@@ -133,38 +132,48 @@ export default function Admin({ tab = 'orders' }) {
     };
 
     const openModal = (title, type, data) => {
-        setPw1(''); setPw2(''); setConfirmPw('');
+        setPw1(''); setPw2(''); setConfirmName(''); setModalError('');
         if (type === 'track_inventory') {
             setInventoryDraft(JSON.parse(JSON.stringify(data.order.items || [])));
         }
+        if (type === 'admin_note') {
+            setNoteDraft(data.order.adminNote || '');
+        }
         setModalConfig({ isOpen: true, title, type, data });
     };
-    
+
     const closeModal = () => {
         setModalConfig({ isOpen: false, title: '', type: '', data: null });
+        setModalError('');
     };
 
     const confirmModal = async () => {
         const { type, data } = modalConfig;
-        
+        setModalError('');
+
         try {
             if (type === 'role_admin' || type === 'role_pablo') {
                 const updates = {};
                 if (type === 'role_admin') updates.role = data.intendedState ? 'admin' : 'user';
                 if (type === 'role_pablo') updates.isPablo = data.intendedState;
                 await DB.updateUser(data.username, updates);
-            } 
+            }
             else if (type === 'edit_pw') {
-                if (!pw1 || pw1 !== pw2) {
-                    openModal('Fehler', 'pw_error', {});
+                if (pw1.length < 8) {
+                    setModalError('Das Passwort muss mindestens 8 Zeichen lang sein.');
                     return;
                 }
-                await DB.updateUser(data.username, { password: pw1 });
+                if (pw1 !== pw2) {
+                    setModalError('Die Passwörter stimmen nicht überein.');
+                    return;
+                }
+                await DB.setPassword(data.username, pw1);
             }
             else if (type === 'delete_user') {
-                const userObj = users.find(u => u.username === data.username);
-                if (confirmPw !== userObj.password) {
-                    openModal('Fehler', 'pw_wrong', {});
+                // Passwörter sind gehasht und liegen nicht mehr im Browser -
+                // zur Bestätigung wird stattdessen der Benutzername getippt.
+                if (confirmName.trim() !== data.username) {
+                    setModalError('Der eingegebene Benutzername stimmt nicht.');
                     return;
                 }
                 await DB.deleteUser(data.username);
@@ -177,25 +186,21 @@ export default function Admin({ tab = 'orders' }) {
                 await DB.updateOrder(data.order.id, { items: inventoryDraft });
                 fetchAllData();
             }
-            else if (type === 'pw_error' || type === 'pw_wrong') {
-                closeModal();
-                return;
+            else if (type === 'admin_note') {
+                await DB.updateOrder(data.order.id, { adminNote: noteDraft.trim() });
+                fetchAllData();
             }
-            
+
             closeModal();
             loadUsers();
         } catch (e) {
-            alert('Fehler: ' + e.message);
+            setModalError(e.message);
         }
     };
 
     const viewUserOrders = (username) => {
         setSelectedUserFilter(username);
         navigate('/admin');
-    };
-
-    const togglePassword = (username) => {
-        setRevealedPasswords(prev => ({ ...prev, [username]: !prev[username] }));
     };
 
     const toggleSection = (section) => {
@@ -280,8 +285,22 @@ export default function Admin({ tab = 'orders' }) {
                     </div>
                 )}
 
+                {order.adminNote && (
+                    <div style={{ fontSize: '0.875rem', padding: '0.75rem', background: 'rgba(250,204,21,0.05)', border: '1px solid rgba(250,204,21,0.2)', borderRadius: 'var(--radius)', marginBottom: '1rem' }}>
+                        <strong style={{ color: '#facc15' }}>Deine Nachricht:</strong> {order.adminNote}
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-                    
+
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => openModal(order.adminNote ? 'Nachricht bearbeiten' : 'Nachricht an Besteller', 'admin_note', { order })}
+                        title="Nachricht an den Besteller"
+                    >
+                        <MessageSquare size={16} /> Nachricht
+                    </button>
+
                     {!order.adminArchived && order.status === 'open' && (
                         <>
                             <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'processing')}><Clock size={16} /> In Bearbeitung</button>
@@ -292,7 +311,7 @@ export default function Admin({ tab = 'orders' }) {
                     {!order.adminArchived && order.status === 'processing' && (
                         <>
                             <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.25rem' }}>
-                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'ordered', 'unpaid')}><CheckCircle size={16} /> Bestellt</button>
+                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'ordered', false)}><CheckCircle size={16} /> Bestellt</button>
                                 <button className="btn btn-secondary" style={{ padding: '0 0.5rem' }} onClick={() => handleOrderAction(order.id, 'open')} title="Zurück zu Offen"><RotateCcw size={16} /></button>
                             </div>
                         </>
@@ -301,7 +320,7 @@ export default function Admin({ tab = 'orders' }) {
                     {!order.adminArchived && order.status === 'ordered' && (
                         <>
                             <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.25rem' }}>
-                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed', 'paid')}><CheckCircle size={16} /> Als bezahlt markieren</button>
+                                <button className="btn btn-primary" onClick={() => handleOrderAction(order.id, 'completed', true)}><CheckCircle size={16} /> Als bezahlt markieren</button>
                                 <button className="btn btn-secondary" style={{ padding: '0 0.5rem' }} onClick={() => handleOrderAction(order.id, 'processing')} title="Zurück zu Bearbeitung"><RotateCcw size={16} /></button>
                             </div>
                         </>
@@ -315,7 +334,7 @@ export default function Admin({ tab = 'orders' }) {
 
                     {!order.adminArchived && order.status === 'completed' && (
                         <>
-                            <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'ordered', 'unpaid')} title="Zurück zu Bestellt"><RotateCcw size={16} /> Rückgängig</button>
+                            <button className="btn btn-secondary" onClick={() => handleOrderAction(order.id, 'ordered', false)} title="Zurück zu Bestellt"><RotateCcw size={16} /> Rückgängig</button>
                         </>
                     )}
 
@@ -349,20 +368,35 @@ export default function Admin({ tab = 'orders' }) {
         if (type === 'role_admin') return <p>Soll <strong>{data?.username}</strong> Administrator {data?.intendedState ? 'werden' : 'nicht mehr sein'}?</p>;
         if (type === 'role_pablo') return <p>Pablo Flatrate für <strong>{data?.username}</strong> {data?.intendedState ? 'aktivieren' : 'deaktivieren'}?</p>;
         if (type === 'delete_order') return <p>Bestellung <strong>{data?.orderId}</strong> wirklich komplett löschen?</p>;
-        if (type === 'pw_error') return <p style={{ color: 'var(--color-destructive)' }}>Passwörter stimmen nicht überein.</p>;
-        if (type === 'pw_wrong') return <p style={{ color: 'var(--color-destructive)' }}>Falsches Passwort — Benutzer nicht gelöscht.</p>;
         if (type === 'edit_pw') return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <p>Neues Passwort für <strong>{data?.username}</strong> festlegen:</p>
-                <input type="password" placeholder="Neues Passwort" value={pw1} onChange={e=>setPw1(e.target.value)} className="form-input" />
-                <input type="password" placeholder="Passwort Bestätigen" value={pw2} onChange={e=>setPw2(e.target.value)} className="form-input" />
+                <input type="password" placeholder="Neues Passwort (min. 8 Zeichen)" value={pw1} onChange={e=>setPw1(e.target.value)} className="form-input" autoComplete="new-password" />
+                <input type="password" placeholder="Passwort bestätigen" value={pw2} onChange={e=>setPw2(e.target.value)} className="form-input" autoComplete="new-password" />
             </div>
         );
         if (type === 'delete_user') return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <p>Möchten Sie den Benutzer <strong>{data?.username}</strong> wirklich löschen?</p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-destructive)' }}>Bitte geben Sie zur Bestätigung das <strong>aktuelle Passwort</strong> dieses Benutzers ein.</p>
-                <input type="text" placeholder="Passwort eingeben" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} className="form-input" />
+                <p>Möchtest du den Benutzer <strong>{data?.username}</strong> wirklich löschen?</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-destructive)' }}>
+                    Das lässt sich nicht rückgängig machen. Tippe zur Bestätigung <strong>{data?.username}</strong> ein.
+                </p>
+                <input type="text" placeholder="Benutzername eingeben" value={confirmName} onChange={e=>setConfirmName(e.target.value)} className="form-input" autoCapitalize="none" autoCorrect="off" />
+            </div>
+        );
+        if (type === 'admin_note') return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <p style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                    Diese Nachricht sieht <strong>{data?.order?.user}</strong> bei Bestellung <strong>{data?.order?.id}</strong>.
+                </p>
+                <textarea
+                    className="form-input w-full"
+                    rows="4"
+                    placeholder="z.B. Liefertermin, Rückfrage, Hinweis..."
+                    value={noteDraft}
+                    onChange={e => setNoteDraft(e.target.value)}
+                    style={{ resize: 'vertical' }}
+                />
             </div>
         );
         if (type === 'track_inventory') return (
@@ -398,6 +432,10 @@ export default function Admin({ tab = 'orders' }) {
         );
         return null;
     };
+
+    const modalErrorBox = modalError
+        ? <p style={{ color: 'var(--color-destructive)', fontSize: '0.875rem', marginTop: '0.75rem' }}>{modalError}</p>
+        : null;
 
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
@@ -558,16 +596,12 @@ export default function Admin({ tab = 'orders' }) {
                                             <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                     
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <span style={{ fontSize: '0.875rem', color: 'var(--color-muted)' }}>Passwort:</span>
-                                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', letterSpacing: revealedPasswords[u.username] ? 'normal' : '0.2em' }}>
-                                                                {revealedPasswords[u.username] ? u.password : '••••••••'}
-                                                            </span>
-                                                        </div>
-                                                        <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem' }} onClick={() => togglePassword(u.username)}>
-                                                            {revealedPasswords[u.username] ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                        </button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                                        <ShieldCheck size={15} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+                                                            Passwort ist verschlüsselt gespeichert und für niemanden einsehbar.
+                                                            Du kannst nur ein neues vergeben.
+                                                        </span>
                                                     </div>
 
                                                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -610,9 +644,11 @@ export default function Admin({ tab = 'orders' }) {
                 onClose={closeModal}
                 onConfirm={confirmModal}
                 isDanger={modalConfig.type === 'delete_user'}
+                confirmText={modalConfig.type === 'admin_note' ? 'Speichern' : 'Bestätigen'}
                 cancelText={modalConfig.type === 'track_inventory' ? 'Schließen' : 'Abbrechen'}
             >
                 {renderModalContent()}
+                {modalErrorBox}
             </Modal>
             <NotificationModal 
                 isOpen={isNotificationModalOpen} 

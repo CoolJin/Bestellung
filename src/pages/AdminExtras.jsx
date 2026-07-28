@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
 import { Minus, Plus, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
 import { calculateVK, formatPrice } from '../services/pricing';
 
 export default function AdminExtras() {
-    const { adminExtras, currentUser, fetchAllData } = useAppContext();
+    const { adminExtras, fetchAllData } = useAppContext();
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -47,7 +47,7 @@ export default function AdminExtras() {
             const finalExtras = newExtras[index].quantity <= 0
                 ? newExtras.filter((_, i) => i !== index)
                 : newExtras;
-            await DB.saveAdminExtras(finalExtras, currentUser.username);
+            await DB.saveAdminExtras(finalExtras);
             await fetchAllData();
         } catch (e) {
             console.error('Fehler:', e.message);
@@ -111,7 +111,7 @@ export default function AdminExtras() {
                                         <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', flexWrap: 'wrap' }}>
                                             <span style={{ color: 'var(--color-muted)' }}>EK: {formatPrice(ek)}</span>
                                             <span style={{ color: 'var(--color-accent)' }}>VK: {formatPrice(vk)}</span>
-                                            <span style={{ color: profit > 0 ? '#22c55e' : '#ef4444' }}>+{formatPrice(profit)}</span>
+                                            <span style={{ color: profit > 0 ? '#22c55e' : '#ef4444' }}>{profit > 0 ? '+' : ''}{formatPrice(profit)}</span>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius)' }}>
