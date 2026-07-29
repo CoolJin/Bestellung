@@ -9,6 +9,10 @@
 -- Nach erfolgreicher Kontrolle: 003_alte_tabellen_entfernen.sql
 -- =====================================================================
 
+-- pgcrypto liegt je nach Projekt in `extensions` oder `public` -
+-- beide Schemata in den Suchpfad nehmen, damit crypt() gefunden wird.
+set search_path = public, extensions;
+
 -- ---------------------------------------------------------------------
 -- 1. Accounts nach auth.users
 --    Login-E-Mail = benutzername@sns.local (nur intern, empfängt nichts).
@@ -36,7 +40,7 @@ select
     'authenticated',
     'authenticated',
     lower(u.username) || '@sns.local',
-    extensions.crypt(u.password, extensions.gen_salt('bf')),
+    crypt(u.password, gen_salt('bf')),
     now(),
     now(),
     now(),

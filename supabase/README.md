@@ -53,11 +53,23 @@ dieser Reihenfolge** einfügen und ausführen:
 | Datei | Was passiert |
 |---|---|
 | `001_auth_profiles_rls.sql` | Tabellen `profiles`, `settings`, `admin_extras`, Bestellnummern-Sequenz, alle RLS-Policies, Admin-Funktionen |
+| `001b_hotfix_guards.sql` | Nur nötig, wenn du 001 in der ersten Fassung ausgeführt hast (siehe unten) |
 | `002_datenmigration.sql` | Bestehende Accounts nach Supabase Auth, Einstellungen und Extras aus den Pseudo-Bestellungen holen |
 | `003_discord_benachrichtigungen.sql` | Benachrichtigungen per Datenbank-Trigger |
 
 Läuft eine Datei auf einen Fehler, **nicht mit der nächsten weitermachen** –
 Fehlermeldung anschauen (oder mir schicken).
+
+> **Wenn 002 mit „Nur Administratoren dürfen Rolle, Flatrate oder Benutzername
+> ändern" abbricht:** Du hast 001 in der ersten Fassung ausgeführt. Führe
+> `001b_hotfix_guards.sql` aus und starte 002 danach erneut. Die Skripte sind
+> so gebaut, dass mehrfaches Ausführen nichts kaputt macht.
+>
+> Ursache: Die Schutz-Trigger haben auch direkte SQL-Zugriffe blockiert. Im SQL
+> Editor gibt es keine Session, `auth.uid()` ist leer – der Trigger hielt das
+> für einen normalen Nutzer. Zugriffe ohne Session kommen nur aus dem Dashboard
+> oder von Migrationen und werden jetzt durchgelassen; über die App ist das
+> nicht möglich, da greifen zusätzlich die RLS-Policies.
 
 Nach `002` zur Kontrolle:
 
@@ -155,7 +167,7 @@ Anmelden geht nicht mehr:
 4. Notfalls Passwort neu setzen:
    ```sql
    update auth.users
-      set encrypted_password = extensions.crypt('neuespasswort', extensions.gen_salt('bf'))
+      set encrypted_password = crypt('neuespasswort', gen_salt('bf'))
     where email = 'benutzername@sns.local';
    ```
 
