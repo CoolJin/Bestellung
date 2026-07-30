@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { calculatePrice, formatPrice } from '../services/pricing';
+import { calculateVK, formatPrice } from '../services/pricing';
 import { motion } from 'framer-motion';
 import { DB } from '../services/db';
 import Modal from '../components/Modal';
@@ -94,7 +94,9 @@ export default function UserExtras() {
                     </div>
                 ) : (
                     adminExtras.map((product) => {
-                        const displayPrice = calculatePrice(product, currentUser);
+                        // Extras kosten immer mindestens 5 EUR - die Pablo-Flatrate
+                        // gilt hier bewusst nicht.
+                        const displayPrice = calculateVK(product);
                         
                         const pendingRequestsCount = orders.filter(o => 
                             o.status === 'request_open' && 

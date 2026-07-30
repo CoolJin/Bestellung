@@ -19,12 +19,16 @@ const loadRecent = () => {
     }
 };
 
+const saveRecent = (list) => {
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* Speicher voll */ }
+    return list;
+};
+
 const rememberSearch = (term) => {
     const clean = term.trim();
     if (clean.length < 2) return loadRecent();
     const next = [clean, ...loadRecent().filter(t => t.toLowerCase() !== clean.toLowerCase())].slice(0, RECENT_MAX);
-    try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* Speicher voll */ }
-    return next;
+    return saveRecent(next);
 };
 
 const lockBodyScroll = (scrollY) => {
@@ -261,6 +265,22 @@ export default function Home() {
         setTimeout(() => setAddedId(null), 1200);
     };
 
+    // Die Chips verschwinden nur, solange Ergebnisse angezeigt werden oder
+    // eine Suche läuft. Nach dem Leeren der Suche bleibt die Leiste oben -
+    // dann sollen sie wieder auftauchen.
+    const showRecent =
+        recent.length > 0 &&
+        results.length === 0 &&
+        !['fading_text', 'moving_bar', 'waiting_for_results'].includes(searchPhase);
+
+    const removeRecent = (term) => {
+        setRecent(saveRecent(recent.filter(t => t !== term)));
+    };
+
+    const clearRecent = () => {
+        setRecent(saveRecent([]));
+    };
+
     const runRecentSearch = (term) => {
         setQuery(term);
         // Auf den nächsten Frame warten, damit triggerSearch den neuen Wert sieht
@@ -455,7 +475,7 @@ export default function Home() {
                 </form>
 
                 <AnimatePresence>
-                    {searchPhase === 'idle' && recent.length > 0 && (
+                    {showRecent && (
                         <motion.div
                             initial={{ opacity: 0, y: -6 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -464,17 +484,36 @@ export default function Home() {
                             className="recent-searches"
                         >
                             {recent.map(term => (
-                                <button
-                                    key={term}
-                                    type="button"
-                                    className="recent-chip"
-                                    onClick={() => runRecentSearch(term)}
-                                    title={`Nach "${term}" suchen`}
-                                >
-                                    <SearchIcon size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
-                                    {term}
-                                </button>
+                                <div key={term} className="recent-chip">
+                                    <button
+                                        type="button"
+                                        className="recent-chip-label"
+                                        onClick={() => runRecentSearch(term)}
+                                        title={`Nach "${term}" suchen`}
+                                    >
+                                        <SearchIcon size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                                        <span className="recent-chip-text">{term}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="recent-chip-remove tap-target"
+                                        onClick={() => removeRecent(term)}
+                                        aria-label={`"${term}" aus dem Verlauf entfernen`}
+                                        title="Entfernen"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                </div>
                             ))}
+                            {recent.length > 1 && (
+                                <button
+                                    type="button"
+                                    className="recent-chip recent-chip-clear"
+                                    onClick={clearRecent}
+                                >
+                                    Alle löschen
+                                </button>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

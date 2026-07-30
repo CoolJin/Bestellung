@@ -3,7 +3,7 @@ import { X, Share, Plus, Smartphone } from 'lucide-react';
 
 const DISMISSED_KEY = 'sns-install-dismissed';
 const VISITS_KEY = 'sns-visits';
-const MIN_VISITS = 3;
+const MIN_VISITS = 1;
 
 const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -30,9 +30,9 @@ const shouldShowIOSHint = () => {
 };
 
 /**
- * Weist dezent darauf hin, dass sich die Seite als App auf den
- * Startbildschirm legen lässt - erst ab dem dritten Besuch, damit es
- * beim Ausprobieren nicht stört.
+ * Weist darauf hin, dass sich die Seite als App auf den Startbildschirm
+ * legen lässt. Erscheint ab dem ersten Besuch und lässt sich dauerhaft
+ * wegklicken.
  */
 export default function InstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
