@@ -7,6 +7,9 @@
  *    + Marke "Pablo":        Preis < 4 → 4 €  |  Preis >= 4 → ceil(Preis)
  *
  * Kurz: Math.max(minimum, Math.ceil(rawPrice))
+ *
+ * Ausnahme Extras: Dosen aus den Admin-Extras kosten immer mindestens 5 €,
+ * auch für Pablo-Flatrate-Nutzer. Dafür ist calculateVK zuständig.
  */
 
 /**
@@ -54,8 +57,10 @@ export const calculateCartTotal = (cart, user) => {
 };
 
 /**
- * Berechnet den Admin-Extras VK-Preis (Verkaufspreis an Kunden).
- * Extras werden immer zum "Standard"-Preis berechnet (kein User-Kontext).
+ * Berechnet den Extras-VK-Preis (Verkaufspreis an Kunden).
+ * Gilt sowohl für die Kalkulation im Adminbereich als auch für die Anzeige
+ * in "Verfügbare Extras". Bewusst ohne Nutzer-Kontext: Extras kosten für
+ * alle mindestens 5 €, die Pablo-Flatrate greift hier nicht.
  * VK = Math.max(5, Math.ceil(ek))
  */
 export const calculateVK = (product) => {

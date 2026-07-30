@@ -731,8 +731,6 @@ body {
 .recent-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(14px);
@@ -741,15 +739,52 @@ body {
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.8rem;
   font-family: inherit;
-  cursor: pointer;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   transition: var(--transition);
 }
 
-.recent-chip:active {
+.recent-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.3rem 0.45rem 0.9rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.recent-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.7rem 0.45rem 0.35rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* "Alle löschen" ist selbst der Knopf, kein Container */
+.recent-chip-clear {
+  padding: 0.45rem 0.9rem;
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.recent-chip:active,
+.recent-chip-label:active {
   transform: scale(0.96);
 }
 
@@ -757,6 +792,14 @@ body {
   .recent-chip:hover {
     background: rgba(255, 255, 255, 0.11);
     border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  .recent-chip-remove:hover {
+    color: var(--color-destructive);
+  }
+
+  .recent-chip-clear:hover {
     color: #fff;
   }
 }
