@@ -106,6 +106,16 @@ export const DB = {
             }
             throw new Error('Benutzer konnte nicht erstellt werden: ' + error.message);
         }
+
+        // Klartext-Kopie für die Anzeige im Adminbereich (nur Admins lesbar).
+        // Schlägt das fehl, ist der Benutzer trotzdem angelegt - dann fehlt
+        // lediglich die Anzeige.
+        const { error: secretError } = await supabaseClient
+            .from('user_secrets')
+            .upsert({ username: clean, password, updated_at: new Date().toISOString() });
+        if (secretError) {
+            console.error('DB: Passwort-Anzeige konnte nicht gespeichert werden', secretError);
+        }
     },
 
     async deleteUser(username) {
@@ -121,6 +131,25 @@ export const DB = {
             new_password: newPassword,
         });
         if (error) throw new Error('Passwort konnte nicht geändert werden: ' + error.message);
+    },
+
+    /**
+     * Passwörter für die Anzeige im Adminbereich.
+     * Liefert { benutzername: passwort }. Für Konten, deren Passwort noch aus
+     * der Zeit vor der Umstellung stammt, gibt es keinen Eintrag - diese
+     * Passwörter liegen nur als Hash vor und sind nicht rückrechenbar.
+     * Die Tabelle ist per RLS ausschließlich für Admins lesbar.
+     */
+    async fetchUserPasswords() {
+        const { data, error } = await supabaseClient
+            .from('user_secrets')
+            .select('username, password');
+
+        if (error) {
+            console.error('DB: Passwörter konnten nicht geladen werden', error);
+            return {};
+        }
+        return Object.fromEntries((data || []).map(r => [r.username, r.password]));
     },
 
     async updateUser(username, updates) {
