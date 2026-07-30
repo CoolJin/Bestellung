@@ -48,6 +48,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh; /* dvh rechnet die Adressleiste mobiler Browser mit */
   display: flex;
   flex-direction: column;
 }
@@ -59,10 +60,6 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-glow);
   transition: var(--transition);
-}
-
-.glass-panel:hover {
-  border-color: var(--color-border-hover);
 }
 
 /* Layout */
@@ -110,8 +107,10 @@ body {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: #f0f0f0 !important;
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background-color: #f0f0f0 !important;
+  }
 }
 
 .btn-secondary {
@@ -121,9 +120,11 @@ body {
   box-shadow: var(--shadow-inner);
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-  border-color: var(--color-border-hover);
+@media (hover: hover) {
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-border-hover);
+  }
 }
 
 .btn-frosted-gold {
@@ -153,9 +154,11 @@ body {
   z-index: 1;
 }
 
-.btn-frosted-gold:hover:not(:disabled) {
-  transform: scale(1.015);
-  background: rgba(255, 255, 255, 0.08);
+@media (hover: hover) {
+  .btn-frosted-gold:hover:not(:disabled) {
+    transform: scale(1.015);
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
 
 .btn-laser-svg {
@@ -177,8 +180,10 @@ body {
   filter: blur(3px);
 }
 
-.btn-frosted-gold:hover .btn-laser-svg rect {
-  animation: laser-trace 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+@media (hover: hover) {
+  .btn-frosted-gold:hover .btn-laser-svg rect {
+    animation: laser-trace 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
 }
 
 @keyframes laser-trace {
@@ -214,9 +219,11 @@ body {
   border-color: var(--color-border);
 }
 
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--color-destructive-bg);
-  border-color: var(--color-destructive);
+@media (hover: hover) {
+  .btn-danger:hover:not(:disabled) {
+    background-color: var(--color-destructive-bg);
+    border-color: var(--color-destructive);
+  }
 }
 
 /* Forms & Inputs */
@@ -282,9 +289,22 @@ body {
   transition: var(--transition);
 }
 
-.nav-item:hover, .nav-item.active {
+.nav-item.active {
   color: var(--color-foreground);
   transform: translateY(-2px);
+}
+
+/* Hover-Effekte nur auf Geräten mit echtem Zeiger. Auf Touchscreens gibt es
+   kein "Maus weg" - der Effekt bliebe nach dem Antippen hängen. */
+@media (hover: hover) {
+  .nav-item:hover {
+    color: var(--color-foreground);
+    transform: translateY(-2px);
+  }
+
+  .glass-panel:hover {
+    border-color: var(--color-border-hover);
+  }
 }
 
 /* Grid & Cards */
@@ -386,6 +406,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 25vh 2rem 2rem 2rem;
     position: relative;
     transition: padding-top 1s cubic-bezier(0.45, 0, 0.55, 1);
@@ -608,3 +629,215 @@ body {
     transition: height 1s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
+
+/* =====================================================================
+   Mobile & Touch
+   ===================================================================== */
+
+/* iOS Safari zoomt beim Fokussieren automatisch hinein, sobald ein
+   Eingabefeld kleiner als 16px ist. Die große Suchleiste auf der Startseite
+   ist ohnehin größer und bleibt ausgenommen. */
+@media (max-width: 768px) {
+  .form-input,
+  textarea,
+  select,
+  input:not(.home-search-input) {
+    font-size: 16px;
+  }
+}
+
+/* Vergrößert die Trefferfläche auf 44px, ohne das Layout zu verändern:
+   die Fläche liegt als unsichtbares Overlay über dem Element. */
+.tap-target {
+  position: relative;
+}
+
+.tap-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+}
+
+/* Offline-Hinweis */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: 0.6rem 1rem;
+  padding-top: calc(0.6rem + env(safe-area-inset-top));
+  background: rgba(255, 69, 58, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 69, 58, 0.35);
+  color: #ff8a80;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  animation: slideDownBanner 0.25s ease-out;
+}
+
+@keyframes slideDownBanner {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Ziehen zum Aktualisieren */
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 60;
+  color: var(--color-muted);
+}
+
+.ptr-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Letzte Suchbegriffe */
+.recent-searches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 1.5rem auto;
+}
+
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.recent-chip:active {
+  transform: scale(0.96);
+}
+
+@media (hover: hover) {
+  .recent-chip:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+}
+
+/* Mengenauswahl in den Suchergebnissen */
+.qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.2rem;
+  flex-shrink: 0;
+}
+
+.qty-stepper button {
+  background: none;
+  border: none;
+  color: var(--color-foreground);
+  cursor: pointer;
+  padding: 0.3rem 0.45rem;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.qty-stepper button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.qty-stepper span {
+  min-width: 1.6rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hinweis "Zum Startbildschirm hinzufügen" */
+.install-banner {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  z-index: 120;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(15, 15, 15, 0.9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  animation: slideUpBanner 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpBanner {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Bewegungsempfindliche Nutzer: Aurora und Zierde-Animationen anhalten.
+   Spart nebenbei spürbar Akku auf älteren Geräten. */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob,
+  .btn-laser-svg rect {
+    animation: none !important;
+  }
+
+  .aurora-bg {
+    opacity: 0.35;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

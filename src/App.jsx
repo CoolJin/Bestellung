@@ -3,6 +3,10 @@ import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { Search, ShoppingCart, User, LayoutDashboard, LogOut, Home as HomeIcon } from 'lucide-react';
 
+import OfflineBanner from './components/OfflineBanner';
+import InstallPrompt from './components/InstallPrompt';
+import PullToRefresh from './components/PullToRefresh';
+
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Cart from './pages/Cart';
@@ -45,6 +49,8 @@ const Navigation = () => {
                         <User size={20} />
                         <span>Profil</span>
                     </NavLink>
+                    {/* Abmelden steht bei Nutzern im Profil - auf dem Handy ist
+                        der Platz in der Leiste für die drei Hauptbereiche da. */}
                 </>
             ) : (
                 <>
@@ -60,12 +66,12 @@ const Navigation = () => {
                         <Search size={20} />
                         <span>Katalog</span>
                     </NavLink>
+                    <button onClick={logout} className="nav-item" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                        <LogOut size={20} />
+                        <span>Abmelden</span>
+                    </button>
                 </>
             )}
-            <button onClick={logout} className="nav-item" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                <LogOut size={20} />
-                <span>Abmelden</span>
-            </button>
         </nav>
     );
 };
@@ -74,13 +80,15 @@ const AppContent = () => {
     const { currentUser, isLoaded } = useAppContext();
 
     if (!isLoaded) {
-        return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        return <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="spinner"></div>
         </div>;
     }
 
     return (
         <HashRouter>
+            <OfflineBanner />
+            {currentUser && <InstallPrompt />}
             <div className="app-layout">
                 <main className="main-content">
                     <Routes>
@@ -101,6 +109,13 @@ const AppContent = () => {
             </div>
         </HashRouter>
     );
+};
+
+/** Umschließt die App, damit "Ziehen zum Aktualisieren" überall greift. */
+const WithPullToRefresh = ({ children }) => {
+    const { currentUser, fetchAllData } = useAppContext();
+    if (!currentUser) return children;
+    return <PullToRefresh onRefresh={fetchAllData}>{children}</PullToRefresh>;
 };
 
 class ErrorBoundary extends React.Component {
@@ -137,7 +152,9 @@ export default function App() {
     return (
         <ErrorBoundary>
             <AppProvider>
-                <AppContent />
+                <WithPullToRefresh>
+                    <AppContent />
+                </WithPullToRefresh>
             </AppProvider>
         </ErrorBoundary>
     );

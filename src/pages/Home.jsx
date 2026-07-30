@@ -1,11 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search as SearchIcon, X, ShoppingCart, Check, Bell } from 'lucide-react';
+import { Search as SearchIcon, X, ShoppingCart, Check, Bell, Plus, Minus } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { handleSearchLogic } from '../services/search';
 import { calculatePrice, formatPrice } from '../services/pricing';
 import GlassSurface from '../components/GlassSurface';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+
+const RECENT_KEY = 'sns-recent-searches';
+const RECENT_MAX = 6;
+
+const loadRecent = () => {
+    try {
+        const raw = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(raw) ? raw.filter(t => typeof t === 'string').slice(0, RECENT_MAX) : [];
+    } catch {
+        return [];
+    }
+};
+
+const rememberSearch = (term) => {
+    const clean = term.trim();
+    if (clean.length < 2) return loadRecent();
+    const next = [clean, ...loadRecent().filter(t => t.toLowerCase() !== clean.toLowerCase())].slice(0, RECENT_MAX);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* Speicher voll */ }
+    return next;
+};
 
 const lockBodyScroll = (scrollY) => {
     document.body.style.position = 'fixed';
@@ -25,6 +45,8 @@ export default function Home() {
     const [results, setResults] = useState([]);
     const [error, setError] = useState('');
     const [addedId, setAddedId] = useState(null);
+    const [quantities, setQuantities] = useState({});
+    const [recent, setRecent] = useState(loadRecent);
     const [searchPhase, setSearchPhase] = useState('idle'); // 'idle', 'fading_text', 'moving_bar', 'waiting_for_results', 'results'
     const [isFadingOutGrid, setIsFadingOutGrid] = useState(false);
     const [showExtrasBanner, setShowExtrasBanner] = useState(false);
@@ -78,6 +100,41 @@ export default function Home() {
 
     const wait = (ms) => new Promise(res => setTimeout(res, ms));
 
+    const animationFrameRef = useRef(null);
+
+    // Eigenes, eine Sekunde langes sanftes Scrollen
+    const smoothScrollTo = (targetPosition, duration) => {
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        const startPosition = window.scrollY;
+        const distance = targetPosition - startPosition;
+        let startTime = null;
+
+        const animation = (currentTime) => {
+            if (startTime === null) startTime = currentTime;
+            const timeElapsed = currentTime - startTime;
+            const progress = Math.min(timeElapsed / duration, 1);
+            
+            // Ease-in-out cubic easing
+            const ease = progress < 0.5 
+                ? 4 * progress * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                
+            window.scrollTo(0, startPosition + distance * ease);
+            
+            if (timeElapsed < duration) {
+                animationFrameRef.current = requestAnimationFrame(animation);
+            } else {
+                animationFrameRef.current = null;
+            }
+        };
+        
+        animationFrameRef.current = requestAnimationFrame(animation);
+    };
+
+
     const triggerSearch = async () => {
         if (!query || query.length < 2) { 
             setResults([]); 
@@ -103,6 +160,7 @@ export default function Home() {
             
             try {
                 const products = await handleSearchLogic(query.trim());
+                setRecent(rememberSearch(query));
                 setResults(products);
                 setSearchPhase('results');
             } catch(err) {
@@ -152,6 +210,7 @@ export default function Home() {
             const [products] = await Promise.all([fetchPromise, animationPromise]);
             
             setSearchPhase('results');
+            setRecent(rememberSearch(query));
             setResults(products);
         } catch (err) {
             setError(err.message || 'Fehler bei der Suche');
@@ -159,6 +218,11 @@ export default function Home() {
             setSearchPhase('idle');
         }
     };
+
+    // Immer die aktuelle Fassung von triggerSearch, damit ein angetippter
+    // Suchbegriff den frisch gesetzten Query-Wert sieht.
+    const triggerSearchRef = useRef(triggerSearch);
+    useEffect(() => { triggerSearchRef.current = triggerSearch; });
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -184,45 +248,25 @@ export default function Home() {
         if (input) input.focus();
     };
 
+    const getQty = (id) => quantities[id] || 1;
+
+    const changeQty = (id, delta) => {
+        setQuantities(prev => ({ ...prev, [id]: Math.max(1, Math.min(99, (prev[id] || 1) + delta)) }));
+    };
+
     const handleAdd = (product) => {
-        addToCart(product, 1);
+        addToCart(product, getQty(product.id));
         setAddedId(product.id);
+        setQuantities(prev => ({ ...prev, [product.id]: 1 }));
         setTimeout(() => setAddedId(null), 1200);
     };
 
-    const animationFrameRef = useRef(null);
-
-    // Custom 1-second smooth scroll function
-    const smoothScrollTo = (targetPosition, duration) => {
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
-
-        const startPosition = window.scrollY;
-        const distance = targetPosition - startPosition;
-        let startTime = null;
-
-        const animation = (currentTime) => {
-            if (startTime === null) startTime = currentTime;
-            const timeElapsed = currentTime - startTime;
-            const progress = Math.min(timeElapsed / duration, 1);
-            
-            // Ease-in-out cubic easing
-            const ease = progress < 0.5 
-                ? 4 * progress * progress * progress 
-                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-                
-            window.scrollTo(0, startPosition + distance * ease);
-            
-            if (timeElapsed < duration) {
-                animationFrameRef.current = requestAnimationFrame(animation);
-            } else {
-                animationFrameRef.current = null;
-            }
-        };
-        
-        animationFrameRef.current = requestAnimationFrame(animation);
+    const runRecentSearch = (term) => {
+        setQuery(term);
+        // Auf den nächsten Frame warten, damit triggerSearch den neuen Wert sieht
+        requestAnimationFrame(() => triggerSearchRef.current());
     };
+
 
     // Mobile Keyboard UX Fixes
     const handleFocus = () => {
@@ -410,6 +454,31 @@ export default function Home() {
                     </GlassSurface>
                 </form>
 
+                <AnimatePresence>
+                    {searchPhase === 'idle' && recent.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                            className="recent-searches"
+                        >
+                            {recent.map(term => (
+                                <button
+                                    key={term}
+                                    type="button"
+                                    className="recent-chip"
+                                    onClick={() => runRecentSearch(term)}
+                                    title={`Nach "${term}" suchen`}
+                                >
+                                    <SearchIcon size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                                    {term}
+                                </button>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <AnimatePresence>
                         {showExtrasBanner && searchPhase === 'idle' && currentUser && !mySettings.discordId && (
@@ -482,9 +551,31 @@ export default function Home() {
                                         <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
                                         <div style={{ flex: 1, padding: '0.5rem 0' }}>
                                             <h3 className="product-title">{product.name}</h3>
-                                            <p className="product-price" style={{ marginTop: '0.25rem' }}>
-                                                {formatPrice(displayPrice)}
-                                            </p>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                                                <p className="product-price">
+                                                    {formatPrice(displayPrice * getQty(product.id))}
+                                                </p>
+                                                <div className="qty-stepper">
+                                                    <button
+                                                        type="button"
+                                                        className="tap-target"
+                                                        onClick={() => changeQty(product.id, -1)}
+                                                        disabled={getQty(product.id) <= 1}
+                                                        aria-label="Menge verringern"
+                                                    >
+                                                        <Minus size={15} />
+                                                    </button>
+                                                    <span>{getQty(product.id)}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="tap-target"
+                                                        onClick={() => changeQty(product.id, 1)}
+                                                        aria-label="Menge erhöhen"
+                                                    >
+                                                        <Plus size={15} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                         <button
                                             type="button"

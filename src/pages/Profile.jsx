@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DB } from '../services/db';
-import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, Bell } from 'lucide-react';
+import { Package, RotateCcw, Archive, Trash2, Edit2, ShoppingBag, Send, CheckCircle, Bell, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/Modal';
 import NotificationModal from '../components/NotificationModal';
 
 export default function Profile() {
-    const { currentUser, orders, fetchAllData, clearCart, addToCart, mySettings, startEditingOrder } = useAppContext();
+    const { currentUser, orders, fetchAllData, clearCart, addToCart, mySettings, startEditingOrder, logout } = useAppContext();
     const navigate = useNavigate();
 
     // Confirm modal state
@@ -276,7 +276,19 @@ export default function Profile() {
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
             <div style={{ marginBottom: '1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Mein Profil</h1>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Mein Profil</h1>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => showConfirm('Abmelden', 'Möchtest du dich abmelden?', logout, false)}
+                        style={{ flexShrink: 0 }}
+                    >
+                        <LogOut size={16} /> Abmelden
+                    </button>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginBottom: '1rem' }}>
+                    Angemeldet als <strong style={{ color: 'var(--color-foreground)' }}>{currentUser.username}</strong>
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                     <button className="btn btn-primary" onClick={() => setIsLagerModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
                         <Package size={18} /> Mein Lager
