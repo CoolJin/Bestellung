@@ -5,13 +5,16 @@ import Catalog from './Catalog';
 import AdminExtras from './AdminExtras';
 import Modal from '../components/Modal';
 import NotificationModal from '../components/NotificationModal';
-import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, ShieldCheck, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package, Bell, MessageSquare } from 'lucide-react';
+import { Edit2, Trash2, Search as SearchIcon, ChevronDown, ChevronUp, Eye, EyeOff, Copy, Check, Archive, RotateCcw, XCircle, CheckCircle, Clock, ExternalLink, Package, Bell, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin({ tab = 'orders' }) {
     const { orders, fetchAllData, adminExtras } = useAppContext();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
+    const [passwords, setPasswords] = useState({});
+    const [revealedPasswords, setRevealedPasswords] = useState({});
+    const [copiedUser, setCopiedUser] = useState(null);
     const [selectedUserFilter, setSelectedUserFilter] = useState('');
     const [expandedUser, setExpandedUser] = useState(null);
 
@@ -35,8 +38,24 @@ export default function Admin({ tab = 'orders' }) {
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
     const loadUsers = useCallback(async () => {
-        setUsers(await DB.fetchUsers());
+        const [list, secrets] = await Promise.all([
+            DB.fetchUsers(),
+            DB.fetchUserPasswords(),
+        ]);
+        setUsers(list);
+        setPasswords(secrets);
     }, []);
+
+    const togglePassword = (username) => {
+        setRevealedPasswords(prev => ({ ...prev, [username]: !prev[username] }));
+    };
+
+    const copyPassword = (username) => {
+        navigator.clipboard.writeText(passwords[username] || '').then(() => {
+            setCopiedUser(username);
+            setTimeout(() => setCopiedUser(null), 2000);
+        });
+    };
 
     useEffect(() => {
         fetchAllData();
@@ -596,13 +615,38 @@ export default function Admin({ tab = 'orders' }) {
                                             <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                     
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
-                                                        <ShieldCheck size={15} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
-                                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>
-                                                            Passwort ist verschlüsselt gespeichert und für niemanden einsehbar.
-                                                            Du kannst nur ein neues vergeben.
-                                                        </span>
-                                                    </div>
+                                                    {(() => {
+                                                        const pw = passwords[u.username];
+                                                        const shown = revealedPasswords[u.username];
+                                                        return (
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                                                    <span style={{ fontSize: '0.875rem', color: 'var(--color-muted)', flexShrink: 0 }}>Passwort:</span>
+                                                                    {pw ? (
+                                                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', letterSpacing: shown ? 'normal' : '0.2em', wordBreak: 'break-all' }}>
+                                                                            {shown ? pw : '••••••••'}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)', fontStyle: 'italic' }}>
+                                                                            noch unbekannt – einmal neu vergeben
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {pw && (
+                                                                    <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+                                                                        {shown && (
+                                                                            <button className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem' }} onClick={() => copyPassword(u.username)} title="Passwort kopieren">
+                                                                                {copiedUser === u.username ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
+                                                                            </button>
+                                                                        )}
+                                                                        <button className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem' }} onClick={() => togglePassword(u.username)} title={shown ? 'Verbergen' : 'Anzeigen'}>
+                                                                            {shown ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>

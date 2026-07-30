@@ -56,6 +56,7 @@ dieser Reihenfolge** einfügen und ausführen:
 | `001b_hotfix_guards.sql` | Nur nötig, wenn du 001 in der ersten Fassung ausgeführt hast (siehe unten) |
 | `002_datenmigration.sql` | Bestehende Accounts nach Supabase Auth, Einstellungen und Extras aus den Pseudo-Bestellungen holen |
 | `003_discord_benachrichtigungen.sql` | Benachrichtigungen per Datenbank-Trigger |
+| `005_passwoerter_fuer_admins.sql` | Passwörter im Adminbereich per Auge-Symbol einsehbar (siehe unten) |
 
 Läuft eine Datei auf einen Fehler, **nicht mit der nächsten weitermachen** –
 Fehlermeldung anschauen (oder mir schicken).
@@ -146,6 +147,28 @@ sobald die Umstellung läuft. Wer das alte Passwort auch woanders benutzt hat,
 sollte es dort ebenfalls tauschen.
 
 ---
+
+## Passwörter im Adminbereich (005)
+
+Nach `005_passwoerter_fuer_admins.sql` siehst du im Nutzerpanel wieder ein
+Auge-Symbol und kannst das Passwort einsehen und kopieren.
+
+Zwei Dinge dazu:
+
+* **Bestehende Passwörter tauchen nicht auf.** Sie liegen nur als bcrypt-Hash
+  vor und lassen sich nicht zurückrechnen – von niemandem. Beim Auge steht
+  „noch unbekannt". Sobald du für einen Benutzer einmal ein neues Passwort
+  vergibst, ist es sichtbar und bleibt es. Wenn du alle sehen willst: einmal
+  die Liste durchgehen und überall ein Passwort setzen.
+* **Die Klartext-Kopie liegt in `public.user_secrets`**, nicht in `profiles`.
+  Die Tabelle ist per RLS ausschließlich für Admins lesbar; `anon` hat keinerlei
+  Rechte. Der Login prüft weiterhin gegen den Hash – die Kopie dient nur der
+  Anzeige.
+
+Bedenke trotzdem: Wer Zugriff auf diese Tabelle erlangt, liest echte Passwörter,
+und viele Menschen benutzen dasselbe Passwort an mehreren Stellen. Wer das nicht
+möchte, führt `005` einfach nicht aus – dann bleibt alles beim Hash-Verfahren
+und du vergibst bei Bedarf ein neues Passwort.
 
 ## Was noch offen ist
 
